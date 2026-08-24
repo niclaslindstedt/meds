@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The app mark: a capsule divided by its seam, tilted the way capsules
+       are drawn everywhere — the one shape that says "medication" without
+       saying anything else. One capsule with a thin line across its middle,
+       not two halves: the seam is drawn in the tile's own surface colour, so
+       it reads as a cut through the pill rather than as a second ink.
+
+       Flat green on the dark install surface, thick stroke, round cap — the
+       same treatment as the sibling apps, so they read as one family on a
+       home screen. Flat means flat: one fill, no gradient, no bevel, no inner
+       shadow. The mark is drawn big enough that the tile reads as green from
+       across a home screen rather than as a dark square with a small glyph on
+       it — which is the whole job an icon has at thumbnail size.
+
+       Geometry, in the 100 viewBox: one segment on the 45° diagonal from
+       (27,73) to (73,27), stroked at 26 with round caps — the caps put the
+       capsule's tips at (17.8,82.2) and (82.2,17.8), so the mark spans 91% of
+       the box at a 3.5:1 length-to-width ratio. The seam is the perpendicular
+       through the centre, 8 wide with butt caps, so the cut's edges are
+       straight. 8 is generous on purpose: it is sized for the 16px favicon,
+       where a thinner slit closes up under rounding and the pill loses its
+       seam.
+
+       The same numbers are rasterised into the PNG install icons, the favicon
+       and the social card by scripts/generate-icons.mjs (`npm run icons`),
+       and mirrored into `AppMarkIcon` in src/app/icons.tsx (where the seam is
+       a mask, because that file draws on no background) — the three files are
+       kept in step by hand. -->
+  <rect width="100" height="100" rx="20" fill="#12101a" />
+  <path
+    d="M27 73 L73 27"
+    fill="none"
+    stroke="#3ef07f"
+    stroke-width="26"
+    stroke-linecap="round"
+  />
+  <path
+    d="M39.4 39.4 L60.6 60.6"
+    fill="none"
+    stroke="#12101a"
+    stroke-width="8"
+  />
+</svg>

@@ -1,0 +1,411 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+import { useMemo, useState } from "react";
+
+import {
+  areaPath,
+  bandScale,
+  barPath,
+  linePath,
+  linearScale,
+  type PathPoint,
+} from "@niclaslindstedt/oss-framework/charts";
+import { useMeasuredSize } from "@niclaslindstedt/oss-framework/hooks";
+
+import { niceTicks } from "./chartAxis.ts";
+import { useT } from "./i18n/index.ts";
+
+// The History screen's chart, hand-built from the framework's chart
+// primitives rather than its finished `LineChart`/`BarChart`: a recessive
+// hairline frame, rounded columns, a handful of date ticks, and a pinned
+// readout in place of a hover tooltip — the grammar the sibling apps' charts
+// share, applied to the series History shows.
+//
+// What it deliberately does not have is a dot per datum. A comb of markers
+// along a line only crowds it — the ticks below say where the series runs, and
+// the point under the pointer is called out by the cursor rule and spelled out
+// in the readout above. The one exception is
+// a reading with a gap on both sides, which would otherwise vanish entirely:
+// it gets a short round-capped stroke, a mark for "measured, alone", not a
+// decoration on a line that exists anyway.
+//
+// It does have a y axis, and the data is what asks for it: a History series
+// plots a quantity in a unit someone knows — 45%, 12 doses — where the height
+// of a column means nothing until the reader can price it. Three or four gridlines are what turn "taller than last cycle" into
+// "31 days". They are drawn behind the marks in the frame's own hairline, and
+// the axis hugs its data exactly as the marks do, so the labels never claim a
+// range the series never covered.
+
+/** How a series is drawn: one rounded column per point, or the line they
+ *  trace. */
+export type HistoryMark = "bars" | "curve";
+
+type Props = {
+  /** One number per point, `null` where nothing was measured. Gaps stay gaps —
+   *  joining across a fortnight nobody measured draws a trend nobody
+   *  measured. */
+  values: (number | null)[];
+  /** One label per point, for the ticks and the readout. */
+  labels: string[];
+  mark: HistoryMark;
+  /** Whether y runs from zero. Counts and shares are heights and start at
+   *  nothing; an absolute reading like a temperature hugs its own range,
+   *  because against an axis from zero a third-of-a-degree step is a flat
+   *  line. A non-zero-based curve carries no area fill for the same honesty:
+   *  the paper under it would not mean anything. */
+  zeroBased?: boolean;
+  height?: number;
+  ariaLabel: string;
+  desc: string;
+  /** The readout's rendering of one value, unit and all. */
+  formatValue: (value: number) => string;
+  /** The y axis's rendering of one gridline value. Terser than `formatValue`
+   *  on purpose: a tick is read at a glance and out of the corner of an eye,
+   *  and the unit is already in the section title and spelled out in full in
+   *  the readout. Defaults to the number at the axis's own precision. */
+  formatTick?: (value: number) => string;
+  /** An optional muted second phrase per point (a sample size, a span). */
+  details?: (string | undefined)[];
+};
+
+const PAD = { top: 14, right: 8, bottom: 26, left: 8 };
+const DEFAULT_HEIGHT = 170;
+/** Fallback width for the first paint, before the container has been measured.
+ *  Roughly a phone's content width, so the first frame is never wildly wrong. */
+const FALLBACK_WIDTH = 340;
+
+/** Most gridlines a plot may carry. Five over ~130px is a line every 30-odd
+ *  pixels at worst — enough to read a height off, few enough that the axis
+ *  doesn't become the picture. */
+const MAX_TICKS = 5;
+/** Space between a y label and the plot's left edge. */
+const TICK_GAP = 6;
+/** Roughly one 10px digit's advance in the app's font. The gutter has to be
+ *  reserved before the labels exist to measure, and a character count is close
+ *  enough for text this short — erring wide costs a couple of pixels of plot,
+ *  erring narrow would print the axis into the marks. */
+const TICK_CHAR_WIDTH = 6;
+
+export function HistoryChart({
+  values,
+  labels,
+  mark,
+  zeroBased = true,
+  height = DEFAULT_HEIGHT,
+  ariaLabel,
+  desc,
+  formatValue,
+  formatTick,
+  details,
+}: Props) {
+  const t = useT();
+  const { ref, size } = useMeasuredSize<HTMLDivElement>();
+  const width = Math.max(240, Math.round(size?.width ?? FALLBACK_WIDTH));
+
+  // The point under the pointer (or the keyboard cursor). Null when nothing
+  // is being pointed at, in which case the readout falls back to the most
+  // recent measured point — the one a reader opening the screen is asking
+  // about.
+  const [cursor, setCursor] = useState<number | null>(null);
+
+  const measured = values.filter((v): v is number => v !== null);
+  const max = Math.max(...measured, Number.MIN_VALUE);
+  const min = Math.min(...measured, Number.MAX_VALUE);
+  // Data-hugging axes keep a margin so the extremes never sit on the frame;
+  // a flat series (every value equal) still gets a band to sit inside.
+  const margin = Math.max((max - min) * 0.18, Math.abs(max) * 0.02, 0.05);
+  const domain: [number, number] = zeroBased
+    ? [0, max * 1.15]
+    : [min - margin, max + margin];
+
+  // The axis comes before the frame, because the frame depends on it: the
+  // gutter is however wide the widest label turns out to be, and the labels
+  // are fixed by the domain alone, which owes nothing to the pixels.
+  const axis = niceTicks(domain[0], domain[1], MAX_TICKS);
+  const tickLabel = (value: number) =>
+    formatTick ? formatTick(value) : value.toFixed(axis.decimals);
+  const gutter =
+    axis.values.length === 0
+      ? 0
+      : Math.ceil(
+          Math.max(...axis.values.map((v) => tickLabel(v).length)) *
+            TICK_CHAR_WIDTH,
+        ) + TICK_GAP;
+
+  const plot = {
+    left: PAD.left + gutter,
+    top: PAD.top,
+    width: Math.max(1, width - PAD.left - gutter - PAD.right),
+    height: Math.max(1, height - PAD.top - PAD.bottom),
+  };
+  const baseline = plot.top + plot.height;
+
+  const bands = bandScale(values.length, [plot.left, plot.left + plot.width], {
+    paddingInner: mark === "bars" ? 0.28 : 0,
+  });
+  const step = values.length > 0 ? plot.width / values.length : plot.width;
+  const centreOf = (i: number) => bands.position(i) + bands.bandwidth / 2;
+
+  const y = linearScale(domain, [baseline, plot.top]);
+
+  // Consecutive runs of measured points, so the curve breaks at every gap.
+  const segments = useMemo(() => {
+    const runs: { index: number; value: number }[][] = [];
+    let run: { index: number; value: number }[] = [];
+    values.forEach((value, index) => {
+      if (value === null) {
+        if (run.length > 0) runs.push(run);
+        run = [];
+      } else {
+        run.push({ index, value });
+      }
+    });
+    if (run.length > 0) runs.push(run);
+    return runs;
+  }, [values]);
+
+  const defaultIndex = (() => {
+    for (let i = values.length - 1; i >= 0; i--) {
+      if (values[i] !== null) return i;
+    }
+    return 0;
+  })();
+  const activeIndex = cursor ?? defaultIndex;
+  const activeValue = values[activeIndex] ?? null;
+
+  /** Map a pointer x (in client pixels) onto a point index. */
+  const trackPointer = (e: {
+    currentTarget: SVGRectElement;
+    clientX: number;
+  }) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const scale = box.width > 0 ? width / box.width : 1;
+    const local = (e.clientX - box.left) * scale - plot.left;
+    const index = Math.floor(local / step);
+    setCursor(Math.min(values.length - 1, Math.max(0, index)));
+  };
+
+  return (
+    <div ref={ref as React.Ref<HTMLDivElement>}>
+      {/* The readout is pinned above the plot rather than floating over it,
+          because a card following the pointer covers
+          the shape, and on a touch screen it sits under the finger that
+          summoned it. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="mb-1 flex min-h-6 flex-wrap items-baseline gap-x-2 gap-y-0.5"
+      >
+        <span
+          className={`text-sm font-bold ${
+            cursor !== null ? "text-fg-bright" : "text-accent"
+          }`}
+        >
+          {labels[activeIndex]}
+        </span>
+        {activeValue === null ? (
+          <span className="text-xs text-muted">{t("history.chart.gap")}</span>
+        ) : (
+          <span className="text-xs text-fg">{formatValue(activeValue)}</span>
+        )}
+        {details?.[activeIndex] && (
+          <span className="text-xs text-muted">{details[activeIndex]}</span>
+        )}
+      </div>
+      {/* `data-swipe-ignore`: dragging sideways across the plot reads a point
+          out of it, which is the same motion the shell uses to change tabs —
+          so the chart claims its own horizontal axis and the swipe stays off
+          it. See `useSwipeNav.ts`. */}
+      <div
+        tabIndex={0}
+        role="group"
+        data-swipe-ignore
+        aria-label={t("history.chart.keyboardHint")}
+        className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+          const delta = e.key === "ArrowRight" ? 1 : -1;
+          setCursor((prev) => {
+            const next = (prev ?? defaultIndex) + delta;
+            return Math.min(values.length - 1, Math.max(0, next));
+          });
+        }}
+        onBlur={() => setCursor(null)}
+      >
+        <svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={ariaLabel}
+          className="block touch-pan-y select-none"
+        >
+          <desc>{desc}</desc>
+
+          {/* The y axis: a hairline per tick, in the baseline's own ink, drawn
+              first so every mark sits over it rather than under it. The tick
+              that lands on the baseline is left to the baseline — two strokes
+              on one pixel row only print the frame twice. */}
+          {axis.values.map((value) => {
+            const ty = y(value);
+            return (
+              <g key={`y-${value}`}>
+                {Math.abs(ty - baseline) > 0.5 && (
+                  <line
+                    x1={plot.left}
+                    x2={plot.left + plot.width}
+                    y1={ty}
+                    y2={ty}
+                    stroke="var(--color-line)"
+                    strokeWidth={1}
+                    opacity={0.5}
+                  />
+                )}
+                <text
+                  x={plot.left - TICK_GAP}
+                  y={ty}
+                  dy="0.32em"
+                  textAnchor="end"
+                  className="fill-muted text-[10px] tabular-nums"
+                >
+                  {tickLabel(value)}
+                </text>
+              </g>
+            );
+          })}
+
+          {mark === "bars"
+            ? values.map((value, i) => {
+                if (value === null) return null;
+                const top = y(value);
+                const barHeight = Math.max(0, baseline - top);
+                if (barHeight <= 0) return null;
+                return (
+                  <path
+                    key={i}
+                    className="chart-bar"
+                    d={barPath(
+                      bands.position(i),
+                      top,
+                      bands.bandwidth,
+                      barHeight,
+                      4,
+                      "top",
+                    )}
+                    fill="var(--color-accent)"
+                    opacity={cursor === null || cursor === i ? 0.9 : 0.45}
+                    style={{
+                      animationDelay: `${i * 14}ms`,
+                      transition: "opacity 120ms ease-out",
+                    }}
+                  />
+                );
+              })
+            : segments.map((run) => {
+                // A reading with a gap on both sides has no line to sit on: a
+                // short round-capped stroke marks it, the same vocabulary the
+                // sibling apps use for their no-data days.
+                if (run.length === 1) {
+                  const { index, value } = run[0]!;
+                  const reach = Math.max(2.5, bands.bandwidth / 2);
+                  return (
+                    <line
+                      key={`lone-${index}`}
+                      className="chart-marker"
+                      x1={centreOf(index) - reach}
+                      x2={centreOf(index) + reach}
+                      y1={y(value)}
+                      y2={y(value)}
+                      stroke="var(--color-accent)"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                    />
+                  );
+                }
+                const points: PathPoint[] = run.map((p) => [
+                  centreOf(p.index),
+                  y(p.value),
+                ]);
+                return [
+                  zeroBased && (
+                    <path
+                      key={`area-${run[0]!.index}`}
+                      className="chart-area"
+                      d={areaPath(points, baseline, { curve: "monotone" })}
+                      fill="var(--color-accent)"
+                      opacity={0.22}
+                    />
+                  ),
+                  <path
+                    key={`line-${run[0]!.index}`}
+                    className="chart-area"
+                    d={linePath(points, { curve: "monotone" })}
+                    fill="none"
+                    stroke="var(--color-accent)"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />,
+                ];
+              })}
+
+          <line
+            x1={plot.left}
+            x2={plot.left + plot.width}
+            y1={baseline}
+            y2={baseline}
+            stroke="var(--color-line)"
+            strokeWidth={1}
+          />
+
+          {tickIndices(values.length).map((i) => (
+            <text
+              key={`tick-${i}`}
+              x={centreOf(i)}
+              y={height - 8}
+              textAnchor="middle"
+              className="fill-muted text-[10px]"
+            >
+              {labels[i]}
+            </text>
+          ))}
+
+          {cursor !== null && (
+            <line
+              className="chart-cursor"
+              x1={centreOf(cursor)}
+              x2={centreOf(cursor)}
+              y1={plot.top - 6}
+              y2={baseline}
+              stroke="var(--color-fg-bright)"
+              strokeWidth={1}
+              opacity={0.55}
+            />
+          )}
+
+          {/* One transparent hit area over the whole plot: a day-wide column
+              is far too small a target for a fingertip. */}
+          <rect
+            x={plot.left}
+            y={plot.top - 8}
+            width={plot.width}
+            height={plot.height + 8}
+            fill="transparent"
+            onPointerMove={trackPointer}
+            onPointerDown={trackPointer}
+            onPointerLeave={() => setCursor(null)}
+          />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/** Four evenly spaced tick positions, or every point when there are few —
+ *  the sibling apps' chart rule, so a reader learns it once. */
+function tickIndices(count: number): number[] {
+  if (count <= 5) return Array.from({ length: count }, (_, i) => i);
+  const wanted = 4;
+  const stride = (count - 1) / (wanted - 1);
+  return Array.from({ length: wanted }, (_, i) => Math.round(i * stride));
+}
