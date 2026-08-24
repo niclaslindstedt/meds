@@ -1,0 +1,28 @@
+# Nird Meds
+
+> A local-first medication tracking PWA built on @niclaslindstedt/oss-framework.
+> You enter your medications — a name, an optional dose, and the times of day
+> they are taken — and log each dose with one tap. The log is stored on-device
+> as JSON, with an optional copy synced to the user's own Dropbox or Google
+> Drive. Adherence, streaks and the calendar's day marks are derived from the
+> log at read time; nothing about adherence is stored.
+
+- App: https://meds.niclaslindstedt.se/
+- Source: https://github.com/niclaslindstedt/meds
+- Framework: https://github.com/niclaslindstedt/oss-framework
+
+## Features
+
+- Today: the day's doses as a checklist grouped by time of day, cleared one
+  tap per dose; opens first, unless there are no medications yet — then the
+  add form does
+- Medications: add, edit, stop and resume medications; stopping keeps the
+  history, deleting is the guarded exception
+- Calendar: a month at a glance — filled days where every dose landed, hollow
+  part-done days, a warning tint on missed days — and any past day's checklist
+  reopenable to log a forgotten dose
+- History: adherence over the last 7 and 30 days, the current streak, a
+  one-column-per-day chart that makes gaps visible, per-medication adherence,
+  and the recent missed doses by name
+- Settings: light/dark theme, week start, cloud sync, JSON backup and restore
+- No account, no server, no analytics; installable and fully offline

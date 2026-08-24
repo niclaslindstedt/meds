@@ -1,0 +1,434 @@
+/* SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 */
+
+/* App stylesheet.
+
+     1. Tailwind v4 base + utilities.
+     2. The framework's prebuilt stylesheet — the theme-token map, the button /
+        elevation flavours, and every preset palette (baked in — no runtime
+        `installPresetTokens()` call needed).
+     3. `@source` — scan the installed framework package so the utility classes
+        its components use are emitted into this app's CSS.
+     4. App-shell layout: the html/body reset that makes this a full-viewport,
+        non-scrolling PWA, and the safe-area padding the bottom nav needs. This
+        stays the app's — it is layout, not framework. */
+
+@import "tailwindcss";
+@import "@niclaslindstedt/oss-framework/styles.css";
+
+@source "../node_modules/@niclaslindstedt/oss-framework/dist";
+
+/* ── Corners ─────────────────────────────────────────────────────────────────
+   The app is round-cornered, and the radius is a scale rather than a number
+   chosen per box. Most of that scale is the theme engine's: `look.ts` picks the
+   framework's largest radius preset, and the engine writes `--radius-sm` /
+   `--radius-md` / `--radius-lg` onto <html> as inline styles at paint time —
+   6px, 10px and 20px — which every `rounded-sm|md|lg` in this app and in the
+   framework's components then resolves against.
+
+   The engine does not write the rest of Tailwind's ramp, so those are set here
+   to continue it. Without this block `rounded-xl` (0.75rem) would be *tighter*
+   than `rounded-lg` (20px) and a card asking for a rounder corner would get a
+   squarer one. `--radius` is the bare `rounded`, which is what the framework's
+   `Section` card uses; it is matched to `--radius-md` so a framework panel and
+   an app panel sitting next to each other cut the same corner.
+
+   Inline styles beat a `@theme` value, which is why sm/md/lg are the engine's
+   to set and are deliberately not repeated here. */
+@theme {
+  --radius: 0.625rem;
+  --radius-xs: 0.25rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2rem;
+}
+
+/* ── Accent ──────────────────────────────────────────────────────────────────
+   The framework's GitHub palettes carry a green accent; this app wears teal in
+   the UI. The install mark is green (see public/icons/icon.svg) and stays that
+   way on purpose: the icon's job is to be found on a home screen next to its
+   sibling apps, the accent's is to mark what you can touch inside this one.
+   Only the accent slot is overridden — every other token stays the
+   framework's, so contrast and the semantic colours (danger, link, success)
+   keep their vetted values.
+
+   `--success` deliberately keeps the palette's green: with a teal accent it is
+   the only thing left distinguishing "this worked" from "this is the app's
+   colour", and the sync glyph relies on that difference.
+
+   Each of the three theme values the app can apply is listed. `system` needs
+   both branches, since it resolves via `prefers-color-scheme` at paint time
+   rather than through the attribute. */
+/* `:root` is load-bearing: the framework's generated blocks are
+   `:root[data-theme="…"]`, so a bare attribute selector loses on specificity
+   and the override silently does nothing. */
+:root[data-theme="githubDark"],
+:root[data-theme="system"] {
+  --accent: #2dd4bf;
+}
+
+:root[data-theme="githubLight"] {
+  --accent: #0d9488;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --accent: #0d9488;
+  }
+}
+
+/* ── The wordmark ────────────────────────────────────────────────────────────
+   The lockup in the top bar: the mark and the name, both in the accent, and
+   the one piece of text in the app that is not Inter.
+
+   Mono for the name is the point of it. Everything else on screen is prose and
+   numbers read at a glance; the wordmark is a *name*, and setting it in the
+   one family nothing else uses is what stops it reading as a page title that
+   happens to sit at the top. It also puts the name in the same register as the
+   mark beside it — a stroke of even width, and letters of even width.
+
+   The family is named here rather than reached through Tailwind's `font-mono`:
+   that utility resolves to `--font-mono`, which the framework's code blocks and
+   the log viewer read too, and this app has no wish to restyle those. The
+   system stack stays behind it, for the moment before the webfont lands
+   (`@fontsource/jetbrains-mono`, imported in `main.tsx` — self-hosted, so this
+   costs a request to nobody).
+
+   `-0.02em` because mono metrics set every letter on the same advance, which
+   at wordmark size opens gaps a proportional face would have closed; pulling
+   the tracking in makes the two words read as one lockup rather than as spaced
+   out type. */
+.app-wordmark {
+  font-family:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── Toasts ──────────────────────────────────────────────────────────────────
+   The framework tints a toast by kind: green for success, red for danger. That
+   is the right default for an app whose accent is green — but this one's is
+   teal, and a palette-green card sliding in over a teal screen reads as a
+   different app's notification rather than as this one confirming a save.
+
+   So both kinds wear red here, and the difference between them is loudness
+   rather than hue: a save is a hairline of accent and a tint you have to look
+   for, an error is a full-strength danger border you cannot miss. Scoped to
+   `.app-toasts` (the viewport in App.tsx) so the `--success` token itself
+   stays the palette's green — the sync glyph still needs a colour that is not
+   the accent to mean "up to date". */
+.app-toasts [data-kind="success"] {
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 12%, var(--surface-2));
+}
+
+.app-toasts [data-kind="success"] > span[aria-hidden="true"] {
+  background-color: var(--accent);
+}
+
+.app-toasts [data-kind="danger"] {
+  border-color: var(--danger);
+  background-color: color-mix(in oklab, var(--danger) 32%, var(--surface-2));
+}
+
+.app-toasts [data-kind="danger"] > span[aria-hidden="true"] {
+  background-color: var(--danger);
+}
+
+/* ── Pointer affordance ──────────────────────────────────────────────────────
+   Tailwind v4's preflight stopped restoring `cursor: pointer` on buttons, and
+   the user-agent default for a <button> is the plain arrow — so under a mouse
+   a nav tab, a yes/no answer and a Save button all looked as inert as the
+   text beside them. It costs a touch device nothing and it is the only
+   hover-time signal a desktop reader gets that a control is a control.
+
+   A stylesheet rule rather than a `cursor-pointer` utility per call site:
+   most of the buttons on screen are the framework's to render (the modals,
+   the segmented control, the settings rows), so a class in this app could
+   only ever reach half of them. <label> is deliberately not on the list — the
+   ones in the med form wrap text fields and want a caret. */
+button,
+summary,
+select,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+input[type="file"] {
+  cursor: pointer;
+}
+
+/* A control that cannot be used says so instead of going on inviting the
+   click it will ignore. The `aria-disabled` half is for the ones that stay
+   focusable: the flag lives on a wrapper there, so the buttons inside it are
+   covered too. */
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"],
+[aria-disabled="true"] button {
+  cursor: not-allowed;
+}
+
+/* ── App shell ───────────────────────────────────────────────────────────────
+   The app fills the viewport and never scrolls as a document: the <main>
+   between the header and the bottom nav is the one scrolling region, so the
+   nav stays put under the thumb while a long settings page moves behind it.
+
+   `100dvh` rather than `100vh`: on mobile Safari the large viewport unit would
+   put the bottom nav under the browser's own chrome until the toolbar
+   collapses. */
+html,
+body {
+  height: 100%;
+  overscroll-behavior-y: none;
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--fg);
+  font-family: var(--app-font-family, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Installed iOS PWA edge-to-edge under the home indicator. iOS only extends
+   the page under the home indicator when the *root* element carries a fixed
+   `100vh` height; with `100dvh` the document stops at the letterboxed viewport
+   and iOS paints the remainder as a dead black band below the bottom nav.
+   Force `100vh` in the installed iOS PWA so the shell reaches the screen edge.
+   Scoped to iOS via the `-webkit-touch-callout` probe (no other engine
+   supports it) and to `display-mode: standalone`, so a plain mobile Safari tab
+   — where the collapsing toolbar is the whole reason for `100dvh` — keeps it. */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    html,
+    body,
+    #root {
+      height: 100vh;
+    }
+  }
+}
+
+/* The notch and the home indicator. The header pads down from the status bar,
+   so an installed PWA paints edge to edge without putting the buttons — or the
+   rule under them — beneath the Dynamic Island.
+
+   The larger of the row's own padding and the inset, rather than one on top of
+   the other: stacking them would push the bar visibly below the status bar
+   instead of tucking it under, and the bare inset is nothing at all in a
+   browser tab, where the bar would then have a top edge and no top padding.
+   The same expression the sibling `notes` header uses, so the two apps' bars
+   land at the same height on the same phone. */
+.app-header {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+/* The nav is the last thing above the screen edge, and the app paints under
+   the home indicator (`viewport-fit=cover`), so 10px is all that sits below
+   the labels. Carrying `env(safe-area-inset-bottom)` as well left them 44px
+   clear on a phone — a strip of empty surface as tall as a tab, taken off the
+   page for a home indicator that floats over the bar perfectly happily.
+
+   One number for every platform, deliberately. The installed iOS PWA used to
+   take 5px more on the argument that it is the one place the bar really does
+   end at the screen edge — but the home indicator floats over the labels
+   there just as harmlessly as elsewhere, and the extra strip read as the bar
+   sitting off the bottom of the screen rather than as clearance. */
+.app-bottom-nav {
+  padding-bottom: 10px;
+}
+
+/* A tab is a thumb target, so give it the platform minimum regardless of how
+   short the label renders. */
+.app-bottom-nav button {
+  min-height: 3rem;
+}
+
+/* ── Moving between screens ──────────────────────────────────────────────────
+   The bottom bar is four destinations in a fixed left-to-right order and a
+   swipe moves one step along it (see `useSwipeNav.ts`). Without motion the
+   screen simply replaces itself, which leaves the gesture unanswered: the
+   finger says "the next one, that way" and the app gives no sign that a *row*
+   is what it moved along. So the arriving screen comes in from the side it
+   lives on — from the right going forward, from the left going back — and the
+   direction is the bar's, not the gesture's, so tapping a tab two along looks
+   like the same move as swiping to it (see `screenEnter` in `BottomNav.tsx`).
+
+   Only the incoming screen animates; the outgoing one is gone the moment the
+   tab changes. A true two-up page transition would have to keep the old screen
+   mounted and slide the pair, which on this app means holding a second copy of
+   the forecast chart on screen to be scrolled off it. The short offset is
+   chosen for that: at 100% width the trailing edge would expose a screen-wide
+   strip of empty page, while `1.5rem` reads as the screen catching up with the
+   swipe rather than as a gap.
+
+   Transform and opacity only — both composited, so this stays off the main
+   thread on a phone. */
+.app-screen[data-enter="forward"] {
+  animation: screen-in-right 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-screen[data-enter="back"] {
+  animation: screen-in-left 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Report and Settings have no place in the row, so they arrive from nowhere:
+   a fade is a change of screen with no direction claimed, which is what
+   pressing a top-bar button is. It is also what the app's very first paint
+   gets, which is the right nothing-in-particular for a screen that did not
+   come from another one. */
+.app-screen[data-enter="none"] {
+  animation: screen-fade-in 160ms ease-out;
+}
+
+@keyframes screen-in-right {
+  from {
+    transform: translate3d(1.5rem, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes screen-in-left {
+  from {
+    transform: translate3d(-1.5rem, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes screen-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The tab still changes, instantly — the motion was only ever the explanation
+   of a change that happens either way. */
+@media (prefers-reduced-motion: reduce) {
+  .app-screen[data-enter] {
+    animation: none;
+  }
+}
+
+/* ── The medication calendar ──────────────────────────────────────────────────────
+   The Calendar screen paints a day by putting a coloured mark *behind* its
+   number. The framework's `MonthGrid` owns the day cell's markup and renders
+   the app's `renderDay` output after the number, so the mark is drawn as an
+   absolutely positioned sibling at a negative stack level (`-z-10`, see
+   `DayMark.tsx`) to get underneath it.
+
+   A negative stack level escapes to the nearest ancestor stacking context, and
+   without one here that is the page — the mark would slide behind the cell's
+   own hover fill and behind the card it sits on. `isolation: isolate` gives
+   every cell a stacking context of its own, which pins the mark to exactly
+   one layer: above the button's background, below its text. `position:
+   relative` is what the mark's `inset` resolves against.
+
+   This is a stylesheet rule rather than a class on the element because the
+   element is the framework's to render. */
+.app-med-calendar [role="gridcell"] > button {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Today, at a size you can find without looking for it. The framework marks the
+   current day with the accent colour and a semibold weight at the same `text-sm`
+   every other day wears — which on a grid of forty-two numbers, several of them
+   already sitting on a teal dot, is a difference you have to hunt for. Size
+   is the one channel nothing else in the grid is using, so today gets it.
+
+   The rule is here rather than in `CalendarScreen.tsx` for the same reason
+   the one above it is: the cell is the framework's `MonthGrid` to render, and
+   `aria-current="date"` is the hook it already puts on today. */
+.app-med-calendar [role="gridcell"] > button[aria-current="date"] {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+/* ── History chart ──────────────────────────────────────────────────────────
+   The animations for the adherence chart on the History screen. They live
+   here rather than inline because keyframes are not expressible as Tailwind
+   utilities, and because every one of them is disabled together at the bottom
+   of this block when the device asks for reduced motion.
+
+   Only `transform` and `opacity` are animated — both composited, so a
+   thirty-bar chart re-animating on a tab change costs nothing on a phone. */
+
+/* A day's column growing out of the baseline. `fill-box` origin keeps each
+   rect anchored to its own bottom edge rather than the SVG's. */
+.chart-bar {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: chart-grow 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes chart-grow {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+
+/* The filled density, revealed left to right. */
+.chart-area {
+  transform-box: fill-box;
+  transform-origin: left;
+  animation: chart-sweep 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes chart-sweep {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+
+/* The credible bands, widening from their centre. */
+.chart-band {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chart-widen 460ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes chart-widen {
+  from {
+    transform: scaleX(0.2);
+    opacity: 0;
+  }
+}
+
+/* Markers and labels arriving after the shape they annotate. */
+.chart-marker {
+  animation: chart-fade 320ms ease-out backwards;
+}
+
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The hover crosshair follows the pointer between days rather than jumping. */
+.chart-cursor {
+  transition: transform 90ms linear;
+}
+
+/* A chart is decoration on top of a number that is already on screen, so the
+   whole thing is safe to hold still. */
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar,
+  .chart-area,
+  .chart-band,
+  .chart-marker {
+    animation: none;
+  }
+
+  .chart-cursor {
+    transition: none;
+  }
+}

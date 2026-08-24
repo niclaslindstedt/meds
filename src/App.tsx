@@ -1,0 +1,376 @@
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { dayKeyOf, type DayKey } from "@niclaslindstedt/oss-framework/calendar";
+import {
+  SpinnerIcon,
+  ToastViewport,
+  createToastStore,
+} from "@niclaslindstedt/oss-framework/components";
+import { LogViewer } from "@niclaslindstedt/oss-framework/logging";
+import { UpdateToast, usePwaUpdate } from "@niclaslindstedt/oss-framework/pwa";
+import {
+  SyncDetailsModal,
+  SyncStatus,
+} from "@niclaslindstedt/oss-framework/sync";
+import { useApplyTheme } from "@niclaslindstedt/oss-framework/theme";
+
+import { AddScreen } from "./app/AddScreen.tsx";
+import {
+  BottomNav,
+  initialTab,
+  isNavTab,
+  screenEnter,
+  TABS,
+  type NavTab,
+  type ScreenEnter,
+  type Tab,
+} from "./app/BottomNav.tsx";
+import { CalendarScreen } from "./app/CalendarScreen.tsx";
+import { demoBackendModule, useDemoData } from "./app/dev/useDemoData.ts";
+import { HistoryScreen } from "./app/HistoryScreen.tsx";
+import { MedsScreen } from "./app/MedsScreen.tsx";
+import { SettingsScreen } from "./app/SettingsScreen.tsx";
+import { TodayScreen } from "./app/TodayScreen.tsx";
+import { TopBar } from "./app/TopBar.tsx";
+import { useSwipeNav } from "./app/useSwipeNav.ts";
+import { useT } from "./app/i18n/index.ts";
+import { appearanceFor } from "./app/look.ts";
+import { descendingLogStore, logStore } from "./app/log.ts";
+import { cacheIdForBase } from "./app/pwa.ts";
+import type { Dose } from "./app/schedule.ts";
+import { useAppSettings } from "./app/useAppSettings.ts";
+import { localDocBackend, useDocStore } from "./app/useDocStore.ts";
+import { useSyncEngine } from "./app/useSyncEngine.ts";
+import { status } from "./output.ts";
+
+// A local-first medication log built from the framework's shared surface. The
+// app owns the document store, the schedule derivation, and the six screens;
+// the framework supplies the theme engine, the storage adapters behind sync,
+// the chart primitives, the calendar grid, and the PWA update lifecycle.
+//
+// Everything hangs off one document in localStorage. There is no server:
+// cloud sync, when connected, is a copy of that same document in the user's
+// own Dropbox or Drive.
+
+// Module-scoped so the identity stays stable across renders (the framework's
+// `useToasts` keys its subscription on the store object).
+const toasts = createToastStore();
+
+export function App() {
+  const t = useT();
+  const { settings, update } = useAppSettings();
+  useApplyTheme(useMemo(() => appearanceFor(settings.theme), [settings.theme]));
+
+  // Today, as a calendar day. Recomputed on focus rather than on a timer:
+  // the only way the answer changes while the app is open is midnight passing
+  // — and the app being open at midnight then returned to is exactly when the
+  // stale value would be wrong. For a medication log it would be wrong in the
+  // worst way: yesterday's unfinished checklist wearing today's date.
+  const [today, setToday] = useState(() => dayKeyOf(new Date()));
+  useEffect(() => {
+    const refresh = () => setToday(dayKeyOf(new Date()));
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+
+  // Developer "Demo data" takeover: while the toggle is on, an in-memory
+  // backend seeded with invented history replaces the real localStorage one
+  // for the session. Nothing on disk is touched, the sync engine is paused so
+  // none of it can reach a connected cloud account, and a reload restores the
+  // real document (see `useDemoData`).
+  const demo = useDemoData();
+  const backend = useMemo(() => {
+    // Non-null whenever the toggle is on: `setDemoData` only flips it once
+    // the dev chunk has loaded.
+    const module = demoBackendModule();
+    if (demo.on && module) return module.createDemoBackend();
+    return localDocBackend;
+  }, [demo.on]);
+  const store = useDocStore(backend);
+  const sync = useSyncEngine(store, demo.on);
+
+  // Today is where the app opens: it is the checklist the app was picked up
+  // to clear. On a document with no current medications there is nothing to
+  // list, so a first run opens on Add instead (see `initialTab`). Decided
+  // once, from the document this render started with — the store reads
+  // localStorage synchronously, so it is the real one and not a placeholder.
+  const [tab, setTab] = useState<Tab>(() => initialTab(store.data));
+  // Where the bottom nav was left. Add and Settings are things you do and
+  // then leave, so pressing their button a second time — or swiping off them
+  // — puts you back where you were rather than on whichever screen happens
+  // to be first. Today is the fallback for a first run, which opens on Add
+  // with no nav tab behind it.
+  const [home, setHome] = useState<NavTab>("today");
+  // Which way the screen now arriving came from, so the shell can move it in
+  // from the side the bar says it lives on (see `screenEnter` and the
+  // `.app-screen` rules in styles.css). Set wherever the tab is, rather than
+  // derived afterwards from a remembered previous value: every change goes
+  // through one of the two functions below, and both of them know both ends
+  // of the move at the moment they make it.
+  const [enter, setEnter] = useState<ScreenEnter>("none");
+  const show = useCallback(
+    (next: Tab) => {
+      setEnter(screenEnter(tab, next));
+      if (isNavTab(next)) setHome(next);
+      setTab(next);
+    },
+    [tab],
+  );
+  const toggle = useCallback(
+    (next: "add" | "settings") => {
+      const target = tab === next ? home : next;
+      setEnter(screenEnter(tab, target));
+      setTab(target);
+    },
+    [tab, home],
+  );
+
+  // A swipe moves one tab along the bar, and stops at its ends: the bar is a
+  // row with a first and a last, and wrapping from Meds back to Today would
+  // be the one motion on screen that does not match a thing you can see.
+  // From Add or Settings — which are not on the bar — it goes back to the tab
+  // they were opened from, since that is the only left-to-right neighbour
+  // either of them has.
+  const main = useRef<HTMLElement>(null);
+  const swipe = useCallback(
+    (direction: 1 | -1) => {
+      if (!isNavTab(tab)) {
+        setEnter(screenEnter(tab, home));
+        setTab(home);
+        return;
+      }
+      const next = TABS[TABS.indexOf(tab) + direction];
+      if (next !== undefined) show(next);
+    },
+    [tab, home, show],
+  );
+  useSwipeNav(main, swipe);
+
+  const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
+  // Applying an update (skip-waiting → the new worker takes control → the
+  // page reloads) has a visible gap. Flip a flag on the tap so the toast
+  // shows a spinner instead of a dead button until the reload lands.
+  const [reloading, setReloading] = useState(false);
+
+  // Console capture follows the setting; the buffer itself is always on, so a
+  // failure that happened before the toggle was found is still in the log.
+  useEffect(() => {
+    logStore.setCaptureEnabled(settings.captureLogs);
+  }, [settings.captureLogs]);
+
+  const notice = useCallback((message: string) => {
+    toasts.clear();
+    toasts.push({ message, kind: "success", durationMs: 2500 });
+  }, []);
+
+  // A refused write. Ticking a dose confirms itself on the row, and never
+  // raises a toast — precisely so the toast is left free to mean this: the
+  // document did not reach the disk, the screen looks exactly as it does on
+  // success, and the only honest thing to do is say so. It gets longer on
+  // screen than a confirmation would, because it is asking for something to
+  // be done about it.
+  useEffect(() => {
+    if (store.writeFailures === 0) return;
+    toasts.clear();
+    toasts.push({
+      message: t("today.saveFailed"),
+      kind: "danger",
+      durationMs: 8000,
+    });
+  }, [store.writeFailures, t]);
+
+  const onToggleDose = useCallback(
+    (day: DayKey, dose: Dose, takenAt: string | null) => {
+      store.setDoseTaken(day, dose.key, takenAt);
+    },
+    [store],
+  );
+
+  const pwa = usePwaUpdate({
+    base: import.meta.env.BASE_URL,
+    cacheId: cacheIdForBase(import.meta.env.BASE_URL),
+    enabled: !import.meta.env.DEV,
+  });
+  useEffect(() => {
+    if (pwa.needRefresh) status(`Update ready: ${pwa.incomingVersion ?? "?"}`);
+  }, [pwa.needRefresh, pwa.incomingVersion]);
+
+  return (
+    <div className="flex h-full flex-col bg-page text-fg">
+      {/* The bar carries the two screens that are actions rather than
+          destinations — adding a medication and changing a setting — plus the
+          sync glyph and the app's mark and name (see `TopBar.tsx`). */}
+      <TopBar
+        active={tab}
+        onOpen={toggle}
+        syncSlot={
+          sync.backend !== "local" ? (
+            <SyncStatus
+              providerName={sync.providerName}
+              status={sync.status}
+              dirty={sync.dirty}
+              offline={sync.offline}
+              onOpenDetails={() => setSyncDetailsOpen(true)}
+              labels={{ syncedTo: (name) => t("sync.syncedTo", { name }) }}
+            />
+          ) : undefined
+        }
+      />
+
+      {/* `relative` is load-bearing, not decoration: absolutely-positioned
+          descendants (the framework's `sr-only` inputs) must resolve against
+          this scroller rather than the document, or they stretch the page and
+          grow a second scrollbar that moves the whole shell. */}
+      {/* The scroller is also what a swipe is measured across (see
+          `useSwipeNav.ts`): the gesture belongs to the screen being paged,
+          not to the bars that stay put either side of it. */}
+      {/* `overflow-x-hidden` is what makes the arriving screen's slide safe:
+          it starts a couple of rem off to one side, and without a clip here
+          that offset would be page width the scroller offered sideways for a
+          fifth of a second. Hidden rather than `clip` because the swipe walks
+          up from the touch target looking for a sideways *scroller* to yield
+          to (`auto`/`scroll`), and this is deliberately not one. */}
+      <main
+        ref={main}
+        className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+      >
+        {/* `min-h-full` + `flex` so a screen can ask for the leftover height
+            — the Add screen centres its card in it rather than stranding
+            three fields at the top of an empty phone.
+
+            `key={tab}` is what restarts the animation: the CSS class alone
+            would only re-fire when the direction *changed*, so two swipes the
+            same way would animate once. A new key is a new element, and a new
+            element always runs its animation. The screens below are mounted
+            per tab anyway, so this costs nothing beyond the wrapper. */}
+        <div
+          key={tab}
+          data-enter={enter}
+          className="app-screen mx-auto flex min-h-full max-w-2xl flex-col"
+        >
+          {tab === "today" && (
+            <TodayScreen
+              data={store.data}
+              today={today}
+              onToggle={onToggleDose}
+              onAddMedication={() => toggle("add")}
+            />
+          )}
+          {tab === "add" && (
+            <AddScreen
+              today={today}
+              onSave={(med) => {
+                store.saveMedication(med);
+                notice(t("meds.saved"));
+                show("today");
+              }}
+              onCancel={() => toggle("add")}
+            />
+          )}
+          {tab === "calendar" && (
+            <CalendarScreen
+              data={store.data}
+              today={today}
+              weekStartsOn={settings.weekStartsOn}
+              onToggle={onToggleDose}
+            />
+          )}
+          {tab === "history" && (
+            <HistoryScreen data={store.data} today={today} />
+          )}
+          {tab === "meds" && (
+            <MedsScreen
+              data={store.data}
+              today={today}
+              onSave={store.saveMedication}
+              onRemove={store.removeMedication}
+              onNotice={notice}
+            />
+          )}
+          {tab === "settings" && (
+            <SettingsScreen
+              settings={settings}
+              update={update}
+              store={store}
+              sync={sync}
+              demoData={demo}
+              onNotice={notice}
+            />
+          )}
+        </div>
+      </main>
+
+      <BottomNav active={tab} onSelect={show} />
+
+      <SyncDetailsModal
+        open={syncDetailsOpen}
+        providerName={sync.providerName}
+        backendKind="cloud"
+        location={sync.location}
+        status={sync.status}
+        statusDetail={sync.statusDetail}
+        dirty={sync.dirty}
+        offline={sync.offline}
+        onSaveNow={sync.saveNow}
+        onReload={() => void sync.reload()}
+        onReconnect={sync.reconnect}
+        onCheckConnection={sync.checkConnection}
+        logPanel={
+          settings.devMode ? (
+            <LogViewer store={descendingLogStore} />
+          ) : undefined
+        }
+        onClose={() => setSyncDetailsOpen(false)}
+      />
+
+      {/* Applying an update reloads the page, which takes a visible moment;
+          the spinner banner replaces the prompt so the wait reads as progress
+          rather than a stuck button. */}
+      {pwa.needRefresh && reloading ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-x-3 bottom-[4.25rem] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-fg shadow-md"
+        >
+          <SpinnerIcon className="h-5 w-5 animate-spin text-accent" />
+          <span className="text-sm font-medium">{t("update.reload")}</span>
+        </div>
+      ) : (
+        <UpdateToast
+          needRefresh={pwa.needRefresh}
+          incomingVersion={pwa.incomingVersion}
+          onReload={() => {
+            setReloading(true);
+            pwa.reload();
+          }}
+          onDismiss={() => pwa.dismiss()}
+          labels={{
+            ready: t("update.available"),
+            action: t("update.reload"),
+            dismiss: t("common.close"),
+          }}
+        />
+      )}
+      {/* Top, not the framework's default bottom. Every toast this app raises
+          answers a tap in the lower half of the screen, and at the bottom the
+          card lands squarely on the bottom nav — covering the four tabs right
+          where the thumb already is. The header it covers instead is a title
+          and a sync glyph, neither of which anyone is reaching for.
+
+          `app-toasts` is the hook the stylesheet re-tints these cards through
+          (see styles.css). It is on the viewport rather than the card because
+          the card is the framework's to render — this app only says that
+          inside *its* viewport, a toast wears the app's teal. */}
+      <ToastViewport
+        store={toasts}
+        labels={{ dismiss: t("common.close") }}
+        className="app-toasts pointer-events-none fixed inset-x-0 top-0 z-[70] flex flex-col items-center gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
+      />
+    </div>
+  );
+}
