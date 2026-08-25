@@ -116,12 +116,15 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
 ### The app owns the domain ("store stays in the app")
 
 - `src/app/types.ts` — the `Medication` / `DayLog` / `AppData` model. A
-  medication is a name, an optional free-text dose, its time slots, and the
-  span of days its schedule covers (`startDate` / `endDate`); a day's log is a
-  map of `medId@HH:MM` dose keys to the timestamps they were ticked at.
+  medication is a name, an optional free-text dose, its time slots, the
+  weekdays it is due on (`weekdays`, null for every day), and the span of days
+  its schedule covers (`startDate` / `endDate`); a day's log is a map of
+  `medId@HH:MM` dose keys to the timestamps they were ticked at.
 - `src/app/schedule.ts` — the derivation: which doses a day owes
-  (`dueDoses`), how far through them a log is (`dayProgress`), slot
-  validation. **Pure and clock-free.**
+  (`dueDoses`), how far through them a log is (`dayProgress`), slot and
+  weekday-mask validation, and the quick-log sheet's likelihood ordering
+  (`quickLogOrder`, which takes the moment as a parameter). **Pure and
+  clock-free.**
 - `src/app/stats.ts` — adherence over a window, per-medication adherence,
   streaks, the daily-share series the chart draws, the missed-dose list. The
   two rules stated at the top of the file — today never counts against you,
@@ -156,14 +159,20 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   Behind `import()`, so a production user never downloads it.
 - `src/app/TodayScreen.tsx`, `CalendarScreen.tsx`, `HistoryScreen.tsx`,
   `MedsScreen.tsx`, `AddScreen.tsx`, `SettingsScreen.tsx` — the six screens.
-  Four are bottom-nav tabs; Add and Settings are reached from the top bar,
-  because they are things you do and leave rather than places you are.
+  Four are bottom-nav tabs; Settings is reached from the top bar and Add from
+  the quick-log sheet's footer or the Meds tab's button, because they are
+  things you do and leave rather than places you are.
 - `src/app/MedForm.tsx` — the medication form, shared by the Add screen and
-  the Meds screen's inline editor, with the catalog autocomplete and the
-  dose chips.
-- `src/app/DoseList.tsx` — a day's doses as a tappable checklist, shared by
-  Today and the Calendar's selected-day card so logging feels identical in
-  both places.
+  the Meds screen's inline editor, with the catalog autocomplete, the dose
+  chips and the "every day"/day-pill weekday control.
+- `src/app/DoseRow.tsx` — one dose as the control that logs it. The app's
+  only logging control; all three places that log a dose render it.
+- `src/app/DoseList.tsx` — a day's doses as a tappable checklist grouped by
+  slot, shared by Today and the Calendar's selected-day card so logging feels
+  identical in both places.
+- `src/app/QuickLogModal.tsx` — the top bar's `+`: today's doses as one flat
+  sheet, likeliest first, already-logged ones greyed at the bottom. The order
+  is frozen per opening so nothing moves under a thumb mid-tap.
 - `src/app/DayMark.tsx` — a day's progress as a mark, plus the legend built
   from the same table. The app's one visual grammar rule lives here: filled
   means it happened, hollow means still open, the danger tint is a day that
@@ -173,7 +182,7 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   framework's chart _primitives_ (`bandScale`, `linePath`, `barPath`,
   `linearScale`), not from its finished chart components.
 - `src/app/TopBar.tsx` — the top bar: the wordmark, the sync glyph, the `+`
-  that opens the add form, and the settings cog.
+  that opens the quick-log sheet, and the settings cog.
 - `src/app/useSwipeNav.ts` — the touch swipe that moves one tab along the
   bottom bar. Bails on range inputs, dialogs, `[data-swipe-ignore]`, and
   anything that scrolls sideways.
@@ -196,18 +205,26 @@ immediately fixes every downstream number, and why there is no cache to
 invalidate. **Adding a derived field to `AppData` is almost always the wrong
 fix** — the right one is a function in `stats.ts`.
 
-### A medication is three facts, and the bar for a fourth is high
+### A medication is four facts, and the bar for a fifth is high
 
-Name, optional dose text, time slots. That is the whole schedule, and each
-part is read by something: the name is the checklist row, the dose is the line
-under it, the slots are what `dueDoses` expands into. There is deliberately no
-weekday mask, no stock count, no prescriber field, no notes — every added
-field is a question asked at every add (and often at every dose) to serve a
-case the calendar already handles by showing the truth. Before adding a field,
-name the number on Today, Calendar or History that would move because of it.
-If there isn't one, the answer is no — however reasonable it sounds in
-isolation. An app earns the fifteen seconds it is given by being answerable in
-one tap with a glass in the other hand.
+Name, optional dose text, time slots, weekday mask. That is the whole
+schedule, and each part is read by something: the name is the checklist row,
+the dose is the line under it, the slots are what `dueDoses` expands into, and
+the mask is which days it expands on. There is deliberately no stock count, no
+prescriber field, no notes — every added field is a question asked at every
+add (and often at every dose) to serve a case the calendar already handles by
+showing the truth. Before adding a field, name the number on Today, Calendar
+or History that would move because of it. If there isn't one, the answer is no
+— however reasonable it sounds in isolation. An app earns the fifteen seconds
+it is given by being answerable in one tap with a glass in the other hand.
+
+The mask is what passing that bar looks like, and it is worth reading as the
+worked example. Without it a med taken five days a week produced two _missed_
+days a week — a day the schedule never asked about scoring identically to a
+day someone forgot — so the numbers it moves are the calendar's day marks, the
+adherence share, the streak and the missed list, all four in the direction of
+the truth. It also costs nothing at add time: `weekdays: null` is every day,
+it is what the form starts on, and it is what every pre-v2 document reads as.
 
 The dose is free text on purpose: the app never does arithmetic on it, so
 "500 mg", "2 tablets" and "en halv på morgonen" are all equally valid, and a
@@ -244,19 +261,21 @@ dates without fake timers.
 
 ## Where new code goes
 
-| Change                            | Goes in                                                                                                                                      |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| A new fact about a medication     | Probably nowhere — see above. If it survives that: `src/app/types.ts` (model) + `MedForm.tsx` (control) + a `migrations.ts` step             |
-| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts`                                                                                      |
-| A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                |
-| A catalog entry or ranking change | `src/app/data/medications.ts` (data) or `src/app/catalog.ts` (ranking), with tests in `tests/catalog_test.ts`                                |
-| A new screen                      | `src/app/<Name>Screen.tsx` + a tab in `src/app/BottomNav.tsx`, or a button in `src/app/TopBar.tsx` if it is an action rather than a place    |
-| A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                        |
-| A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload |
-| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `today`, never fixed dates), with tests in `tests/demoData_test.ts`                                  |
-| A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                              |
-| Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                            |
-| A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                            |
+| Change                            | Goes in                                                                                                                                                                          |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A new fact about a medication     | Probably nowhere — see above. If it survives that: `src/app/types.ts` (model) + `schedule.ts` (if it changes what a day owes) + `MedForm.tsx` (control) + a `migrations.ts` step |
+| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts`                                                                                                                          |
+| A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                                                    |
+| A change to the Medication shape  | `types.ts` + `migrations.ts` (bump `DOC_VERSION`, append a step — never edit one) + every `Medication` literal in `tests/` and `dev/`                                            |
+| A catalog entry or ranking change | `src/app/data/medications.ts` (data) or `src/app/catalog.ts` (ranking), with tests in `tests/catalog_test.ts`                                                                    |
+| A new screen                      | `src/app/<Name>Screen.tsx` + a tab in `src/app/BottomNav.tsx`, or a button in `src/app/TopBar.tsx` if it is an action rather than a place                                        |
+| A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                        |
+| A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                                                            |
+| A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                     |
+| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `today`, never fixed dates), with tests in `tests/demoData_test.ts`                                                                      |
+| A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                  |
+| Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                |
+| A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                                                                |
 
 ## Test conventions
 
@@ -315,12 +334,17 @@ with `[Learn more](feature:<slug>)`.
 - **The bottom nav is the navigation.** Four tabs, no sidebar, no drawer, and
   they are _destinations_ — a fixed left-to-right order a swipe moves along
   (`useSwipeNav.ts`). Things you do and then leave belong on the top bar
-  instead, which is where Add and Settings went. A new _destination_ has to
-  earn a place in an order that means something; a new _action_ is a top-bar
-  button, not a tab.
-- **Logging is one code path.** Today and the Calendar's day card both render
-  `DoseList` and both write through `setDoseTaken` — a second way to mark a
-  dose taken is a merge hazard and a UX fork, not a feature.
+  instead, which is where the quick-log `+` and Settings went. A new
+  _destination_ has to earn a place in an order that means something; a new
+  _action_ is a top-bar button, not a tab. The `+` opens a sheet rather than a
+  screen for the same reason: logging a dose must not cost you the month you
+  had open on the Calendar.
+- **Logging is one code path.** Today, the Calendar's day card and the
+  quick-log sheet all render `DoseRow` and all write through `setDoseTaken` —
+  a second way to mark a dose taken is a merge hazard and a UX fork, not a
+  feature. What may differ between them is the _arrangement_ (`DoseList`
+  groups by slot; `quickLogOrder` ranks by likelihood), never the row or the
+  write.
 - **No dependency creep.** The framework, Preact, a font, and workbox-window.
   A new runtime dependency needs a reason that the framework can't serve.
 

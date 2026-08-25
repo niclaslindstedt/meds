@@ -16,6 +16,7 @@ import {
   streaks,
   totalTaken,
 } from "../src/app/stats.ts";
+import { weekdayOf } from "../src/app/schedule.ts";
 import {
   doseKey,
   emptyDoc,
@@ -29,6 +30,7 @@ function med(overrides: Partial<Medication> = {}): Medication {
     name: "Levothyroxine",
     dose: "",
     times: ["08:00"],
+    weekdays: null,
     startDate: "2024-03-01",
     endDate: null,
     updatedAt: "2024-03-01T08:00:00.000Z",
@@ -177,5 +179,47 @@ describe("totalTaken", () => {
   it("counts every logged tap", () => {
     const data = docTaken([med()], ["2024-03-01", "2024-03-02"]);
     expect(totalTaken(data)).toBe(2);
+  });
+});
+
+describe("a weekday-masked medication", () => {
+  // 2024-03-11 is a Monday. A med taken Mondays, Wednesdays and Fridays only.
+  const masked = med({ weekdays: [1, 3, 5] });
+
+  it("neither pads adherence nor drags it down on its off days", () => {
+    // Mon and Wed logged, Fri missed — over the whole week that is 2 of 3,
+    // not 2 of 7: Tuesday, Thursday and the weekend owed nothing.
+    const data = docTaken([masked], ["2024-03-11", "2024-03-13"]);
+    expect(adherence(data, "2024-03-11", "2024-03-17")).toEqual({
+      taken: 2,
+      due: 3,
+      share: 2 / 3,
+    });
+  });
+
+  it("leaves its off days silent in the daily series", () => {
+    const data = docTaken([masked], ["2024-03-11"]);
+    const series = dailyShares(data, "2024-03-14", 3);
+    // The 11th (Mon, taken), the 12th (Tue, nothing due), the 13th (Wed,
+    // missed) — a gap in the chart rather than a zero.
+    expect(series.map((d) => d.share)).toEqual([1, null, 0]);
+  });
+
+  it("keeps a streak alive across the days it is not due", () => {
+    // Every day the med was actually due, taken: Mon, Wed and Fri. The
+    // Tuesday and Thursday in between are silence, and silence neither
+    // breaks the run nor pads it — the streak is the three days that
+    // counted.
+    const data = docTaken([masked], ["2024-03-11", "2024-03-13", "2024-03-15"]);
+    expect(streaks(data, "2024-03-16").current).toBe(3);
+  });
+
+  it("never names an off day as a missed dose", () => {
+    const data = docTaken([masked], []);
+    const missed = missedDoses(data, "2024-03-16", 7);
+    expect(missed.length).toBeGreaterThan(0);
+    expect(missed.every((m) => [1, 3, 5].includes(weekdayOf(m.day)))).toBe(
+      true,
+    );
   });
 });

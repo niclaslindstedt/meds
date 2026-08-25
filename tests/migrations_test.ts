@@ -14,6 +14,7 @@ const MED = {
   name: "Levothyroxine",
   dose: "50 µg",
   times: ["08:00"],
+  weekdays: null,
   startDate: "2024-03-01",
   endDate: null,
   updatedAt: "2024-03-01T08:00:00.000Z",
@@ -73,6 +74,42 @@ describe("normalizeDoc", () => {
       days: {},
     });
     expect(doc.medications.m1?.times).toEqual(["08:00", "20:00"]);
+  });
+
+  it("reads a v1 medication's missing weekday mask as every day", () => {
+    // Every document written before v2 looks exactly like this: no
+    // `weekdays` field at all, and a schedule that meant every day.
+    const v1Med: Record<string, unknown> = { ...MED };
+    delete v1Med.weekdays;
+    const doc = normalizeDoc({
+      version: 1,
+      medications: { m1: v1Med },
+      days: {},
+    });
+    expect(doc.version).toBe(DOC_VERSION);
+    expect(doc.medications.m1?.weekdays).toBeNull();
+  });
+
+  it("keeps a weekday mask, sorted and deduplicated", () => {
+    const doc = normalizeDoc({
+      version: DOC_VERSION,
+      medications: { m1: { ...MED, weekdays: [5, 1, 1, 3] } },
+      days: {},
+    });
+    expect(doc.medications.m1?.weekdays).toEqual([1, 3, 5]);
+  });
+
+  it("reads a mask it cannot use as every day", () => {
+    const mask = (weekdays: unknown) =>
+      normalizeDoc({
+        version: DOC_VERSION,
+        medications: { m1: { ...MED, weekdays } },
+        days: {},
+      }).medications.m1?.weekdays;
+    expect(mask("mon,wed")).toBeNull();
+    expect(mask([])).toBeNull();
+    expect(mask([0, 1, 2, 3, 4, 5, 6])).toBeNull();
+    expect(mask(["1", 9, null, 2])).toEqual([2]);
   });
 
   it("drops malformed taps and days left with none", () => {

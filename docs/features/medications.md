@@ -1,16 +1,31 @@
 # Medications
 
-A medication is three facts: a **name**, an optional free-text **dose**, and
-the **times of day** it is taken — one dose per slot, so morning-and-evening
-is two slots. That is the whole schedule on purpose: there is no weekday
-matrix, no stock counter, no prescriber field. Every added question would be
-paid for at every add, and the calendar already tells the truth about any
-pattern by showing it.
+A medication is a **name**, an optional free-text **dose**, the **times of
+day** it is taken — one dose per slot, so morning-and-evening is two slots —
+and the **days of the week** it is taken on. That is the whole schedule on
+purpose: there is still no stock counter, no prescriber field and no notes.
+Every added question is paid for at every add, and the calendar already tells
+the truth about any pattern by showing it.
+
+## Which days
+
+"Every day" is preselected, and most medications never touch it. Turn it off
+and the seven days appear as pills, all lit — switch off the ones you skip,
+which is how these schedules are described out loud: _100 mg every day except
+Tuesday and Thursday_. At least one day always stays on; a medication with no
+days is not a schedule.
+
+A day the medication is not scheduled on owes nothing, and **a day with
+nothing due says nothing**: it is not a missed day. It leaves no gap in a
+streak, no zero in the adherence chart, and nothing in the missed-dose list —
+which is the whole reason the mask exists rather than being left to "just
+skip it" (see [`../schedule.md`](../schedule.md)).
 
 ## Adding
 
-The **+** in the top bar opens the form (an empty install opens on it
-directly). The name autocompletes from a **bundled catalog** of common
+The **New medication** button on the Meds tab opens the form, as does the
+quick-log sheet's footer; an empty install opens on the form directly. The
+name autocompletes from a **bundled catalog** of common
 medications — Swedish market names with their usual strengths — and a
 recognised name offers those strengths as one-tap chips under the dose
 field, so the common case is a name, a chip, and Save.
@@ -26,7 +41,8 @@ The catalog is strictly a typing aid:
 
 ## Editing, stopping, deleting
 
-The **Meds** tab lists everything, current medications first. The pencil
+The **Meds** tab lists everything, current medications first, each row
+carrying its slots and — when it has one — its weekday mask. The pencil
 unfolds the same form in place, plus the two ways out:
 
 - **Stop** ends the schedule today: remaining doses leave the checklist, the

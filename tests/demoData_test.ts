@@ -7,9 +7,11 @@
 
 import { describe, expect, it } from "vitest";
 
+import { addDays } from "@niclaslindstedt/oss-framework/calendar";
+
 import { buildDemoData } from "../src/app/dev/demoData.ts";
 import { normalizeDoc, serializeDoc } from "../src/app/migrations.ts";
-import { dayProgress } from "../src/app/schedule.ts";
+import { dayProgress, dueDoses, weekdayOf } from "../src/app/schedule.ts";
 import { adherenceLastDays, missedDoses, streaks } from "../src/app/stats.ts";
 
 const TODAY = "2024-06-15";
@@ -27,12 +29,31 @@ describe("buildDemoData", () => {
     );
   });
 
-  it("carries three current medications, one of them late-starting", () => {
+  it("carries four current medications, one late-starting and one masked", () => {
     const meds = Object.values(data.medications);
-    expect(meds).toHaveLength(3);
+    expect(meds).toHaveLength(4);
     expect(meds.every((m) => m.endDate === null)).toBe(true);
     const starts = new Set(meds.map((m) => m.startDate));
     expect(starts.size).toBe(2);
+    expect(meds.filter((m) => m.weekdays !== null)).toHaveLength(1);
+  });
+
+  it("logs nothing for the masked med on the days it is not due", () => {
+    const masked = Object.values(data.medications).find(
+      (m) => m.weekdays !== null,
+    )!;
+    // 2024-06-15 is a Saturday, so the seven days back from it cover the
+    // whole week — Sunday, Tuesday, Thursday and Saturday owe this med
+    // nothing, and no tap of it may exist on those days either.
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(TODAY, -i);
+      const due = dueDoses(data, day).filter((d) => d.med.id === masked.id);
+      expect(due.length > 0).toBe(masked.weekdays!.includes(weekdayOf(day)));
+      const logged = Object.keys(data.days[day]?.taken ?? {}).filter((key) =>
+        key.startsWith(`${masked.id}@`),
+      );
+      if (due.length === 0) expect(logged).toEqual([]);
+    }
   });
 
   it("leaves today part-done, the state the Today screen is built for", () => {

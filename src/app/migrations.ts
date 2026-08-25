@@ -8,12 +8,12 @@
 // owns the step table and the shape validation. Adding a schema change means
 // bumping `DOC_VERSION` in `types.ts` and appending one step here — never
 // editing an existing step, which would silently rewrite documents that
-// already migrated through it. v1 is the first published shape, so the table
-// currently holds only the v0 lift (a missing `version` reads as 0).
+// already migrated through it. v1 is the first published shape; v2 added the
+// medication weekday mask.
 
 import { createMigrator } from "@niclaslindstedt/oss-framework/storage";
 
-import { isValidTime } from "./schedule.ts";
+import { isValidTime, normalizeWeekdays } from "./schedule.ts";
 import {
   DOC_VERSION,
   emptyDoc,
@@ -30,6 +30,16 @@ const EPOCH = new Date(0).toISOString();
 
 function parseTimestamp(value: unknown): string {
   return typeof value === "string" ? value : EPOCH;
+}
+
+/** Coerce a stored weekday mask. Anything that isn't a list of whole numbers
+ *  0–6 reads as "every day" — which is also what a pre-v2 medication, with no
+ *  such field at all, reads as. */
+function parseWeekdays(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  return normalizeWeekdays(
+    value.filter((day): day is number => typeof day === "number"),
+  );
 }
 
 /** Coerce one stored medication, or drop it when it can't be one. A med needs
@@ -54,6 +64,7 @@ function parseMedication(id: string, value: unknown): Medication | null {
     name,
     dose: typeof value.dose === "string" ? value.dose : "",
     times,
+    weekdays: parseWeekdays(value.weekdays),
     startDate:
       typeof value.startDate === "string" ? value.startDate : "1970-01-01",
     endDate: typeof value.endDate === "string" ? value.endDate : null,
@@ -86,6 +97,12 @@ const migrator = createMigrator({
     // `version` as 0) carry the v1 shape already — this step exists so the
     // stored number moves and later steps have a floor to build on.
     0: (doc) => ({ ...doc, version: 1 }),
+    // v1 → v2: medications gained a weekday mask. A v1 medication carries no
+    // `weekdays` field at all, and `parseMedication` reads a missing one as
+    // null — every day, which is exactly the schedule those documents already
+    // described. So the shape needs no rewriting; the step exists so the
+    // stored number moves and a later step has a floor to build on.
+    1: (doc) => ({ ...doc, version: 2 }),
   },
 });
 

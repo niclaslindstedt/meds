@@ -30,6 +30,7 @@ import { CalendarScreen } from "./app/CalendarScreen.tsx";
 import { demoBackendModule, useDemoData } from "./app/dev/useDemoData.ts";
 import { HistoryScreen } from "./app/HistoryScreen.tsx";
 import { MedsScreen } from "./app/MedsScreen.tsx";
+import { QuickLogModal } from "./app/QuickLogModal.tsx";
 import { SettingsScreen } from "./app/SettingsScreen.tsx";
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
@@ -151,6 +152,11 @@ export function App() {
   );
   useSwipeNav(main, swipe);
 
+  // The quick-log sheet behind the top bar's `+`. It is a modal rather than a
+  // screen on purpose: logging a dose you just took should not cost you the
+  // month you were looking at on the Calendar (see `QuickLogModal.tsx`).
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   // Applying an update (skip-waiting → the new worker takes control → the
   // page reloads) has a visible gap. Flip a flag on the tap so the toast
@@ -208,6 +214,8 @@ export function App() {
       <TopBar
         active={tab}
         onOpen={toggle}
+        onQuickLog={() => setQuickLogOpen(true)}
+        quickLogOpen={quickLogOpen}
         syncSlot={
           sync.backend !== "local" ? (
             <SyncStatus
@@ -264,6 +272,7 @@ export function App() {
           {tab === "add" && (
             <AddScreen
               today={today}
+              weekStartsOn={settings.weekStartsOn}
               onSave={(med) => {
                 store.saveMedication(med);
                 notice(t("meds.saved"));
@@ -287,8 +296,10 @@ export function App() {
             <MedsScreen
               data={store.data}
               today={today}
+              weekStartsOn={settings.weekStartsOn}
               onSave={store.saveMedication}
               onRemove={store.removeMedication}
+              onAddMedication={() => toggle("add")}
               onNotice={notice}
             />
           )}
@@ -306,6 +317,21 @@ export function App() {
       </main>
 
       <BottomNav active={tab} onSelect={show} />
+
+      {/* The sheet lives out here rather than inside a screen: it opens over
+          whichever tab is showing, and it must not be unmounted by the tab
+          change its own "new medication" footer causes. */}
+      <QuickLogModal
+        open={quickLogOpen}
+        data={store.data}
+        today={today}
+        onToggle={(dose, takenAt) => onToggleDose(today, dose, takenAt)}
+        onAddMedication={() => {
+          setQuickLogOpen(false);
+          if (tab !== "add") toggle("add");
+        }}
+        onClose={() => setQuickLogOpen(false)}
+      />
 
       <SyncDetailsModal
         open={syncDetailsOpen}

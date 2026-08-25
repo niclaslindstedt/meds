@@ -9,18 +9,39 @@ every downstream figure. The derivation lives in `src/app/schedule.ts` and
 ## What a day owes
 
 A medication carries the times of day it is taken (`times`, one dose per
-slot) and the span of days its schedule covers: from `startDate` — the day it
-was added — to `endDate`, which is null while the med is current and set to
-the day before it was stopped otherwise.
+slot), the weekdays it is taken on (`weekdays`, or null for every day), and
+the span of days its schedule covers: from `startDate` — the day it was added
+— to `endDate`, which is null while the med is current and set to the day
+before it was stopped otherwise.
 
 `dueDoses(data, day)` expands that into the day's checklist: one dose per
-active med per slot, sorted by time then name. The two boundary rules do the
-quiet work:
+active med per slot, sorted by time then name. The three boundary rules do
+the quiet work:
 
 - **A day before a med started owes none of its doses.** Adding a medication
   today does not turn last month red.
 - **A day after a med stopped owes none either.** Stopping ends the schedule
   without rewriting the history the med earned while it ran.
+- **A day off the weekday mask owes none either.** A med taken every day
+  except Tuesday and Thursday owes nothing on a Tuesday — which is a day with
+  nothing due, not a day you missed.
+
+### The weekday mask
+
+`weekdays` is a sorted list of `Date.getDay()` numbers (0 = Sunday), or null
+for every day. Null is the only way to say "every day": both an empty
+selection and all seven days normalise back to it (`normalizeWeekdays`), so
+one schedule has one representation and two devices holding it serialize to
+the same bytes. Every document written before schema v2 has no `weekdays`
+field at all, which reads as null — the schedule those documents already
+described.
+
+The mask earns its place through _a day with nothing due says nothing_
+(below). Without it, a med you take five days a week left two red days a week
+on the calendar and two holes a week in the adherence figure: a day you were
+never meant to take it and a day you forgot were the same day to the
+derivation. With it, the off day is silence — no gap in a streak, no zero in
+the chart, and nothing in the missed list.
 
 A dose is identified by `medId@HH:MM`, and a day's log maps those keys to the
 timestamps they were ticked at. Editing a slot from 08:00 to 09:00 therefore
@@ -79,6 +100,7 @@ doc.medications["m1"] = {
   name: "Metformin",
   dose: "500 mg",
   times: ["08:00", "20:00"],
+  weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-02",
   endDate: null,
   updatedAt: "2026-03-02T08:00:00.000Z",

@@ -28,10 +28,11 @@ visible, per-medication adherence, and the recent missed doses by name. Today
 in progress never counts against you, and days from before a medication
 existed count as silence rather than as failures.
 
-The focus is simplicity over features on purpose. A medication is three facts,
-there is no weekday matrix, no stock counter, no notification engine — the cost
-of every added question is paid at every dose, and the app's whole job is to
-make "did I take it?" a glance and "I just did" one tap.
+The focus is simplicity over features on purpose. A medication is a name, a
+dose, its time slots and its days — no stock counter, no prescriber field, no
+notification engine — because the cost of every added question is paid at
+every dose, and the app's whole job is to make "did I take it?" a glance and
+"I just did" one tap.
 
 It is built on [`@niclaslindstedt/oss-framework`](https://github.com/niclaslindstedt/oss-framework),
 the shared React/Preact surface behind the sibling
@@ -82,9 +83,11 @@ npm run dev
 
 Open the printed URL. The app boots on the add form: type a medication's name
 (it autocompletes), tap a dose chip if one fits, adjust the time if it isn't a
-morning med, and press **Save medication**. You land on **Today** with the
-dose listed — tap the row and it is logged. Add the rest of your meds from the
-**+** in the top right; from then on, opening the app is Today's checklist.
+morning med, leave **Every day** on unless you skip some, and press **Save
+medication**. You land on **Today** with the dose listed — tap the row and it
+is logged. Add the rest of your meds from the **Meds** tab; from then on,
+opening the app is Today's checklist, and the **+** in the top right logs a
+dose from wherever you happen to be.
 
 To try the production build the way it deploys:
 
@@ -103,14 +106,14 @@ grid, which takes the swipe for itself and pages the month:
 | **Today**    | The day's doses as a checklist grouped by time of day. The whole row is the tap target; the header counts you through the day and flips to "All done" when the last dose is ticked.                                                                   |
 | **Calendar** | A month at a glance: filled days where every dose landed, hollow part-done days, a warning tint on missed days. Tap any day to open its checklist below the grid — this is where a forgotten dose is logged after the fact. Pages by swipe or arrows. |
 | **History**  | Adherence over the last 7 and 30 days, the current streak, a per-day chart that makes gaps visible, per-medication adherence bars, and the recent missed doses by name and slot.                                                                      |
-| **Meds**     | The medication list. Edit in place, **stop** a med you are done with (the history stays, and it can be resumed), or delete one entered by mistake.                                                                                                    |
+| **Meds**     | The medication list. Add a new one, edit in place, **stop** a med you are done with (the history stays, and it can be resumed), or delete one entered by mistake.                                                                                     |
 
-…and two buttons on the top bar, for the two screens you visit and leave:
+…and two buttons on the top bar, for the two things you do and then leave:
 
-| Button | What it does                                                                                                                                                      |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **+**  | Add a medication: a name with catalog autocomplete, an optional dose with one-tap strength chips, and one or more time slots. The common case is a name and Save. |
-| **⚙**  | Settings: theme, week start, cloud sync, backup / restore / delete, and the build's version.                                                                      |
+| Button | What it does                                                                                                                                                                                                      |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **+**  | Log a dose, from any screen: a sheet of today's doses with the likeliest first and what you already took greyed at the bottom. Its footer leads to the add form when a new medication is what you actually meant. |
+| **⚙**  | Settings: theme, week start, cloud sync, backup / restore / delete, and the build's version.                                                                                                                      |
 
 ## Configuration
 
