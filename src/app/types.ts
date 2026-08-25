@@ -5,13 +5,22 @@
 // is stored, so correcting a day re-derives every downstream number (see
 // `stats.ts`).
 //
-// A medication is deliberately three facts: a name, an optional dose ("20 mg",
-// free text — the app never does arithmetic on it), and the times of day it is
-// taken. The focus of the whole app is cutting the seconds spent logging, and
-// every further field would be a question asked at every dose for nothing.
-// There is no weekday mask, no stock counter, no prescriber: a med you take on
-// Mondays only is a med you skip six days a week, and the history reads a
-// skipped day as skipped either way.
+// A medication is deliberately few facts: a name, an optional dose ("20 mg",
+// free text — the app never does arithmetic on it), the times of day it is
+// taken, and the weekdays it is taken on. The focus of the whole app is
+// cutting the seconds spent logging, and every further field would be a
+// question asked at every dose for nothing. There is still no stock counter,
+// no prescriber and no notes.
+//
+// The weekday mask is the one schedule fact beyond the slots, and it is here
+// because it moves numbers every screen shows. A med taken every day *except*
+// Tuesday and Thursday used to leave two red days a week on the calendar and
+// two holes a week in the adherence figure, because a day you were never
+// meant to take it and a day you forgot were the same day to the derivation.
+// With the mask a Tuesday owes nothing — and a day with nothing due says
+// nothing (see `stats.ts`), which is the truthful reading. It costs nothing
+// at add time either: "every day" is the default, and the day pills only
+// appear if you turn it off.
 //
 // A day's log is keyed by *dose* — `medId@HH:MM` — so "taken" is a claim about
 // one medication at one slot, and a day with two slots half done is exactly
@@ -31,6 +40,12 @@ export type Medication = {
    *  one. Times rather than counts because the Today screen groups doses by
    *  slot — "morning meds" is a list you clear in one glance. */
   times: string[];
+  /** The weekdays doses are due on, in `Date.getDay()` numbering (0 = Sunday),
+   *  sorted and deduplicated — or null for every day, which is what an
+   *  unmasked medication and every pre-v2 document carry. Never an empty
+   *  array and never all seven: both of those are "every day", and one
+   *  schedule gets one representation (see `normalizeWeekdays`). */
+  weekdays: number[] | null;
   /** The first day doses are due. Set to the day the med was added, so the
    *  history never scores days from before the schedule existed. */
   startDate: DayKey;
@@ -61,8 +76,9 @@ export type AppData = {
   days: Record<DayKey, DayLog>;
 };
 
-/** The current document schema version. v1 is the first published shape. */
-export const DOC_VERSION = 1;
+/** The current document schema version. v1 is the first published shape; v2
+ *  added the medication weekday mask. */
+export const DOC_VERSION = 2;
 
 /** The document a first run starts from. */
 export function emptyDoc(): AppData {

@@ -11,6 +11,7 @@
 import {
   parseDayKey,
   type DayKey,
+  type WeekStart,
 } from "@niclaslindstedt/oss-framework/calendar";
 
 const cache = new Map<string, Intl.DateTimeFormat>();
@@ -62,6 +63,38 @@ export function formatFullDay(day: DayKey): string {
 export function formatWeekday(day: DayKey): string {
   const date = toDate(day);
   return date ? formatter({ weekday: "short" }).format(date) : day;
+}
+
+/** A weekday's own name ("Mon", or "Monday" in `long`), in `Date.getDay()`
+ *  numbering — the numbering the medication weekday mask and the week-start
+ *  setting both speak. 7 January 2024 was a Sunday, so the day number is an
+ *  offset from it and no lookup table of English names has to exist. */
+export function formatWeekdayName(
+  weekday: number,
+  style: "short" | "long" = "short",
+): string {
+  return formatter({ weekday: style }).format(new Date(2024, 0, 7 + weekday));
+}
+
+/** The seven weekdays in the order a week that starts on `weekStartsOn` runs
+ *  — the order the day pills are laid out in, so the row of pills and the
+ *  calendar grid above it read left to right the same way. */
+export function weekdayOrder(weekStartsOn: WeekStart): number[] {
+  return Array.from({ length: 7 }, (_, i) => (weekStartsOn + i) % 7);
+}
+
+/** A medication's weekday mask, spelled out ("Mon, Wed, Fri") in the week's
+ *  own order. Empty string for a null mask: "every day" is the absence of a
+ *  qualifier, and a row that says so on every medication says nothing. */
+export function formatWeekdays(
+  weekdays: number[] | null,
+  weekStartsOn: WeekStart,
+): string {
+  if (weekdays === null) return "";
+  return weekdayOrder(weekStartsOn)
+    .filter((day) => weekdays.includes(day))
+    .map((day) => formatWeekdayName(day))
+    .join(", ");
 }
 
 /** "July 2026" — a month grid's heading. The long month name survives here

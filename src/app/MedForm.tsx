@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 import { useEffect, useMemo, useState } from "react";
 
-import type { DayKey } from "@niclaslindstedt/oss-framework/calendar";
+import type {
+  DayKey,
+  WeekStart,
+} from "@niclaslindstedt/oss-framework/calendar";
 import {
   Button,
   CloseIcon,
@@ -13,7 +16,8 @@ import {
   searchCatalog,
   type CatalogEntry,
 } from "./catalog.ts";
-import { normalizeTimes } from "./schedule.ts";
+import { normalizeTimes, normalizeWeekdays } from "./schedule.ts";
+import { formatWeekdayName, weekdayOrder } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 import { newMedicationId, type Medication } from "./types.ts";
 
@@ -27,6 +31,13 @@ import { newMedicationId, type Medication } from "./types.ts";
 // pickers: the platform's own wheel is better at times than anything this
 // app could draw, and it yields the zero-padded 24-hour form the schedule
 // sorts by (see `schedule.ts`).
+//
+// The fourth control is the weekday mask, and it is deliberately the one that
+// answers itself: "Every day" starts lit, and the seven day pills only appear
+// if you turn it off — at which point they all start lit and you switch off
+// the days you skip. That is how these schedules are described out loud ("100
+// mg every day except Tuesday and Thursday"), and it means the common case
+// still costs zero taps.
 //
 // The name field autocompletes against the bundled medication catalog (see
 // `data/medications.ts`), and a recognised name offers its common strengths
@@ -43,9 +54,17 @@ import { newMedicationId, type Medication } from "./types.ts";
 /** The slot a new medication starts with. Morning, because most are. */
 const DEFAULT_TIME = "08:00";
 
+/** Every weekday, for the state the day pills start from when "every day" is
+ *  switched off: all of them lit, so the tap that follows is the day you
+ *  skip. Normalised back to null on save — all seven *is* every day. */
+const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+
 type Props = {
   /** The medication being edited, or null for the Add form. */
   initial: Medication | null;
+  /** Which day the week starts on, so the pills run in the same order as the
+   *  calendar grid (see `useAppSettings.ts`). */
+  weekStartsOn: WeekStart;
   /** The day a *new* medication's schedule starts. Ignored on edit — the
    *  start date is history, not a form field. */
   today: DayKey;
@@ -53,12 +72,23 @@ type Props = {
   onCancel?: () => void;
 };
 
-export function MedForm({ initial, today, onSave, onCancel }: Props) {
+export function MedForm({
+  initial,
+  today,
+  weekStartsOn,
+  onSave,
+  onCancel,
+}: Props) {
   const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [dose, setDose] = useState(initial?.dose ?? "");
   const [times, setTimes] = useState<string[]>(
     initial?.times ?? [DEFAULT_TIME],
+  );
+  // null is "every day" — the same value the document holds, so there is no
+  // second representation of the schedule to keep in step.
+  const [weekdays, setWeekdays] = useState<number[] | null>(
+    initial?.weekdays ?? null,
   );
   const [nameMissing, setNameMissing] = useState(false);
 
@@ -108,6 +138,7 @@ export function MedForm({ initial, today, onSave, onCancel }: Props) {
       name: trimmed,
       dose: dose.trim(),
       times: slots.length > 0 ? slots : [DEFAULT_TIME],
+      weekdays: normalizeWeekdays(weekdays),
       startDate: initial?.startDate ?? today,
       endDate: initial?.endDate ?? null,
       updatedAt: new Date().toISOString(),
@@ -282,6 +313,76 @@ export function MedForm({ initial, today, onSave, onCancel }: Props) {
           <PlusIcon className="h-4 w-4" />
           {t("meds.form.addTime")}
         </button>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-fg">
+          {t("meds.form.days")}
+        </span>
+        <p className="text-xs text-muted">{t("meds.form.daysHint")}</p>
+        {/* The "every day" pill and the seven day pills are one control in
+            two states, so they share the chips' shape — the same rounded-full
+            outline the dose strengths wear, lit with the accent when on. */}
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() =>
+              setWeekdays((prev) => (prev === null ? [...ALL_WEEKDAYS] : null))
+            }
+            aria-pressed={weekdays === null}
+            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+              weekdays === null
+                ? "border-accent bg-accent/15 text-fg-bright"
+                : "border-line text-fg hover:bg-surface-2"
+            }`}
+          >
+            {t("meds.form.everyDay")}
+          </button>
+        </div>
+        {weekdays !== null && (
+          <div
+            role="group"
+            aria-label={t("meds.form.pickDays")}
+            // Seven columns rather than a wrapping row: a week reads as a
+            // week, and a "Sun" that drops to a second line on a narrow
+            // phone stops looking like part of one.
+            className="mt-1 grid grid-cols-7 gap-1"
+          >
+            {weekdayOrder(weekStartsOn).map((day) => {
+              const on = weekdays.includes(day);
+              // The last day standing cannot be switched off — a medication
+              // with no days is not a schedule — so the tap is a no-op rather
+              // than a save that quietly means something else. Same rule the
+              // last time slot follows.
+              const last = on && weekdays.length === 1;
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() =>
+                    setWeekdays((prev) => {
+                      const current = prev ?? [...ALL_WEEKDAYS];
+                      if (!current.includes(day)) return [...current, day];
+                      if (current.length === 1) return current;
+                      return current.filter((d) => d !== day);
+                    })
+                  }
+                  aria-pressed={on}
+                  aria-disabled={last || undefined}
+                  aria-label={formatWeekdayName(day, "long")}
+                  title={formatWeekdayName(day, "long")}
+                  className={`rounded-full border px-1 py-1.5 text-xs transition-colors ${
+                    on
+                      ? "border-accent bg-accent/15 text-fg-bright"
+                      : "border-line text-muted hover:bg-surface-2"
+                  }`}
+                >
+                  {formatWeekdayName(day)}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">

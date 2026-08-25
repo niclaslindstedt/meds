@@ -31,13 +31,14 @@ backend is connected:
 
 ```jsonc
 {
-  "version": 1,
+  "version": 2,
   "medications": {
     "<id>": {
       "id": "<id>",
       "name": "Levaxin",
       "dose": "50 µg", // free text; "" when none
       "times": ["08:00"], // zero-padded HH:MM, sorted, ≥ 1
+      "weekdays": null, // getDay() numbers (0 = Sun), sorted; null = every day
       "startDate": "2026-03-01", // first day doses are due
       "endDate": null, // last day doses were due; null while current
       "updatedAt": "2026-03-01T08:00:00.000Z",
@@ -87,13 +88,15 @@ src/
     ├── useSwipeNav.ts       the tab-paging swipe
     ├── App.tsx              the shell: tabs, toasts, PWA update, sync modal
     ├── BottomNav.tsx        the four destinations + initialTab
-    ├── TopBar.tsx           wordmark, sync glyph, + (add), ⚙ (settings)
+    ├── TopBar.tsx           wordmark, sync glyph, + (quick log), ⚙ (settings)
+    ├── QuickLogModal.tsx    the + sheet: today's doses, likeliest first
     ├── TodayScreen.tsx      the checklist (opens first)
-    ├── AddScreen.tsx        the + screen (opens first on an empty install)
-    ├── MedForm.tsx          the shared add/edit form (autocomplete, chips)
+    ├── AddScreen.tsx        the add form's screen (opens first when empty)
+    ├── MedForm.tsx          the shared add/edit form (autocomplete, chips, days)
     ├── MedsScreen.tsx       the list: edit in place, stop / resume / delete
     ├── CalendarScreen.tsx   the month grid + the selected day's checklist
-    ├── DoseList.tsx         a day's doses as tappable rows (Today + Calendar)
+    ├── DoseList.tsx         a day's doses grouped by slot (Today + Calendar)
+    ├── DoseRow.tsx          one dose as the control that logs it (all three)
     ├── DayMark.tsx          day progress → mark + legend (one table)
     ├── MonthCalendar.tsx    MonthGrid + month-stepping header + swipe
     ├── HistoryScreen.tsx    tiles, the gap chart, per-med bars, missed list
@@ -113,9 +116,17 @@ src/
 
 Four destinations on a bottom bar — **Today, Calendar, History, Meds** — in a
 fixed order a swipe moves along; the arriving screen slides in from the side
-it lives on. Two actions on the top bar — **Add** and **Settings** — because
-you visit them and leave; pressing their button again returns to where you
-were. There is deliberately no sidebar and no drawer.
+it lives on. Two actions on the top bar — the **+** and **Settings** —
+because you do them and leave. There is deliberately no sidebar and no
+drawer.
+
+The **+** opens the **quick-log sheet** rather than a screen: a modal over
+whatever you were looking at, listing today's doses with the likeliest first,
+so logging a dose you just took costs neither a navigation nor the month you
+had open on the Calendar. Adding a medication is a step further in — the
+sheet's footer, or the Meds tab's button — because it happens a few times a
+year where logging happens a few times a day. Settings is still a screen, and
+pressing its button again returns to where you were.
 
 `initialTab` picks the first screen from the booted document: **Today** when
 there are current medications, the **Add** form when there are none — the one

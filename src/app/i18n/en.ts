@@ -21,7 +21,9 @@ export const en = {
     meds: "Meds",
     settings: "Settings",
     // The top bar's `+`. It is a glyph with no label beside it, so the name it
-    // is announced and hovered by has to carry the whole of what it does.
+    // is announced and hovered by has to carry the whole of what it does — and
+    // what it does is open the quick-log sheet, not the add form.
+    logDose: "Log a dose",
     addMedication: "Add medication",
   },
 
@@ -60,6 +62,28 @@ export const en = {
     takenAt: "Taken {time}",
   },
 
+  // The quick-log sheet behind the top bar's `+` — today's doses as one flat
+  // list, the likeliest at the top, so logging is one tap from wherever you
+  // happen to be in the app.
+  quickLog: {
+    title: "Log a dose",
+    // Said under the title, because the sheet lists *today* wherever it was
+    // opened from — including from the Calendar looking at another month.
+    subtitle: "Today · {date}",
+    // The bottom of the list: what you already ticked, kept on screen so the
+    // sheet answers "have I?" as well as "I have", and so a mistap is one tap
+    // to undo.
+    alreadyTaken: "Already taken",
+    // Nothing due: either the mask says not today, or there is nothing to
+    // take yet.
+    nothingDue: "Nothing scheduled today.",
+    noMeds: "Add a medication and today's doses show up here.",
+    // The footer, and the only route to the add form left once the `+` opens
+    // this sheet instead.
+    newMedication: "New medication",
+    done: "Done",
+  },
+
   meds: {
     title: "Medications",
     empty: "No medications yet.",
@@ -71,6 +95,9 @@ export const en = {
     startedOn: "Since {date}",
     timesPerDay: "{count}× daily",
     oncePerDay: "1× daily",
+    // The Meds screen's "new medication" button, now that the top bar's `+`
+    // opens the quick-log sheet instead.
+    addNew: "New medication",
     // The form. Name is the only thing the app insists on; a dose is display
     // text, and the times default to one morning slot so the common case is
     // two fields and Save.
@@ -91,6 +118,16 @@ export const en = {
         "One dose per time of day. Add a slot for each dose — morning and evening is two slots.",
       addTime: "Add a time",
       removeTime: "Remove {time}",
+      // The weekday mask. "Every day" is the default and answers itself, so
+      // the seven pills stay out of the way until it is switched off — at
+      // which point they all start lit and you turn off the days you skip,
+      // which is how people describe these schedules out loud ("every day
+      // except Tuesday and Thursday").
+      days: "Which days",
+      daysHint:
+        "Every day unless you say otherwise. Turn it off to pick the days — the ones you skip are simply not scheduled.",
+      everyDay: "Every day",
+      pickDays: "Pick days",
       save: "Save medication",
       nameMissing: "Give it a name first",
     },

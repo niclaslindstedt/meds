@@ -7,12 +7,19 @@
 // The shape is designed to exercise every state the screens can show: mostly
 // full days (the streaks and the high adherence numbers), scattered part-days
 // (the hollow calendar marks and the per-med spread), one solid gap week (the
-// red run every history feature exists to surface), and one med that started
-// later than the others (the "nothing due before the schedule" rule).
+// red run every history feature exists to surface), one med that started
+// later than the others (the "nothing due before the schedule" rule), and one
+// on a weekday mask (the days that owe nothing and therefore say nothing).
 
 import { addDays, type DayKey } from "@niclaslindstedt/oss-framework/calendar";
 
-import { doseKey, type AppData, type Medication } from "../types.ts";
+import { activeOn } from "../schedule.ts";
+import {
+  doseKey,
+  DOC_VERSION,
+  type AppData,
+  type Medication,
+} from "../types.ts";
 
 /** How much history the demo document carries. */
 const DAYS = 90;
@@ -41,6 +48,7 @@ export function buildDemoData(today: DayKey): AppData {
       name: "Levothyroxine",
       dose: "50 µg",
       times: ["07:30"],
+      weekdays: null,
       startDate: start,
       endDate: null,
       updatedAt: `${start}T08:00:00.000Z`,
@@ -50,6 +58,7 @@ export function buildDemoData(today: DayKey): AppData {
       name: "Metformin",
       dose: "500 mg",
       times: ["08:00", "20:00"],
+      weekdays: null,
       startDate: start,
       endDate: null,
       updatedAt: `${start}T08:00:00.000Z`,
@@ -61,9 +70,23 @@ export function buildDemoData(today: DayKey): AppData {
       name: "Vitamin D3",
       dose: "1000 IU",
       times: ["08:00"],
+      weekdays: null,
       startDate: lateStart,
       endDate: null,
       updatedAt: `${lateStart}T08:00:00.000Z`,
+    },
+    // On a weekday mask, so four days in seven the calendar has a day that
+    // owes this med nothing — and the adherence figure passes over those
+    // rather than counting them missed.
+    {
+      id: "demo-iron",
+      name: "Duroferon",
+      dose: "100 mg",
+      times: ["12:00"],
+      weekdays: [1, 3, 5],
+      startDate: start,
+      endDate: null,
+      updatedAt: `${start}T08:00:00.000Z`,
     },
   ];
 
@@ -80,7 +103,10 @@ export function buildDemoData(today: DayKey): AppData {
 
     const taken: Record<string, string> = {};
     for (const med of meds) {
-      if (day < med.startDate) continue;
+      // Through `activeOn` rather than a start-date check of its own: the
+      // demo document must be one the derivation would have produced, and a
+      // tap on a day the schedule never asked about is not one.
+      if (!activeOn(med, day)) continue;
       for (const time of med.times) {
         // The evening dose is the one that slips — which is true to life and
         // gives the per-med list something to say.
@@ -98,6 +124,7 @@ export function buildDemoData(today: DayKey): AppData {
   // still open — the state the Today screen is designed around.
   const todayTaken: Record<string, string> = {};
   for (const med of meds) {
+    if (!activeOn(med, today)) continue;
     for (const time of med.times) {
       if (time < "12:00") {
         todayTaken[doseKey(med.id, time)] = `${today}T${time}:00.000Z`;
@@ -111,7 +138,7 @@ export function buildDemoData(today: DayKey): AppData {
   };
 
   return {
-    version: 1,
+    version: DOC_VERSION,
     medications: Object.fromEntries(meds.map((m) => [m.id, m])),
     days,
   };

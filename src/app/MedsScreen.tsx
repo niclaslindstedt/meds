@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 import { useState } from "react";
 
-import { addDays, type DayKey } from "@niclaslindstedt/oss-framework/calendar";
+import {
+  addDays,
+  type DayKey,
+  type WeekStart,
+} from "@niclaslindstedt/oss-framework/calendar";
 import {
   Button,
   ConfirmDialog,
   PencilIcon,
+  PlusIcon,
 } from "@niclaslindstedt/oss-framework/components";
 
 import { MedForm } from "./MedForm.tsx";
-import { formatDay, formatTime } from "./format.ts";
+import { formatDay, formatTime, formatWeekdays } from "./format.ts";
 import { PillIcon } from "./icons.tsx";
 import { useT } from "./i18n/index.ts";
 import { sortedMedications, type AppData, type Medication } from "./types.ts";
@@ -31,12 +36,26 @@ import { sortedMedications, type AppData, type Medication } from "./types.ts";
 type Props = {
   data: AppData;
   today: DayKey;
+  /** Passed through to the form's day pills, and used to spell a med's
+   *  weekdays in the same order the calendar runs. */
+  weekStartsOn: WeekStart;
   onSave: (med: Medication) => void;
   onRemove: (medId: string) => void;
+  /** Leave for the add form. This tab is where a person looks for it, now
+   *  that the top bar's `+` opens the quick-log sheet. */
+  onAddMedication: () => void;
   onNotice: (message: string) => void;
 };
 
-export function MedsScreen({ data, today, onSave, onRemove, onNotice }: Props) {
+export function MedsScreen({
+  data,
+  today,
+  weekStartsOn,
+  onSave,
+  onRemove,
+  onAddMedication,
+  onNotice,
+}: Props) {
   const t = useT();
   const meds = sortedMedications(data);
   const [editing, setEditing] = useState<string | null>(null);
@@ -48,6 +67,11 @@ export function MedsScreen({ data, today, onSave, onRemove, onNotice }: Props) {
         <div className="rounded-2xl border border-line bg-surface-3 p-6 text-center">
           <PillIcon className="mx-auto h-8 w-8 text-muted" />
           <p className="mt-3 text-sm text-muted">{t("meds.empty")}</p>
+          <div className="mt-4 flex justify-center">
+            <Button variant="primary" onClick={onAddMedication}>
+              {t("today.addFirst")}
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -88,6 +112,7 @@ export function MedsScreen({ data, today, onSave, onRemove, onNotice }: Props) {
                 <MedForm
                   initial={med}
                   today={today}
+                  weekStartsOn={weekStartsOn}
                   onSave={(next) => {
                     onSave(next);
                     setEditing(null);
@@ -136,6 +161,11 @@ export function MedsScreen({ data, today, onSave, onRemove, onNotice }: Props) {
                 </span>
                 <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
                   {med.times.map(formatTime).join(" · ")}
+                  {/* Only a masked med says which days: "every day" is the
+                      absence of a qualifier, and printing it on every row
+                      would say nothing on all of them. */}
+                  {med.weekdays !== null &&
+                    ` · ${formatWeekdays(med.weekdays, weekStartsOn)}`}
                   {" — "}
                   {med.endDate !== null
                     ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
@@ -160,6 +190,14 @@ export function MedsScreen({ data, today, onSave, onRemove, onNotice }: Props) {
 
   return (
     <div className="flex flex-col gap-3 px-3 py-3">
+      <button
+        type="button"
+        onClick={onAddMedication}
+        className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-line text-sm text-accent transition-colors hover:bg-surface-2"
+      >
+        <PlusIcon className="h-4 w-4" />
+        {t("meds.addNew")}
+      </button>
       {current.length > 0 && (
         <section>
           <h2 className="px-1 text-xs font-bold tracking-wide text-muted uppercase">
