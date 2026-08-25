@@ -316,7 +316,55 @@ export function App() {
         </div>
       </main>
 
-      <BottomNav active={tab} onSelect={show} />
+      {/* The bar, and the strip of screen directly above it.
+
+          Anything transient that must not cover the four tabs is positioned
+          against this wrapper rather than against the viewport: the wrapper's
+          height *is* the bar's height, so `bottom: 100%` clears the bar
+          exactly — no constant to keep in step with the tab's target size or
+          the labels' line height, on whichever phone the bar comes out at
+          whichever height. The update prompt is the case that needs it: it
+          stays up until it is answered, and at the screen edge it sat on the
+          navigation for the whole of that time.
+
+          Absolute rather than in flow, so the banner arriving does not shove
+          the checklist someone is reading half a bar upwards. */}
+      <div className="relative shrink-0">
+        {/* Applying an update reloads the page, which takes a visible moment;
+            the spinner banner replaces the prompt so the wait reads as
+            progress rather than a stuck button. */}
+        {pwa.needRefresh && reloading ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="absolute inset-x-3 bottom-[calc(100%+0.75rem)] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-fg shadow-md"
+          >
+            <SpinnerIcon className="h-5 w-5 animate-spin text-accent" />
+            <span className="text-sm font-medium">{t("update.reload")}</span>
+          </div>
+        ) : (
+          // The wrapper is the stylesheet's handle on the framework's card,
+          // which takes no className of its own; it renders no box.
+          <div className="app-update-prompt">
+            <UpdateToast
+              needRefresh={pwa.needRefresh}
+              incomingVersion={pwa.incomingVersion}
+              onReload={() => {
+                setReloading(true);
+                pwa.reload();
+              }}
+              onDismiss={() => pwa.dismiss()}
+              labels={{
+                ready: t("update.available"),
+                action: t("update.reload"),
+                dismiss: t("common.close"),
+              }}
+            />
+          </div>
+        )}
+
+        <BottomNav active={tab} onSelect={show} />
+      </div>
 
       {/* The sheet lives out here rather than inside a screen: it opens over
           whichever tab is showing, and it must not be unmounted by the tab
@@ -354,34 +402,6 @@ export function App() {
         onClose={() => setSyncDetailsOpen(false)}
       />
 
-      {/* Applying an update reloads the page, which takes a visible moment;
-          the spinner banner replaces the prompt so the wait reads as progress
-          rather than a stuck button. */}
-      {pwa.needRefresh && reloading ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed inset-x-3 bottom-[4.25rem] z-[60] mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 text-fg shadow-md"
-        >
-          <SpinnerIcon className="h-5 w-5 animate-spin text-accent" />
-          <span className="text-sm font-medium">{t("update.reload")}</span>
-        </div>
-      ) : (
-        <UpdateToast
-          needRefresh={pwa.needRefresh}
-          incomingVersion={pwa.incomingVersion}
-          onReload={() => {
-            setReloading(true);
-            pwa.reload();
-          }}
-          onDismiss={() => pwa.dismiss()}
-          labels={{
-            ready: t("update.available"),
-            action: t("update.reload"),
-            dismiss: t("common.close"),
-          }}
-        />
-      )}
       {/* Top, not the framework's default bottom. Every toast this app raises
           answers a tap in the lower half of the screen, and at the bottom the
           card lands squarely on the bottom nav — covering the four tabs right

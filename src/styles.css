@@ -250,6 +250,32 @@ body {
   min-height: 3rem;
 }
 
+/* ── Above the bar ───────────────────────────────────────────────────────────
+   The framework's `UpdateToast` pins itself to the bottom of the viewport,
+   which in this app is the bottom nav: the prompt landed squarely on the four
+   tabs, and it stays up until it is answered — so for as long as it was there
+   the app's navigation was underneath it, right where the thumb already is.
+
+   It is lifted by re-anchoring rather than by offsetting: `App.tsx` wraps the
+   bar and this card in one `relative` element, whose height *is* the bar's
+   height, so `bottom: 100%` puts the card's lower edge exactly on the bar's
+   upper one. No measured constant to keep in step with the tab's target size,
+   the labels' line height, or the strip below them — whatever the bar comes
+   out at on a given phone, the card sits a fixed gap above it.
+
+   The rule lives here rather than as a prop because the card is the
+   framework's to render; `data-toast-stack` is the hook it already carries.
+   `display: contents` on the wrapper so reaching that hook costs the shell
+   nothing — the element exists to be a selector, not a box. */
+.app-update-prompt {
+  display: contents;
+}
+
+.app-update-prompt > [data-toast-stack] {
+  position: absolute;
+  bottom: calc(100% + 0.75rem);
+}
+
 /* ── Moving between screens ──────────────────────────────────────────────────
    The bottom bar is four destinations in a fixed left-to-right order and a
    swipe moves one step along it (see `useSwipeNav.ts`). Without motion the
