@@ -7,6 +7,7 @@ import {
   ToastViewport,
   createToastStore,
 } from "@niclaslindstedt/oss-framework/components";
+import { useSwipeNav } from "@niclaslindstedt/oss-framework/hooks";
 import { LogViewer } from "@niclaslindstedt/oss-framework/logging";
 import { UpdateToast, usePwaUpdate } from "@niclaslindstedt/oss-framework/pwa";
 import {
@@ -34,10 +35,9 @@ import { QuickLogModal } from "./app/QuickLogModal.tsx";
 import { SettingsScreen } from "./app/SettingsScreen.tsx";
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
-import { useSwipeNav } from "./app/useSwipeNav.ts";
 import { useT } from "./app/i18n/index.ts";
 import { appearanceFor } from "./app/look.ts";
-import { descendingLogStore, logStore } from "./app/log.ts";
+import { logStore } from "./app/log.ts";
 import { cacheIdForBase } from "./app/pwa.ts";
 import type { Dose } from "./app/schedule.ts";
 import { useAppSettings } from "./app/useAppSettings.ts";
@@ -394,11 +394,7 @@ export function App() {
         onReload={() => void sync.reload()}
         onReconnect={sync.reconnect}
         onCheckConnection={sync.checkConnection}
-        logPanel={
-          settings.devMode ? (
-            <LogViewer store={descendingLogStore} />
-          ) : undefined
-        }
+        logPanel={settings.devMode ? <LogViewer store={logStore} /> : undefined}
         onClose={() => setSyncDetailsOpen(false)}
       />
 

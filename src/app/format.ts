@@ -9,78 +9,69 @@
 // expensive part, and these run once per rendered calendar cell.
 
 import {
-  parseDayKey,
+  dayKeyToDate,
+  formatDayKey,
+  formatMonthLabel,
   type DayKey,
   type WeekStart,
 } from "@niclaslindstedt/oss-framework/calendar";
+import {
+  formatDate,
+  weekdayNames,
+  weekdayOrder as frameworkWeekdayOrder,
+} from "@niclaslindstedt/oss-framework/format";
 
-const cache = new Map<string, Intl.DateTimeFormat>();
-
-function formatter(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const key = JSON.stringify(options);
-  let found = cache.get(key);
-  if (!found) {
-    found = new Intl.DateTimeFormat(undefined, options);
-    cache.set(key, found);
-  }
-  return found;
-}
+// The framework owns the `Intl` formatter cache and the `DayKey` → local-date
+// conversion (`dayKeyToDate`, `formatDayKey`, `formatMonthLabel`); what stays
+// here is which *shapes* this app names a date in, and the one number with a
+// presentation rule of its own.
 
 /** A `DayKey` as a local `Date` at midnight, or null when it isn't a real
  *  day. Calendar days are timezone-free, so the components are read back as
  *  *local* — the same day the user tapped, whatever their offset. */
-export function toDate(day: DayKey): Date | null {
-  const parts = parseDayKey(day);
-  return parts ? new Date(parts.year, parts.month - 1, parts.day) : null;
-}
+export const toDate = dayKeyToDate;
 
 /** "5 Jul" — how this app names a date, and the only way it names one. One
  *  form rather than a long/short pair with a rule about which to reach for:
  *  the abbreviation is the one a chart tick and a list row can carry, and a
  *  headline survives it fine. */
 export function formatDay(day: DayKey): string {
-  const date = toDate(day);
-  return date
-    ? formatter({ day: "numeric", month: "short" }).format(date)
-    : day;
+  return formatDayKey(day, { day: "numeric", month: "short" });
 }
 
 /** "Sun, 5 Jul 2026" — the same date with the weekday and the year, for the
  *  one place a day's own heading has to be unambiguous. */
 export function formatFullDay(day: DayKey): string {
-  const date = toDate(day);
-  return date
-    ? formatter({
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(date)
-    : day;
+  return formatDayKey(day, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** The short weekday for a day strip ("Mon"). */
 export function formatWeekday(day: DayKey): string {
-  const date = toDate(day);
-  return date ? formatter({ weekday: "short" }).format(date) : day;
+  return formatDayKey(day, { weekday: "short" });
 }
 
 /** A weekday's own name ("Mon", or "Monday" in `long`), in `Date.getDay()`
  *  numbering — the numbering the medication weekday mask and the week-start
- *  setting both speak. 7 January 2024 was a Sunday, so the day number is an
- *  offset from it and no lookup table of English names has to exist. */
+ *  setting both speak. The framework's `weekdayNames` returns the seven
+ *  rotated to a given start, so asking it for a Sunday-start week gives an
+ *  array indexed by exactly that numbering. */
 export function formatWeekdayName(
   weekday: number,
   style: "short" | "long" = "short",
 ): string {
-  return formatter({ weekday: style }).format(new Date(2024, 0, 7 + weekday));
+  return weekdayNames(undefined, style, 0)[weekday] ?? "";
 }
 
 /** The seven weekdays in the order a week that starts on `weekStartsOn` runs
  *  — the order the day pills are laid out in, so the row of pills and the
  *  calendar grid above it read left to right the same way. */
 export function weekdayOrder(weekStartsOn: WeekStart): number[] {
-  return Array.from({ length: 7 }, (_, i) => (weekStartsOn + i) % 7);
+  return frameworkWeekdayOrder(weekStartsOn);
 }
 
 /** A medication's weekday mask, spelled out ("Mon, Wed, Fri") in the week's
@@ -101,9 +92,7 @@ export function formatWeekdays(
  *  and only here: it is the grid's title, and "Jul 2026" over a calendar
  *  page reads as an abbreviation of nothing. */
 export function formatMonth(year: number, month: number): string {
-  return formatter({ month: "long", year: "numeric" }).format(
-    new Date(year, month - 1, 1),
-  );
+  return formatMonthLabel(year, month);
 }
 
 /** A dose slot ("08:00"), in the reader's own clock convention — "8:00 AM"
@@ -112,8 +101,13 @@ export function formatMonth(year: number, month: number): string {
 export function formatTime(time: string): string {
   const match = /^(\d{2}):(\d{2})$/.exec(time);
   if (!match) return time;
-  return formatter({ hour: "numeric", minute: "2-digit" }).format(
+  return formatDate(
     new Date(2000, 0, 1, Number(match[1]), Number(match[2])),
+    undefined,
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    },
   );
 }
 
