@@ -68,7 +68,7 @@ function channelName(base: string): { name: string; short_name: string } {
   if (base === "/branch/")
     return { name: "Nird Meds (branch)", short_name: "Meds br" };
   return {
-    name: "Nird Meds — a simple medication tracker",
+    name: "Nird Meds",
     short_name: "Nird Meds",
   };
 }
