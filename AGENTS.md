@@ -100,6 +100,14 @@ primitives, the theme engine, the calendar grid, the SVG chart primitives, the
 storage adapters (localStorage / Dropbox / Google Drive), the i18n runtime,
 logging, the toast store, and the PWA update state machine.
 
+Since framework 3.1.0 it also owns the app _shell_ this app used to carry its
+own copy of: the bottom bar (`BottomNav`) and the `stepDirection` its screen
+transition reads, the tab-paging swipe (`useSwipeNav`), the paging month view
+(`MonthCalendar`), the gridline arithmetic behind the History chart's axis
+(`niceTicks`), and `DayKey` rendering (`formatDayKey` / `formatMonthLabel` /
+`dayKeyToDate`). What stayed here is the vocabulary — which screens are
+destinations, what they are called, what a day's mark means.
+
 ### The renderer is Preact
 
 `preact` is the only renderer dependency — **never add `react` or `react-dom`
@@ -138,9 +146,6 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   public API and is not openly licensed; a fuller list can be generated from
   Läkemedelsverket's open LiiV/NPL data into this same trivial shape). Rides
   in its own chunk behind `import()`.
-- `src/app/chartAxis.ts` — a domain → the gridline values to rule and label,
-  at a step (1, 2 or 5 times a power of ten) a person would have picked. Pure
-  arithmetic with no pixels in it.
 - `src/app/merge.ts` — the document merge both cloud sync and backup restore
   run through: medications by last edit, day logs by union of taps.
 - `src/app/migrations.ts` — parse / normalise / serialize; the only module
@@ -183,9 +188,6 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   `linearScale`), not from its finished chart components.
 - `src/app/TopBar.tsx` — the top bar: the wordmark, the sync glyph, the `+`
   that opens the quick-log sheet, and the settings cog.
-- `src/app/useSwipeNav.ts` — the touch swipe that moves one tab along the
-  bottom bar. Bails on range inputs, dialogs, `[data-swipe-ignore]`, and
-  anything that scrolls sideways.
 - `src/app/i18n/en.ts` — every user-facing string.
 - `src/output.ts` — the §19.4 central output module (semantic log helpers
   over the in-app log store).
@@ -333,7 +335,8 @@ with `[Learn more](feature:<slug>)`.
   them. Don't reintroduce the picker.
 - **The bottom nav is the navigation.** Four tabs, no sidebar, no drawer, and
   they are _destinations_ — a fixed left-to-right order a swipe moves along
-  (`useSwipeNav.ts`). Things you do and then leave belong on the top bar
+  (the framework's `useSwipeNav`). Things you do and then leave belong on the
+  top bar
   instead, which is where the quick-log `+` and Settings went. A new
   _destination_ has to earn a place in an order that means something; a new
   _action_ is a top-bar button, not a tab. The `+` opens a sheet rather than a

@@ -85,7 +85,6 @@ src/
     ├── useDocStore.ts       the document store over a DocBackend seam
     ├── useSyncEngine.ts     debounced push / pull over the framework adapters
     ├── useAppSettings.ts    theme, week start, dev knobs (localStorage)
-    ├── useSwipeNav.ts       the tab-paging swipe
     ├── App.tsx              the shell: tabs, toasts, PWA update, sync modal
     ├── BottomNav.tsx        the four destinations + initialTab
     ├── TopBar.tsx           wordmark, sync glyph, + (quick log), ⚙ (settings)
@@ -98,10 +97,8 @@ src/
     ├── DoseList.tsx         a day's doses grouped by slot (Today + Calendar)
     ├── DoseRow.tsx          one dose as the control that logs it (all three)
     ├── DayMark.tsx          day progress → mark + legend (one table)
-    ├── MonthCalendar.tsx    MonthGrid + month-stepping header + swipe
     ├── HistoryScreen.tsx    tiles, the gap chart, per-med bars, missed list
     ├── HistoryChart.tsx     the chart, from the framework's primitives
-    ├── chartAxis.ts         nice gridline steps (pure arithmetic)
     ├── SettingsScreen.tsx   one scrolling page of Sections
     ├── backup.ts            export / restore (same merge as sync)
     ├── look.ts              theme choice → framework appearance

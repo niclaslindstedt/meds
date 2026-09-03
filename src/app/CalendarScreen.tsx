@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 import { useMemo, useState } from "react";
 
-import type {
-  DayKey,
-  GridCell,
-  WeekStart,
+import {
+  MonthCalendar,
+  type DayKey,
+  type GridCell,
+  type WeekStart,
 } from "@niclaslindstedt/oss-framework/calendar";
 
 import { DayLegend, DayMark, toneFor } from "./DayMark.tsx";
@@ -12,7 +13,6 @@ import { DoseList } from "./DoseList.tsx";
 import { dayProgress, dueDoses, type Dose } from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { useT } from "./i18n/index.ts";
-import { MonthCalendar } from "./MonthCalendar.tsx";
 import { earliestStart } from "./stats.ts";
 import type { AppData } from "./types.ts";
 
@@ -62,7 +62,12 @@ export function CalendarScreen({ data, today, weekStartsOn, onToggle }: Props) {
           anchor={today}
           selected={selected}
           onSelect={setSelected}
+          today={today}
           weekStartsOn={weekStartsOn}
+          labels={{
+            prevMonth: t("calendar.prevMonth"),
+            nextMonth: t("calendar.nextMonth"),
+          }}
           renderDay={(cell: GridCell) => (
             <DayMark
               tone={toneFor(cell.key, today, dayProgress(data, cell.key))}
