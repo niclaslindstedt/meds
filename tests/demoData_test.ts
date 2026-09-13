@@ -85,6 +85,22 @@ describe("buildDemoData", () => {
     expect(allowanceOn(TODAY)).toEqual({ max: 4, taken: 1, left: 3 });
   });
 
+  it("spends the longest stretch on that same day", () => {
+    const runOn = (day: string) =>
+      asNeededOn(data, day).find(
+        (e) => e.med.times.length === 0 && e.med.asNeeded,
+      )!.run;
+    // Three days running, which is the whole stretch noted for it — so one
+    // day of the demo shows both ceilings spent at once.
+    expect(runOn(addDays(TODAY, -22))).toEqual({
+      maxDays: 3,
+      days: 3,
+      left: 0,
+    });
+    // Today is the first day of its own stretch: the day before it is empty.
+    expect(runOn(TODAY)).toEqual({ maxDays: 3, days: 1, left: 2 });
+  });
+
   it("runs the course as a block of scored days surrounded by silent ones", () => {
     const course = Object.values(data.medications).find(
       (m) => m.asNeeded && m.times.length > 0,

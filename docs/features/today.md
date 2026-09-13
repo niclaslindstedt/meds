@@ -21,11 +21,11 @@ asks of you, and a painkiller you may not need asks nothing. Once one is
 logged it sticks to that day, with a chip to log another, because the second
 one of an afternoon is the likeliest next tap — and it is gone the next day.
 
-A medication you noted a **daily maximum** for says where the day stands next
-to the chip that logs another — _2 of 3 today_ — and at the maximum the chip
-becomes **Log one anyway**, so a further dose is deliberate rather than
-reflexive. It still logs; the count just stops being silent (see
-[medications.md](medications.md)).
+A medication you noted a **daily maximum** or a **longest stretch** for says
+where you stand next to the chip that logs another — _2 of 3 today_, _Day 4 of
+7_ — and at either ceiling the chip becomes **Log one anyway**, so a further
+dose is deliberate rather than reflexive. It still logs; the counts just stop
+being silent (see [medications.md](medications.md)).
 
 It is deliberately not a list of hollow rows. Hollow means _still open_
 everywhere else in the app, and an as-needed dose is not outstanding; so an

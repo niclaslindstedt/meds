@@ -34,15 +34,16 @@ sticks to that day only. One with set times is _started_ when you need it and
 puts its times on Today every day until you say you are done, which is what a
 course taken for the week a cold lasts actually needs. Either way the days
 nobody needed it owe nothing, so they never count as missed. A when-needed
-medication with no set times can also carry the **most doses you mean to take
-in a day**: note the number you were given and every offer to log one says
-where the day stands — _2 of 3 today_ — and asks for a deliberate tap past it.
-It is counted, never enforced: the log always records a dose you actually
-took.
+medication with no set times can also carry the two ceilings it came with —
+the **most doses in a day** and the **longest stretch** of days in a row, in
+days or weeks. Note the numbers you were given and every offer to log a dose
+says where you stand — _2 of 3 today_, _Day 4 of 7_ — and asks for a
+deliberate tap past either. They are counted, never enforced: the log always
+records a dose you actually took.
 
 The focus is simplicity over features on purpose. A medication is a name, a
-dose, its time slots, its days, whether it is on a schedule at all and an
-optional daily maximum when it is not — no
+dose, its time slots, its days, whether it is on a schedule at all and, when
+it is not, the optional ceilings it came with — no
 stock counter, no prescriber field, no notification engine — because the cost
 of every added question is paid at every dose, and the app's whole job is to
 make "did I take it?" a glance and "I just did" one tap.
@@ -163,6 +164,8 @@ doc.medications["m1"] = {
   asNeeded: false, // true = nothing is due except over a course
   courses: [], // as-needed stretches: [{ from, to }], to null = running
   maxPerDay: null, // most doses in a day, for an as-needed med with no times
+  maxRun: null, // longest stretch of days in a row, counted in maxRunUnit
+  maxRunUnit: "days", // "days" | "weeks"
   weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-01",
   endDate: null,

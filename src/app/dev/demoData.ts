@@ -54,6 +54,8 @@ export function buildDemoData(today: DayKey): AppData {
       asNeeded: false,
       courses: [],
       maxPerDay: null,
+      maxRun: null,
+      maxRunUnit: "days",
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -67,6 +69,8 @@ export function buildDemoData(today: DayKey): AppData {
       asNeeded: false,
       courses: [],
       maxPerDay: null,
+      maxRun: null,
+      maxRunUnit: "days",
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -82,6 +86,8 @@ export function buildDemoData(today: DayKey): AppData {
       asNeeded: false,
       courses: [],
       maxPerDay: null,
+      maxRun: null,
+      maxRunUnit: "days",
       weekdays: null,
       startDate: lateStart,
       endDate: null,
@@ -98,6 +104,8 @@ export function buildDemoData(today: DayKey): AppData {
       asNeeded: false,
       courses: [],
       maxPerDay: null,
+      maxRun: null,
+      maxRunUnit: "days",
       weekdays: [1, 3, 5],
       startDate: start,
       endDate: null,
@@ -118,6 +126,11 @@ export function buildDemoData(today: DayKey): AppData {
       // can carry a daily maximum — and one of the demo days below spends it
       // exactly, which is the state the "As needed" panel changes shape for.
       maxPerDay: 4,
+      // Three days running is the whole stretch it was noted for, and the
+      // three consecutive days below spend it exactly — so the panel's
+      // "longest you noted down" state is in the demo too.
+      maxRun: 3,
+      maxRunUnit: "days",
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -143,6 +156,8 @@ export function buildDemoData(today: DayKey): AppData {
       // Its three times already say how many doses a day it owes, so there is
       // no second number to hold (see `normalizeMaxPerDay`).
       maxPerDay: null,
+      maxRun: null,
+      maxRunUnit: "days",
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -221,9 +236,12 @@ export function buildDemoData(today: DayKey): AppData {
   for (const [back, time] of [
     [55, "14:12"],
     [41, "21:40"],
-    // The one day that spends the whole daily maximum: four doses of a bad
-    // afternoon, so the panel's "that is the most you noted down" state is in
-    // the demo rather than only in the tests.
+    // Three days running — the bad week — ending on the day that also spends
+    // the whole daily maximum: four doses of a bad afternoon. So both
+    // ceilings are spent at once on one day of the demo, which is the state
+    // the panel changes shape for.
+    [24, "08:30"],
+    [23, "13:00"],
     [22, "09:05"],
     [22, "15:35"],
     [22, "19:20"],

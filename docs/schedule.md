@@ -123,14 +123,49 @@ left: 0` rather than a negative remainder. `asNeededOn` carries it per entry
 as `allowance` (null when the medication has no maximum), counting that day's
 own taps — a maximum is a fact about one day, and the next day starts over.
 
-It is a **ceiling, not a schedule**, and two consequences follow. First, it
-moves nothing: `dueDoses`, `dayProgress` and every figure in `stats.ts` read
-exactly as they did before the number existed, because a dose that was never
-scheduled cannot be missed. Second, it is repeated back, never enforced —
-reaching it withdraws the one-tap offer in the "As needed" panel and leaves a
-plainly labelled one ("Log one anyway"), because a log that refuses to record
-a dose that was actually swallowed is a log that lies. The app counts; it
-never decides the number.
+### The longest stretch
+
+`maxRun` is the other half of the same sentence — _"no more than three in a
+day, and not for more than a week"_ — carried by exactly the medications that
+can carry a daily maximum, and for the same reason: a medication with times of
+its own is either on a schedule, which has its own `endDate`, or on a course,
+which ends when you say you are done with it. Neither needs a second answer to
+"how long for".
+
+It is held in the unit it was given in (`maxRunUnit`, `"days"` or `"weeks"`),
+because "two weeks" is what a person was told and "14 days" is only the
+arithmetic; `maxRunDays(med)` does that arithmetic where the counting happens.
+`normalizeMaxRun(run, unit, med)` applies the same rules `normalizeMaxPerDay`
+does — whole numbers of at least one, clamped at `MAX_RUN_LIMIT` (99) — and
+forces the unit back to `"days"` whenever there is no number, so one answer
+keeps one representation.
+
+What it counts is `runDays(data, med, day)`: the run of consecutive days,
+ending at `day`, that a dose was logged on. Nothing new is stored for it — the
+taps already say which days it was taken on — and two rules make it the plain
+reading of _"not more than seven days in a row"_:
+
+- **A day skipped entirely ends the stretch**, and the next dose starts a new
+  one at day one. So there is no course to start and none to forget to end: a
+  stretch resets itself the first day you do without.
+- **The day being asked about counts, logged or not.** Start on Monday and it
+  is day four on Thursday, whether or not Thursday's dose has been taken yet —
+  the stretch is a span of days, and "how long have I been on this?" is asked
+  before the tap as often as after it. It is the day after a gap, with the gap
+  behind it, that starts over.
+
+`runAllowance(med, days)` is the arithmetic — `{ maxDays, days, left }`, `left`
+floored at zero — and `asNeededOn` carries it per entry as `run`, walked only
+for a medication that has a stretch to count against.
+
+Both are **ceilings, not schedules**, and two consequences follow. First, it
+they move nothing: `dueDoses`, `dayProgress` and every figure in `stats.ts`
+read exactly as they did before the numbers existed, because a dose that was
+never scheduled cannot be missed. Second, they are repeated back, never
+enforced — reaching either withdraws the one-tap offer in the "As needed"
+panel and leaves a plainly labelled one ("Log one anyway"), because a log that
+refuses to record a dose that was actually swallowed is a log that lies. The
+app counts; it never decides the numbers.
 
 A dose is identified by `medId@HH:MM`, and a day's log maps those keys to the
 timestamps they were ticked at. Editing a slot from 08:00 to 09:00 therefore
@@ -192,6 +227,8 @@ doc.medications["m1"] = {
   asNeeded: false, // true = owes nothing except over a course (below)
   courses: [], // e.g. [{ from: "2026-03-05", fromTime: "10:00", to: null }]
   maxPerDay: null, // e.g. 3, for an as-needed med with no times; null = no limit
+  maxRun: null, // e.g. 7 with maxRunUnit "days"; null = no limit
+  maxRunUnit: "days", // "days" | "weeks"; forced to "days" when maxRun is null
   weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-02",
   endDate: null,

@@ -17,6 +17,8 @@ const MED = {
   asNeeded: false,
   courses: [],
   maxPerDay: null,
+  maxRun: null,
+  maxRunUnit: "days",
   weekdays: null,
   startDate: "2024-03-01",
   endDate: null,
@@ -308,6 +310,80 @@ describe("as-needed medications", () => {
         days: {},
       });
       expect(doc.medications.m1?.maxPerDay).toBeNull();
+    }
+  });
+
+  it("keeps a stretch and the unit it was given in", () => {
+    const doc = normalizeDoc({
+      version: 5,
+      medications: {
+        m1: {
+          ...MED,
+          times: [],
+          asNeeded: true,
+          maxRun: 2,
+          maxRunUnit: "weeks",
+        },
+      },
+      days: {},
+    });
+    expect(doc.medications.m1?.maxRun).toBe(2);
+    expect(doc.medications.m1?.maxRunUnit).toBe("weeks");
+  });
+
+  it("reads a pre-v5 medication as having no stretch", () => {
+    const v4Med: Record<string, unknown> = {
+      ...MED,
+      times: [],
+      asNeeded: true,
+    };
+    delete v4Med.maxRun;
+    delete v4Med.maxRunUnit;
+    const doc = normalizeDoc({
+      version: 4,
+      medications: { m1: v4Med },
+      days: {},
+    });
+    expect(doc.medications.m1?.maxRun).toBeNull();
+    expect(doc.medications.m1?.maxRunUnit).toBe("days");
+    expect(doc.version).toBe(DOC_VERSION);
+  });
+
+  it("drops a stretch from a medication that already says when it ends", () => {
+    const scheduled = normalizeDoc({
+      version: 5,
+      medications: { m1: { ...MED, maxRun: 7, maxRunUnit: "days" } },
+      days: {},
+    });
+    expect(scheduled.medications.m1?.maxRun).toBeNull();
+  });
+
+  it("reads a bad stretch or unit back to no stretch at all, in days", () => {
+    for (const [run, unit] of [
+      ["7", "days"],
+      [0, "weeks"],
+      [null, "weeks"],
+      [7, "fortnights"],
+    ] as const) {
+      const doc = normalizeDoc({
+        version: 5,
+        medications: {
+          m1: {
+            ...MED,
+            times: [],
+            asNeeded: true,
+            maxRun: run,
+            maxRunUnit: unit,
+          },
+        },
+        days: {},
+      });
+      const med = doc.medications.m1;
+      // A number that is not a count is no stretch at all; "7" as a string is
+      // not a number. Every case here ends in days: an unreadable unit is
+      // days, and so is the unit of a medication with no stretch.
+      expect(med?.maxRun).toBe(run === 7 ? 7 : null);
+      expect(med?.maxRunUnit).toBe("days");
     }
   });
 

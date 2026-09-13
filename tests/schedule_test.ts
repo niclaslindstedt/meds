@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAX_PER_DAY_LIMIT,
+  MAX_RUN_LIMIT,
   activeOn,
   asNeededOn,
   courseOn,
@@ -24,10 +25,14 @@ import {
   normalizeCourses,
   minutesOfDay,
   normalizeMaxPerDay,
+  normalizeMaxRun,
   normalizeTimes,
   normalizeWeekdays,
+  maxRunDays,
   quickLogDistance,
   quickLogOrder,
+  runAllowance,
+  runDays,
   startCourse,
   weekdayOf,
 } from "../src/app/schedule.ts";
@@ -47,6 +52,8 @@ function med(overrides: Partial<Medication> = {}): Medication {
     asNeeded: false,
     courses: [],
     maxPerDay: null,
+    maxRun: null,
+    maxRunUnit: "days",
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,
@@ -717,6 +724,194 @@ describe("as-needed medications", () => {
       expect(dueDoses(data, "2024-03-10")).toEqual([]);
       expect(dayProgress(data, "2024-03-10").status).toBe("none");
       expect(dueDoses(data, "2024-03-11")).toEqual([]);
+    });
+  });
+
+  // The longest stretch: the other ceiling, counted in days rather than
+  // doses. It reads the same taps the rest of the derivation does — there is
+  // no stretch stored anywhere — and, like the daily maximum, it moves
+  // nothing about what a day owes.
+  describe("the longest stretch", () => {
+    const limited = med({ ...painkiller, maxRun: 3, maxRunUnit: "days" });
+
+    /** A document with one dose of the painkiller logged on each day given. */
+    function onDays(medication: Medication, days: string[]): AppData {
+      return doc(
+        [medication],
+        Object.fromEntries(
+          days.map((day) => [
+            day,
+            {
+              date: day,
+              taken: { [doseKey("p", "09:00")]: `${day}T09:00:00.000Z` },
+              updatedAt: `${day}T09:00:00.000Z`,
+            },
+          ]),
+        ),
+      );
+    }
+
+    describe("normalizeMaxRun", () => {
+      it("keeps a whole number and the unit it was given in", () => {
+        expect(normalizeMaxRun(7, "days", painkiller)).toEqual({
+          maxRun: 7,
+          maxRunUnit: "days",
+        });
+        expect(normalizeMaxRun(2, "weeks", painkiller)).toEqual({
+          maxRun: 2,
+          maxRunUnit: "weeks",
+        });
+      });
+
+      it("drops one from every medication that already says when it ends", () => {
+        // A schedule has its own endDate; a course ends when you say you are
+        // done with it. Neither needs a second answer to "how long for".
+        for (const other of [med(), course]) {
+          expect(normalizeMaxRun(7, "days", other)).toEqual({
+            maxRun: null,
+            maxRunUnit: "days",
+          });
+        }
+      });
+
+      it("forces the unit back to days when there is no number", () => {
+        // One answer, one representation: a cleared box must not leave a
+        // stale "weeks" behind for two devices to disagree over.
+        for (const value of [0, -1, Number.NaN, null, undefined]) {
+          expect(normalizeMaxRun(value, "weeks", painkiller)).toEqual({
+            maxRun: null,
+            maxRunUnit: "days",
+          });
+        }
+      });
+
+      it("floors a fraction, clamps an absurd number and rejects a bad unit", () => {
+        expect(normalizeMaxRun(7.9, "days", painkiller).maxRun).toBe(7);
+        expect(normalizeMaxRun(500, "weeks", painkiller).maxRun).toBe(
+          MAX_RUN_LIMIT,
+        );
+        expect(
+          normalizeMaxRun(7, "fortnights" as never, painkiller).maxRunUnit,
+        ).toBe("days");
+      });
+
+      it("counts a stretch in days whichever unit it was given in", () => {
+        expect(maxRunDays(limited)).toBe(3);
+        expect(
+          maxRunDays(med({ ...painkiller, maxRun: 2, maxRunUnit: "weeks" })),
+        ).toBe(14);
+        expect(maxRunDays(painkiller)).toBeNull();
+      });
+    });
+
+    describe("runDays", () => {
+      it("says nothing is running when nothing was logged", () => {
+        expect(runDays(doc([limited]), limited, "2024-03-10")).toBe(0);
+      });
+
+      it("counts the days in a row a dose was logged on", () => {
+        const data = onDays(limited, [
+          "2024-03-08",
+          "2024-03-09",
+          "2024-03-10",
+        ]);
+        expect(runDays(data, limited, "2024-03-10")).toBe(3);
+        // And only backwards: a day in the middle of a stretch is as far in
+        // as it is, not as far as the stretch eventually ran.
+        expect(runDays(data, limited, "2024-03-09")).toBe(2);
+        expect(runDays(data, limited, "2024-03-08")).toBe(1);
+      });
+
+      it("counts today even before today's dose is logged", () => {
+        // Start on Friday and it is day three on Sunday, whether or not
+        // Sunday's dose has been taken yet — the stretch is a span of days,
+        // and the question is asked before the tap as often as after it.
+        const data = onDays(limited, ["2024-03-08", "2024-03-09"]);
+        expect(runDays(data, limited, "2024-03-10")).toBe(3);
+      });
+
+      it("starts over after a day skipped entirely", () => {
+        // The gap is now behind it: 03-09 was skipped, so 03-11 is not the
+        // fourth day of anything.
+        const data = onDays(limited, ["2024-03-08", "2024-03-10"]);
+        expect(runDays(data, limited, "2024-03-11")).toBe(2);
+        expect(runDays(data, limited, "2024-03-12")).toBe(0);
+        expect(runDays(data, limited, "2024-03-10")).toBe(1);
+      });
+
+      it("reads a tap at any minute as having taken it that day", () => {
+        // The keys of a slotless medication carry the minute of the tap, so
+        // "took it that day" can only mean "any of them".
+        const day = "2024-03-10";
+        const data = doc([limited], {
+          [day]: {
+            date: day,
+            taken: { [doseKey("p", "23:58")]: `${day}T23:58:00.000Z` },
+            updatedAt: `${day}T23:58:00.000Z`,
+          },
+        });
+        expect(runDays(data, limited, day)).toBe(1);
+      });
+    });
+
+    describe("runAllowance", () => {
+      it("says nothing about a medication with no stretch", () => {
+        expect(runAllowance(painkiller, 3)).toBeNull();
+      });
+
+      it("counts what is left of the stretch, floored at zero", () => {
+        expect(runAllowance(limited, 2)).toEqual({
+          maxDays: 3,
+          days: 2,
+          left: 1,
+        });
+        expect(runAllowance(limited, 3)).toEqual({
+          maxDays: 3,
+          days: 3,
+          left: 0,
+        });
+        expect(runAllowance(limited, 5)).toEqual({
+          maxDays: 3,
+          days: 5,
+          left: 0,
+        });
+      });
+    });
+
+    describe("asNeededOn", () => {
+      it("carries where the day sits in the stretch", () => {
+        const data = onDays(limited, [
+          "2024-03-08",
+          "2024-03-09",
+          "2024-03-10",
+        ]);
+        expect(asNeededOn(data, "2024-03-10")[0]!.run).toEqual({
+          maxDays: 3,
+          days: 3,
+          left: 0,
+        });
+      });
+
+      it("carries none for a medication nobody gave a stretch", () => {
+        const data = onDays(painkiller, ["2024-03-10"]);
+        expect(asNeededOn(data, "2024-03-10")[0]!.run).toBeNull();
+      });
+    });
+
+    it("changes nothing about what a day owes", () => {
+      // The same invariant the daily maximum keeps: a ceiling is not a
+      // schedule. A stretch that ran well past its number still owes nothing
+      // and scores nothing.
+      const data = onDays(limited, [
+        "2024-03-08",
+        "2024-03-09",
+        "2024-03-10",
+        "2024-03-11",
+        "2024-03-12",
+      ]);
+      expect(runDays(data, limited, "2024-03-12")).toBe(5);
+      expect(dueDoses(data, "2024-03-12")).toEqual([]);
+      expect(dayProgress(data, "2024-03-12").status).toBe("none");
     });
   });
 

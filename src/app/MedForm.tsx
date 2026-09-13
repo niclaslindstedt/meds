@@ -9,6 +9,7 @@ import {
   Button,
   CloseIcon,
   PlusIcon,
+  SelectPicker,
 } from "@niclaslindstedt/oss-framework/components";
 
 import {
@@ -18,13 +19,15 @@ import {
 } from "./catalog.ts";
 import {
   MAX_PER_DAY_LIMIT,
+  MAX_RUN_LIMIT,
   normalizeMaxPerDay,
+  normalizeMaxRun,
   normalizeTimes,
   normalizeWeekdays,
 } from "./schedule.ts";
 import { formatWeekdayName, weekdayOrder } from "./format.ts";
 import { useT } from "./i18n/index.ts";
-import { newMedicationId, type Medication } from "./types.ts";
+import { newMedicationId, type Medication, type RunUnit } from "./types.ts";
 
 // The medication form — the Add screen's whole body, and the Meds screen's
 // inline editor. One component so adding and editing cannot drift apart.
@@ -47,12 +50,18 @@ import { newMedicationId, type Medication } from "./types.ts";
 // `asNeededDue` for what the two answers mean to the derivation.
 //
 // A medication taken when needed and at no set times gets one more question,
-// and only that one: the most doses of it meant to be taken in a day. It is
-// the only kind whose doses are unbounded — every other kind counts its own
-// by listing its times — and that number is the thing its owner otherwise has
-// to hold in their head from lunchtime onwards. Blank means no limit, which
-// is what it starts on and what most medications stay on. See `types.ts` for
-// why the app repeats the number back rather than enforcing it.
+// and only that one: the ceilings it came with. It is the only kind that is
+// unbounded in either direction — every other kind counts its own doses by
+// listing its times, and ends at its own `endDate` or when you say you are
+// done with its course — so it is the only kind with something to count
+// against.
+//
+// Both halves sit on one row because they are one sentence: "no more than
+// three a day, for no more than a week". Blank means no limit, which is what
+// they start on and what most medications stay on, and the unit is a dropdown
+// rather than a second number because "a week" is how the second half is
+// actually said. See `types.ts` for why the app repeats the numbers back
+// rather than enforcing them.
 //
 // The last control is the weekday mask, and it is deliberately the one that
 // answers itself: "Every day" starts lit, and the seven day pills only appear
@@ -114,6 +123,14 @@ export function MedForm({
     initial?.maxPerDay !== null && initial?.maxPerDay !== undefined
       ? String(initial.maxPerDay)
       : "",
+  );
+  const [maxRun, setMaxRun] = useState(
+    initial?.maxRun !== null && initial?.maxRun !== undefined
+      ? String(initial.maxRun)
+      : "",
+  );
+  const [maxRunUnit, setMaxRunUnit] = useState<RunUnit>(
+    initial?.maxRunUnit ?? "days",
   );
   // null is "every day" — the same value the document holds, so there is no
   // second representation of the schedule to keep in step.
@@ -187,6 +204,13 @@ export function MedForm({
       // number at all.
       maxPerDay: normalizeMaxPerDay(
         maxPerDay.trim() === "" ? null : Number(maxPerDay),
+        { asNeeded, times: finalTimes },
+      ),
+      // The unit comes back as "days" with the number when there is no
+      // number, so a stretch cleared out of the box leaves nothing behind.
+      ...normalizeMaxRun(
+        maxRun.trim() === "" ? null : Number(maxRun),
+        maxRunUnit,
         { asNeeded, times: finalTimes },
       ),
       // One schedule, one representation: an as-needed medication carries no
@@ -360,28 +384,69 @@ export function MedForm({
         {asNeeded && times.length === 0 && (
           <p className="mt-1 text-xs text-fg">{t("meds.form.noTimes")}</p>
         )}
-        {/* The daily maximum — asked only of the medication whose doses
-            nothing else counts, and answered by leaving the box alone. */}
+        {/* The ceilings — asked only of the medication nothing else counts,
+            and answered by leaving the boxes alone. One row, because they are
+            one sentence; it wraps to two lines rather than shrinking on a
+            narrow phone. */}
         {asNeeded && times.length === 0 && (
           <div className="mt-2 flex flex-col gap-1">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-fg">
-                {t("meds.form.maxPerDay")}
-              </span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={MAX_PER_DAY_LIMIT}
-                step={1}
-                value={maxPerDay}
-                placeholder={t("meds.form.maxPerDayPlaceholder")}
-                autoComplete="off"
-                enterKeyHint="done"
-                onInput={(e) => setMaxPerDay(e.currentTarget.value)}
-                className="w-28 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg-bright tabular-nums outline-none focus:border-accent"
-              />
-            </label>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-fg">
+                  {t("meds.form.maxPerDay")}
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAX_PER_DAY_LIMIT}
+                  step={1}
+                  value={maxPerDay}
+                  placeholder={t("meds.form.maxPerDayPlaceholder")}
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  onInput={(e) => setMaxPerDay(e.currentTarget.value)}
+                  className="w-24 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg-bright tabular-nums outline-none focus:border-accent"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-fg">
+                  {t("meds.form.maxRun")}
+                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={MAX_RUN_LIMIT}
+                    step={1}
+                    value={maxRun}
+                    placeholder={t("meds.form.maxRunPlaceholder")}
+                    autoComplete="off"
+                    enterKeyHint="done"
+                    onInput={(e) => setMaxRun(e.currentTarget.value)}
+                    className="w-24 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg-bright tabular-nums outline-none focus:border-accent"
+                  />
+                  {/* The framework's own dropdown rather than a third pill
+                      group: this is a unit, not a mode, and the two answers
+                      belong behind one word. */}
+                  <SelectPicker<RunUnit>
+                    value={maxRunUnit}
+                    onChange={setMaxRunUnit}
+                    ariaLabel={t("meds.form.maxRunUnit")}
+                    options={[
+                      { value: "days", label: t("meds.form.maxRunDays") },
+                      { value: "weeks", label: t("meds.form.maxRunWeeks") },
+                    ]}
+                    // The trigger's classes replace the framework's
+                    // default set outright, so they carry the whole look:
+                    // the med form's own input box, at the height of the
+                    // number beside it.
+                    triggerClassName="inline-flex h-[2.375rem] cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-fg-bright outline-none focus-visible:border-accent"
+                  />
+                </div>
+              </label>
+            </div>
             <p className="text-xs text-muted">{t("meds.form.maxPerDayHint")}</p>
           </div>
         )}

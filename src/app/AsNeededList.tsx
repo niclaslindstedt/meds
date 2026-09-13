@@ -31,13 +31,13 @@ import type { Medication } from "./types.ts";
 //     the chip under it is there because the second one of an afternoon is
 //     the likeliest next tap.
 //
-// A medication with a daily maximum noted on it (see `types.ts`) says where
-// the day's taps stand against that number, right beside the button that adds
-// to them — "2 of 3 today" — because that is the moment the question is
-// actually asked. At the maximum the one-tap offer steps aside for a plainly
+// A medication with ceilings noted on it (see `types.ts`) says where the day
+// stands against them, right beside the button that adds to them — "2 of 3
+// today", "Day 4 of 7" — because that is the moment the question is actually
+// asked. Reaching either one makes the one-tap offer step aside for a plainly
 // labelled one, so a further dose takes meaning to: the app will always record
 // a dose that was really taken, since a log that argues with you is a log that
-// lies, but it will not let you walk past the number without noticing.
+// lies, but it will not let you walk past a number without noticing.
 //
 // **It is deliberately not a checklist.** The app has one visual grammar rule
 // (see `DayMark.tsx`): filled means it happened, hollow means it is still
@@ -83,15 +83,15 @@ export function AsNeededList({
           // or null for the medication that has no such number — which is
           // most of them, and which renders as nothing at all.
           const allowance = entry.allowance;
-          const spent = allowance !== null && allowance.left === 0;
-          const over = allowance !== null && allowance.taken > allowance.max;
+          const dayOver = allowance !== null && allowance.taken > allowance.max;
+          const daySpent = allowance !== null && allowance.left === 0;
           const standing =
             allowance === null
               ? null
               : t(
-                  over
+                  dayOver
                     ? "asNeeded.maxOver"
-                    : spent
+                    : daySpent
                       ? "asNeeded.maxReached"
                       : "asNeeded.maxToday",
                   {
@@ -99,6 +99,26 @@ export function AsNeededList({
                     max: String(allowance.max),
                   },
                 );
+          // The stretch, read the same way and shown beside it. A run of
+          // zero days is a medication nobody has started: there is no stretch
+          // to be on, so it says nothing at all rather than "day 0".
+          const run = entry.run;
+          const runOver = run !== null && run.days > run.maxDays;
+          const runSpent = run !== null && run.left === 0;
+          const stretch =
+            run === null || run.days === 0
+              ? null
+              : t(
+                  runOver
+                    ? "asNeeded.runOver"
+                    : runSpent
+                      ? "asNeeded.runReached"
+                      : "asNeeded.runToday",
+                  { day: String(run.days), max: String(run.maxDays) },
+                );
+          // Either ceiling reached withdraws the one-tap offer: both are
+          // reasons to stop and mean it.
+          const spent = daySpent || runSpent;
           return (
             <li
               key={entry.med.id}
@@ -153,19 +173,21 @@ export function AsNeededList({
                         reading, and a day past it is the one the app has
                         something to report about — the same grammar the
                         calendar's danger tint follows, a fact rather than a
-                        verdict. */}
+                        verdict. The stretch wears it too, for the same
+                        three readings. */}
                     {standing !== null && (
-                      <span
-                        className={`text-xs tabular-nums ${
-                          over
-                            ? "text-danger"
-                            : spent
-                              ? "text-fg"
-                              : "text-muted"
-                        }`}
-                      >
-                        {standing}
-                      </span>
+                      <Standing
+                        text={standing}
+                        spent={daySpent}
+                        over={dayOver}
+                      />
+                    )}
+                    {stretch !== null && (
+                      <Standing
+                        text={stretch}
+                        spent={runSpent}
+                        over={runOver}
+                      />
                     )}
                   </>
                 ) : (
@@ -200,6 +222,27 @@ export function AsNeededList({
         })}
       </ul>
     </section>
+  );
+}
+
+/** Where the day stands against one of the numbers its owner noted down. */
+function Standing({
+  text,
+  spent,
+  over,
+}: {
+  text: string;
+  spent: boolean;
+  over: boolean;
+}) {
+  return (
+    <span
+      className={`text-xs tabular-nums ${
+        over ? "text-danger" : spent ? "text-fg" : "text-muted"
+      }`}
+    >
+      {text}
+    </span>
   );
 }
 

@@ -118,6 +118,14 @@ export const en = {
     maxToday: "{taken} of {max} today",
     maxReached: "{taken} of {max} today — the most you noted down",
     maxOver: "{taken} today — past the {max} you noted down",
+    // The longest stretch, said the same way and in the same place. Always
+    // counted in days, whichever unit it was given in: the stretch is a run
+    // of days, and "day 9 of 14" is the reading that answers the question.
+    // A stretch is a span, so it is "day 3", never "3 days" — day one is the
+    // day you started, not a day you have finished.
+    runToday: "Day {day} of {max}",
+    runReached: "Day {day} of {max} — the longest you noted down",
+    runOver: "Day {day} — past the {max} days you noted down",
     // At the maximum the one-tap offer is withdrawn and this stands in its
     // place. It still logs: a dose that was actually swallowed has to be
     // recordable, or the log lies. It just stops being something you can do
@@ -160,6 +168,14 @@ export const en = {
     // one. The only detail such a row carries, because it is the only fact
     // about it that isn't "whenever you need it".
     maxPerDayRow: "Max {count} a day",
+    // The same two facts on the same row, when both were noted down. Four
+    // ways to say the stretch rather than a number and a unit glued together
+    // at the call site: a sentence a translator can move the words around in.
+    maxRunRow: "Up to {count} days",
+    maxRunRowOne: "Up to 1 day",
+    maxRunRowWeeks: "Up to {count} weeks",
+    maxRunRowOneWeek: "Up to 1 week",
+    maxBothRow: "{perDay} · {run}",
     // The Meds screen's "new medication" button, now that the top bar's `+`
     // opens the quick-log sheet instead.
     addNew: "New medication",
@@ -202,7 +218,14 @@ export const en = {
       maxPerDay: "Most in one day",
       maxPerDayPlaceholder: "No limit",
       maxPerDayHint:
-        "Optional. Note the number you were given and each day's doses are counted against it, so the sheet can tell you where you stand. It stays your number: the app never sets one, and a dose you did take is always loggable.",
+        "Optional. Note the numbers you were given and the app counts against them — each day's doses, and how long you have been taking it. They stay your numbers: the app never sets one, and a dose you did take is always loggable.",
+      // The longest stretch, beside the daily maximum because they are two
+      // halves of one sentence: "three a day, for no more than a week".
+      maxRun: "For at most",
+      maxRunPlaceholder: "No limit",
+      maxRunUnit: "Days or weeks",
+      maxRunDays: "days",
+      maxRunWeeks: "weeks",
       // The weekday mask. "Every day" is the default and answers itself, so
       // the seven pills stay out of the way until it is switched off — at
       // which point they all start lit and you turn off the days you skip,
