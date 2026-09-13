@@ -103,6 +103,35 @@ A medication being as-needed carries no weekday mask: which days you need it
 is not a fact about the week, so `weekdays` is forced to null (in the form and
 again in `migrations.ts`) and one schedule keeps one representation.
 
+### The daily maximum
+
+`maxPerDay` is the most doses of a medication its owner means to take in one
+day — the number a prescriber or a packet gave them, recorded once instead of
+carried in their head all afternoon. Null (no number given) unless someone
+typed one, which is what every medication and every pre-v4 document carries.
+
+Only the **no times at all** shape can hold one. Every other kind already
+states how many doses a day owes by listing its times — a schedule's slots, a
+course's slots — so a second number beside them could only disagree with them;
+`normalizeMaxPerDay(max, med)` drops it for those, along with anything that is
+not a whole number of at least one, and clamps at `MAX_PER_DAY_LIMIT` (24) so
+a mistyped 300 cannot turn a chip into a paragraph.
+
+`doseAllowance(med, taken)` is the arithmetic: `{ max, taken, left }`, with
+`left` floored at zero so a day that went over reads `taken: 4, max: 3,
+left: 0` rather than a negative remainder. `asNeededOn` carries it per entry
+as `allowance` (null when the medication has no maximum), counting that day's
+own taps — a maximum is a fact about one day, and the next day starts over.
+
+It is a **ceiling, not a schedule**, and two consequences follow. First, it
+moves nothing: `dueDoses`, `dayProgress` and every figure in `stats.ts` read
+exactly as they did before the number existed, because a dose that was never
+scheduled cannot be missed. Second, it is repeated back, never enforced —
+reaching it withdraws the one-tap offer in the "As needed" panel and leaves a
+plainly labelled one ("Log one anyway"), because a log that refuses to record
+a dose that was actually swallowed is a log that lies. The app counts; it
+never decides the number.
+
 A dose is identified by `medId@HH:MM`, and a day's log maps those keys to the
 timestamps they were ticked at. Editing a slot from 08:00 to 09:00 therefore
 orphans old taps at 08:00 — those days now owe the new slot — which is the
@@ -162,6 +191,7 @@ doc.medications["m1"] = {
   times: ["08:00", "20:00"],
   asNeeded: false, // true = owes nothing except over a course (below)
   courses: [], // e.g. [{ from: "2026-03-05", fromTime: "10:00", to: null }]
+  maxPerDay: null, // e.g. 3, for an as-needed med with no times; null = no limit
   weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-02",
   endDate: null,

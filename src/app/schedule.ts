@@ -120,6 +120,36 @@ export function normalizeCourses(
     .sort((a, b) => a.from.localeCompare(b.from));
 }
 
+/** The largest daily maximum the document will hold. Past a couple of dozen
+ *  the number has stopped being a limit anyone is counting against. */
+export const MAX_PER_DAY_LIMIT = 24;
+
+/** The most doses a day this medication is meant to take, normalised on the
+ *  way into the document: a whole number of at least one, or null for "no
+ *  number was given".
+ *
+ *  Only an as-needed medication with no times of its own can carry one. Every
+ *  other kind already says how many doses a day owes by listing them — a
+ *  scheduled medication's slots, a course's slots — and a second number
+ *  beside them is a number that can contradict them. So switching a
+ *  medication to a schedule, or giving it times, drops the cap rather than
+ *  leaving one that no longer describes anything.
+ *
+ *  `MAX_PER_DAY_LIMIT` is a sanity bound, not a medical one: it is there so a
+ *  mistyped 300 — or a byte from a file this app did not write — cannot turn
+ *  a chip into a paragraph.
+ */
+export function normalizeMaxPerDay(
+  max: number | null | undefined,
+  med: Pick<Medication, "asNeeded" | "times">,
+): number | null {
+  if (!med.asNeeded || med.times.length > 0) return null;
+  if (typeof max !== "number" || !Number.isFinite(max)) return null;
+  const whole = Math.floor(max);
+  if (whole < 1) return null;
+  return Math.min(whole, MAX_PER_DAY_LIMIT);
+}
+
 /** The course covering a day, or null when the medication was not being taken
  *  then. An unfinished course (`to === null`) covers every day from its start
  *  onwards, today and tomorrow included — which is exactly what "I am on this
@@ -268,7 +298,42 @@ export type AsNeededEntry = {
   med: Medication;
   course: Course | null;
   logged: Dose[];
+  /** Where the day's taps stand against the medication's own daily maximum,
+   *  or null when no maximum was recorded — which is every medication until
+   *  someone types one. See `doseAllowance`. */
+  allowance: DoseAllowance | null;
 };
+
+/** A day's doses of one medication, counted against the maximum its owner
+ *  recorded for it. `left` is what is still inside that number, floored at
+ *  zero — a day that went over reads `taken: 4, max: 3, left: 0` rather than
+ *  a negative remainder, because "how far over" is `taken - max` and the
+ *  screens say it in words. */
+export type DoseAllowance = {
+  max: number;
+  taken: number;
+  left: number;
+};
+
+/** Count doses against a medication's recorded daily maximum. Null when it
+ *  has none, which is the uncapped case every caller renders as nothing at
+ *  all.
+ *
+ *  Arithmetic over what the user recorded, and nothing more: the app holds
+ *  the taps and the number it was given, so it can say where one stands
+ *  against the other. It does not decide the number, and no caller may treat
+ *  a full allowance as a refusal to log — see `types.ts`. */
+export function doseAllowance(
+  med: Medication,
+  taken: number,
+): DoseAllowance | null {
+  if (med.maxPerDay === null) return null;
+  return {
+    max: med.maxPerDay,
+    taken,
+    left: Math.max(0, med.maxPerDay - taken),
+  };
+}
 
 /** Every as-needed medication whose span covers a day, with what can be done
  *  about it there.
@@ -286,10 +351,15 @@ export function asNeededOn(data: AppData, day: DayKey): AsNeededEntry[] {
     if (!med.asNeeded) continue;
     if (day < med.startDate) continue;
     if (med.endDate !== null && day > med.endDate) continue;
+    const logged = med.times.length === 0 ? freeDoses(med, log) : [];
     entries.push({
       med,
       course: courseOn(med, day),
-      logged: med.times.length === 0 ? freeDoses(med, log) : [],
+      logged,
+      // Only the medication whose doses are unbounded can hold a maximum, so
+      // the day's own taps are the whole count — there is no due list to add
+      // to them (see `normalizeMaxPerDay`).
+      allowance: doseAllowance(med, logged.length),
     });
   }
   return entries;

@@ -31,10 +31,11 @@ import { sortedMedications, type AppData, type Medication } from "./types.ts";
 // The list is in three sections, and the third is the point of the split:
 // scheduled medications, then the as-needed ones, then the stopped ones. An
 // as-needed medication has no schedule worth printing on a row — which days
-// you need it is not a fact about the week — so its row is a name and, when
-// it applies, the one thing that is state rather than detail: whether you are
-// taking it at the moment. Its times are read where they matter, in the form
-// and on the sheet that offers to start it.
+// you need it is not a fact about the week — so its row is a name, the daily
+// maximum if one was noted down, and, when it applies, the one thing that is
+// state rather than detail: whether you are taking it at the moment. Its
+// times are read where they matter, in the form and on the sheet that offers
+// to start it.
 //
 // It is also where an as-needed medication is *done with*. Starting one is an
 // offer, so it belongs in the quick-log sheet with the other offers; stopping
@@ -218,6 +219,15 @@ export function MedsScreen({
                     {med.endDate !== null
                       ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
                       : t("meds.startedOn", { date: formatDay(med.startDate) })}
+                  </span>
+                )}
+                {/* The one detail an as-needed row does carry, for the
+                    medication that has it: the most its owner noted down for
+                    a day. Everything else about such a row is "whenever you
+                    need it", which is the absence of a qualifier. */}
+                {med.asNeeded && med.maxPerDay !== null && (
+                  <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
+                    {t("meds.maxPerDayRow", { count: String(med.maxPerDay) })}
                   </span>
                 )}
               </span>

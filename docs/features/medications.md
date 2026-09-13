@@ -3,7 +3,8 @@
 A medication is a **name**, an optional free-text **dose**, the **times of
 day** it is taken — one dose per slot, so morning-and-evening is two slots —
 the **days of the week** it is taken on, and whether it is on a schedule at
-all. That is the whole schedule on purpose: there is still no stock counter,
+all, plus — for the one taken when needed at no set times — the most doses of
+it you mean to take in a day. That is the whole schedule on purpose: there is still no stock counter,
 no prescriber field and no notes. Every added question is paid for at every
 add, and the calendar already tells the truth about any pattern by showing
 it.
@@ -24,7 +25,8 @@ and they differ in what putting it on your day means:
 - **No set times** — a painkiller. The sheet offers one **Log a dose**
   button, each tap filed under the minute you took it. That dose sticks to
   that day — the panel on Today then shows it, with a chip to log another —
-  and is gone the next, because a headache is not a schedule.
+  and is gone the next, because a headache is not a schedule. This is the one
+  shape that can carry a **daily maximum** (below).
 - **Set times, taken in stretches** — a mucolytic at 8, 12 and 18 for the
   week a cold lasts. The sheet shows those times and offers **Start taking
   it**. From then on it is not "as needed" any more but your schedule for the
@@ -43,6 +45,34 @@ means you have just taken it. Every day after owes all of them.
 
 A when-needed medication carries no weekday mask, so the day pills go away:
 which days you need it is not a fact about the week.
+
+## Most in one day
+
+A medication taken when needed and at **no set times** gets one more, optional
+question: the most doses of it you mean to take in a day. Leave the box blank
+— which is how it starts — and there is no limit. Type the number you were
+given, say three, and from then on every place that offers to log a dose of it
+says where the day stands beside the button: _1 of 3 today_, then _2 of 3
+today_.
+
+Nothing else is asked it, and nothing else can carry the number: a medication
+with set times — a schedule's or a course's — already says how many doses a
+day it owes by listing them, so a second number beside them could only
+disagree. Switch such a medication to a schedule, or give it times, and the
+maximum goes with the question.
+
+At the maximum the one-tap offer steps aside. The chip reads **Log one
+anyway** and the count turns to _3 of 3 today — the most you noted down_, so
+a further dose is something you do on purpose rather than by reflex. It does
+still log: this is a logbook, and a log that refuses to record a dose you
+actually took is a log that lies. A fourth dose reads _4 today — past the 3
+you noted down_, and untapping one puts the count straight back.
+
+The number is **yours**. The app holds it and counts against it; it never
+suggests one, never checks what you take against anything, and nothing about
+it leaves the device. It also changes no figure anywhere else: a dose that was
+never scheduled cannot be missed, so the calendar, the adherence share, the
+streak and the missed list read exactly as they did before you typed it.
 
 ## Which days
 

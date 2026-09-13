@@ -110,6 +110,20 @@ export const en = {
     // the minute it happened.
     logNow: "Log a dose",
     logNowLabel: "Log a dose of {name}",
+    // The daily maximum, said where it is asked about: next to the button
+    // that logs the dose. It is the number *you* recorded, so the copy
+    // reports it and never rules on it — the app counts, the prescriber
+    // decides. Three readings, because "two of three" and "three of three"
+    // and "four of three" are three different days.
+    maxToday: "{taken} of {max} today",
+    maxReached: "{taken} of {max} today — the most you noted down",
+    maxOver: "{taken} today — past the {max} you noted down",
+    // At the maximum the one-tap offer is withdrawn and this stands in its
+    // place. It still logs: a dose that was actually swallowed has to be
+    // recordable, or the log lies. It just stops being something you can do
+    // without meaning to.
+    logAnyway: "Log one anyway",
+    logAnywayLabel: "Log another dose of {name}, past the maximum you noted",
     // Starting and ending a course — the medication taken at set times for as
     // long as the cold lasts. Starting is an offer, so it is said in the
     // quick-log sheet; ending is a fact about the medication, so it is said
@@ -142,6 +156,10 @@ export const en = {
     asNeededHint: "No schedule. Reach for these with the + button.",
     // The one thing about such a row that is state rather than detail.
     takingNow: "Taking now",
+    // The daily maximum on the row, for the as-needed medication that has
+    // one. The only detail such a row carries, because it is the only fact
+    // about it that isn't "whenever you need it".
+    maxPerDayRow: "Max {count} a day",
     // The Meds screen's "new medication" button, now that the top bar's `+`
     // opens the quick-log sheet instead.
     addNew: "New medication",
@@ -176,6 +194,15 @@ export const en = {
       whenNeededHint:
         "Nothing is scheduled and no day counts as missed — it waits under “As needed” until you log a dose. Add times only if it has set ones on the days you do take it, like 8, 12 and 18 for a few days at a stretch; logging the first then puts the rest of that day's times on the list.",
       noTimes: "No set times — log a dose whenever you take one.",
+      // The daily maximum. Only asked of the medication with no set times,
+      // because that is the only one whose doses are not already counted by
+      // its own schedule. Optional, blank by default, and phrased as what it
+      // is: a number you were given, which the app holds on to and counts
+      // against — not a rule the app has an opinion about.
+      maxPerDay: "Most in one day",
+      maxPerDayPlaceholder: "No limit",
+      maxPerDayHint:
+        "Optional. Note the number you were given and each day's doses are counted against it, so the sheet can tell you where you stand. It stays your number: the app never sets one, and a dose you did take is always loggable.",
       // The weekday mask. "Every day" is the default and answers itself, so
       // the seven pills stay out of the way until it is switched off — at
       // which point they all start lit and you turn off the days you skip,

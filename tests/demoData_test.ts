@@ -67,6 +67,24 @@ describe("buildDemoData", () => {
     ).toBe(true);
   });
 
+  it("spends a daily maximum exactly on one day, and leaves today inside it", () => {
+    const painkiller = Object.values(data.medications).find(
+      (m) => m.asNeeded && m.times.length === 0,
+    )!;
+    expect(painkiller.maxPerDay).toBe(4);
+    const allowanceOn = (day: string) =>
+      asNeededOn(data, day).find((e) => e.med.id === painkiller.id)!.allowance;
+    // The bad afternoon: four doses, the whole number spent — the state the
+    // "As needed" panel changes shape for.
+    expect(allowanceOn(addDays(TODAY, -22))).toEqual({
+      max: 4,
+      taken: 4,
+      left: 0,
+    });
+    // And today, one in and three to go, which is the ordinary reading.
+    expect(allowanceOn(TODAY)).toEqual({ max: 4, taken: 1, left: 3 });
+  });
+
   it("runs the course as a block of scored days surrounded by silent ones", () => {
     const course = Object.values(data.medications).find(
       (m) => m.asNeeded && m.times.length > 0,

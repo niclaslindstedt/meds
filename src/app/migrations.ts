@@ -10,13 +10,14 @@
 // editing an existing step, which would silently rewrite documents that
 // already migrated through it. v1 is the first published shape; v2 added the
 // medication weekday mask; v3 as-needed medications — the flag and the
-// courses together.
+// courses together; v4 the daily maximum.
 
 import { createMigrator } from "@niclaslindstedt/oss-framework/storage";
 
 import {
   isValidTime,
   normalizeCourses,
+  normalizeMaxPerDay,
   normalizeWeekdays,
 } from "./schedule.ts";
 import {
@@ -69,6 +70,17 @@ function parseCourses(
   return normalizeCourses(courses, med);
 }
 
+/** Coerce a stored daily maximum. Anything that isn't a number reads as "no
+ *  maximum given" — which is also what a pre-v4 medication, with no such
+ *  field at all, reads as; `normalizeMaxPerDay` then throws away a number a
+ *  medication of this kind cannot carry. */
+function parseMaxPerDay(
+  value: unknown,
+  med: Pick<Medication, "asNeeded" | "times">,
+): number | null {
+  return normalizeMaxPerDay(typeof value === "number" ? value : null, med);
+}
+
 /** Coerce one stored medication, or drop it when it can't be one. A med needs
  *  a name, and a *scheduled* med needs at least one valid time to mean
  *  anything — one without either is discarded rather than resurrected as an
@@ -99,6 +111,7 @@ function parseMedication(id: string, value: unknown): Medication | null {
     times,
     asNeeded,
     courses: parseCourses(value.courses, { asNeeded, times }),
+    maxPerDay: parseMaxPerDay(value.maxPerDay, { asNeeded, times }),
     // An as-needed medication carries no mask: which days you need it is not
     // a fact about the week, and one schedule gets one representation.
     weekdays: asNeeded ? null : parseWeekdays(value.weekdays),
@@ -147,6 +160,11 @@ const migrator = createMigrator({
     // courses. So again the shape needs no rewriting and the step exists so
     // the stored number moves.
     2: (doc) => ({ ...doc, version: 3 }),
+    // v3 → v4: medications gained a daily maximum. A v3 medication carries no
+    // `maxPerDay` field, and `parseMedication` reads a missing one as null —
+    // no maximum given, which is what every document written before the field
+    // existed meant. Nothing to rewrite; the step moves the stored number.
+    3: (doc) => ({ ...doc, version: 4 }),
   },
 });
 

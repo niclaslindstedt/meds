@@ -48,6 +48,23 @@
 // Either way the days nobody needed it owe nothing, and the four numbers move
 // to the truth.
 //
+// `maxPerDay` is the one fact that is not part of any schedule, and it is
+// here for the medication with no times at all — the only kind whose doses
+// are unbounded, because each tap invents its own slot. "No more than three
+// in a day" is a number its owner was given and then had to hold in their
+// head all afternoon, while the app sat on the one record that answers it.
+// So it is recorded once and counted against the day's taps, and the count
+// ("2 of 3 today") is read at the moment it is asked: the tap. It moves no
+// number on Today, the Calendar or History, and deliberately so — a dose you
+// were never scheduled to take cannot be missed, and a cap is not a schedule.
+//
+// It is a ceiling the app repeats back, never one it enforces: reaching it
+// withdraws the one-tap offer and leaves a deliberate one, because a log that
+// refuses to record a dose that was actually swallowed is a log that lies,
+// and the truth of the record outranks the ceiling. What the app must never
+// do is decide the number — that belongs to the prescriber, and this field
+// only remembers it.
+//
 // A day's log is keyed by *dose* — `medId@HH:MM` — so "taken" is a claim about
 // one medication at one slot, and a day with two slots half done is exactly
 // half done rather than ambiguously "logged".
@@ -110,6 +127,20 @@ export type Medication = {
    *  courses, and re-using one `startDate` for the second would quietly
    *  un-score the first. */
   courses: Course[];
+  /** The most doses of this medication the person taking it means to take in
+   *  one day, or null when no such number was given — which is what every
+   *  medication carries unless someone typed one, and what every pre-v4
+   *  document reads as.
+   *
+   *  Only an as-needed medication with *no* times of its own can hold one
+   *  (see `normalizeMaxPerDay`): every other kind already states how many
+   *  doses a day owes by listing them, and a second number saying the same
+   *  thing is a number that can disagree with itself.
+   *
+   *  Recorded, not enforced — the app counts the day's taps against it and
+   *  says where they stand. It is the user's own ceiling, not the app's
+   *  opinion. */
+  maxPerDay: number | null;
   /** The weekdays doses are due on, in `Date.getDay()` numbering (0 = Sunday),
    *  sorted and deduplicated — or null for every day, which is what an
    *  unmasked medication and every pre-v2 document carry. Never an empty
@@ -148,8 +179,8 @@ export type AppData = {
 
 /** The current document schema version. v1 is the first published shape; v2
  *  added the medication weekday mask; v3 as-needed medications — the flag and
- *  the courses together. */
-export const DOC_VERSION = 3;
+ *  the courses together; v4 the daily maximum. */
+export const DOC_VERSION = 4;
 
 /** The document a first run starts from. */
 export function emptyDoc(): AppData {
