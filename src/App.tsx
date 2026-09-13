@@ -289,9 +289,15 @@ export function App() {
           fifth of a second. Hidden rather than `clip` because the swipe walks
           up from the touch target looking for a sideways *scroller* to yield
           to (`auto`/`scroll`), and this is deliberately not one. */}
+      {/* `overscroll-contain` keeps a flick that runs off the end of a screen
+          inside this box. Without it iOS chains the leftover momentum to the
+          web view, which rubber-bands the whole shell — header, bars and all —
+          off the top of the screen and into the status-bar inset. The
+          framework's modal bodies contain their overscroll for the same
+          reason; this is the app's own scroller doing it. */}
       <main
         ref={main}
-        className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+        className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
       >
         {/* `min-h-full` + `flex` so a screen can ask for the leftover height
             — the Add screen centres its card in it rather than stranding
