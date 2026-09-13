@@ -10,15 +10,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   activeOn,
+  asNeededOn,
+  courseOn,
   dayProgress,
   dosesByTime,
+  doseFor,
   dueDoses,
+  endCourse,
+  isTaking,
   isValidTime,
+  normalizeCourses,
   minutesOfDay,
   normalizeTimes,
   normalizeWeekdays,
   quickLogDistance,
   quickLogOrder,
+  startCourse,
   weekdayOf,
 } from "../src/app/schedule.ts";
 import {
@@ -34,6 +41,8 @@ function med(overrides: Partial<Medication> = {}): Medication {
     name: "Levothyroxine",
     dose: "50 µg",
     times: ["08:00"],
+    asNeeded: false,
+    courses: [],
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,
@@ -350,5 +359,225 @@ describe("quickLogOrder", () => {
     const order = quickLogOrder(doses, 16 * 60);
     expect(order).toHaveLength(doses.length);
     expect(doses.map((d) => d.key)).toEqual(before);
+  });
+});
+
+// As-needed medications: the ones with no schedule to be behind on. Both
+// shapes are pinned here — the one with no times of its own (a painkiller,
+// never due, each tap filed under its own minute) and the one whose times
+// apply only over the stretches it is actually being taken (a course, started
+// when the cold starts and ended when it goes).
+describe("as-needed medications", () => {
+  const painkiller = med({
+    id: "p",
+    name: "Alvedon",
+    times: [],
+    asNeeded: true,
+  });
+  const course = med({
+    id: "c",
+    name: "Bisolvon",
+    times: ["08:00", "12:00", "18:00"],
+    asNeeded: true,
+    courses: [{ from: "2024-03-10", to: "2024-03-14" }],
+  });
+
+  /** A document holding one day's taps for the medications given. */
+  function on(meds: Medication[], day: string, keys: string[]): AppData {
+    return doc(meds, {
+      [day]: {
+        date: day,
+        taken: Object.fromEntries(keys.map((k) => [k, `${day}T09:00:00.000Z`])),
+        updatedAt: `${day}T09:00:00.000Z`,
+      },
+    });
+  }
+
+  describe("normalizeCourses", () => {
+    it("keeps real spans, oldest first", () => {
+      expect(
+        normalizeCourses(
+          [
+            { from: "2024-04-01", to: null },
+            { from: "2024-03-10", to: "2024-03-14" },
+          ],
+          course,
+        ),
+      ).toEqual([
+        { from: "2024-03-10", to: "2024-03-14" },
+        { from: "2024-04-01", to: null },
+      ]);
+    });
+
+    it("drops a course that ended before it began", () => {
+      expect(
+        normalizeCourses([{ from: "2024-03-10", to: "2024-03-09" }], course),
+      ).toEqual([]);
+    });
+
+    it("gives none to a medication that cannot be on one", () => {
+      const span = [{ from: "2024-03-10", to: null }];
+      expect(normalizeCourses(span, painkiller)).toEqual([]);
+      expect(normalizeCourses(span, med())).toEqual([]);
+    });
+  });
+
+  describe("courseOn and isTaking", () => {
+    it("covers the start and end days inclusively and nothing outside", () => {
+      expect(courseOn(course, "2024-03-09")).toBeNull();
+      expect(courseOn(course, "2024-03-10")).toEqual({
+        from: "2024-03-10",
+        to: "2024-03-14",
+      });
+      expect(courseOn(course, "2024-03-14")).not.toBeNull();
+      expect(courseOn(course, "2024-03-15")).toBeNull();
+    });
+
+    it("runs from its start onwards while nobody has closed it", () => {
+      const running = med({
+        ...course,
+        courses: [{ from: "2024-03-10", to: null }],
+      });
+      expect(isTaking(running, "2024-03-10")).toBe(true);
+      expect(isTaking(running, "2024-04-01")).toBe(true);
+      expect(isTaking(running, "2024-03-09")).toBe(false);
+      expect(isTaking(course, "2024-03-12")).toBe(false);
+    });
+  });
+
+  describe("startCourse and endCourse", () => {
+    const NOW = "2024-03-20T09:00:00.000Z";
+
+    it("opens a course from the day it is started", () => {
+      const started = startCourse(
+        med({ ...course, courses: [] }),
+        "2024-03-20",
+        NOW,
+      );
+      expect(started.courses).toEqual([{ from: "2024-03-20", to: null }]);
+      expect(started.updatedAt).toBe(NOW);
+    });
+
+    it("keeps the courses it already earned", () => {
+      expect(startCourse(course, "2024-03-20", NOW).courses).toEqual([
+        { from: "2024-03-10", to: "2024-03-14" },
+        { from: "2024-03-20", to: null },
+      ]);
+    });
+
+    it("will not open a second course over a running one", () => {
+      const running = med({
+        ...course,
+        courses: [{ from: "2024-03-10", to: null }],
+      });
+      expect(startCourse(running, "2024-03-20", NOW)).toBe(running);
+    });
+
+    it("ends the running course yesterday, so today cannot turn missed", () => {
+      const running = med({
+        ...course,
+        courses: [{ from: "2024-03-10", to: null }],
+      });
+      expect(endCourse(running, "2024-03-20", NOW).courses).toEqual([
+        { from: "2024-03-10", to: "2024-03-19" },
+      ]);
+    });
+
+    it("leaves no span at all when it is ended the day it began", () => {
+      const running = med({
+        ...course,
+        courses: [{ from: "2024-03-20", to: null }],
+      });
+      expect(endCourse(running, "2024-03-20", NOW).courses).toEqual([]);
+    });
+  });
+
+  describe("dueDoses", () => {
+    it("asks nothing of a day outside every course", () => {
+      const data = doc([painkiller, course]);
+      expect(dueDoses(data, "2024-03-20")).toEqual([]);
+      expect(dayProgress(data, "2024-03-20").status).toBe("none");
+    });
+
+    it("owes every slot of a day in the middle of a course", () => {
+      const data = on([course], "2024-03-12", [doseKey("c", "08:00")]);
+      expect(dayProgress(data, "2024-03-12")).toEqual({
+        due: 3,
+        taken: 1,
+        status: "partial",
+      });
+    });
+
+    it("owes every slot from the day a course begins, unlogged ones included", () => {
+      // Starting a course is what puts its times on the checklist — including
+      // the ones already past, which is the only way to tick a dose taken
+      // before anyone got round to starting it.
+      const data = on([course], "2024-03-10", [doseKey("c", "12:00")]);
+      expect(dayProgress(data, "2024-03-10")).toEqual({
+        due: 3,
+        taken: 1,
+        status: "partial",
+      });
+    });
+
+    it("owes them on a day nothing was logged at all", () => {
+      const data = doc([course]);
+      expect(dueDoses(data, "2024-03-11")).toHaveLength(3);
+      expect(dayProgress(data, "2024-03-11").status).toBe("missed");
+    });
+
+    it("does not turn a logged painkiller into a due dose", () => {
+      const data = on([painkiller], "2024-03-10", [doseKey("p", "14:12")]);
+      expect(dueDoses(data, "2024-03-10")).toEqual([]);
+      // The whole point: taking one must not make the day scoreable.
+      expect(dayProgress(data, "2024-03-10").status).toBe("none");
+    });
+
+    it("owes nothing outside the medication's own span, course or not", () => {
+      const stopped = med({ ...course, endDate: "2024-03-11" });
+      const data = on([stopped], "2024-03-12", [doseKey("c", "08:00")]);
+      expect(dueDoses(data, "2024-03-12")).toEqual([]);
+    });
+  });
+
+  describe("asNeededOn", () => {
+    it("lists a slotless medication with the doses logged that day, in clock order", () => {
+      const data = on([painkiller], "2024-03-10", [
+        doseKey("p", "21:40"),
+        doseKey("p", "09:05"),
+      ]);
+      const entries = asNeededOn(data, "2024-03-10");
+      expect(entries).toHaveLength(1);
+      expect(entries[0]!.course).toBeNull();
+      expect(entries[0]!.logged.map((d) => d.time)).toEqual(["09:05", "21:40"]);
+    });
+
+    it("offers a course medication on every day, and says when one is running", () => {
+      const data = doc([course]);
+      expect(asNeededOn(data, "2024-03-20")[0]!.course).toBeNull();
+      expect(asNeededOn(data, "2024-03-12")[0]!.course).toEqual({
+        from: "2024-03-10",
+        to: "2024-03-14",
+      });
+      // Its own doses are due doses, so the panel never carries them.
+      expect(asNeededOn(data, "2024-03-12")[0]!.logged).toEqual([]);
+    });
+
+    it("never lists a scheduled medication, or one off its span", () => {
+      expect(asNeededOn(doc([med()]), "2024-03-10")).toEqual([]);
+      const stopped = med({ ...painkiller, endDate: "2024-03-09" });
+      expect(asNeededOn(doc([stopped]), "2024-03-10")).toEqual([]);
+    });
+  });
+
+  describe("doseFor", () => {
+    it("builds the key the log files a dose under", () => {
+      expect(doseFor(painkiller, "14:12")).toEqual({
+        med: painkiller,
+        time: "14:12",
+        key: "p@14:12",
+        takenAt: null,
+      });
+    });
   });
 });

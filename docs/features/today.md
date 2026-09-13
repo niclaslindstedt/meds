@@ -11,6 +11,26 @@ through the day, draws the same progress bar the History screen uses per
 medication, and flips to **All done for today** — the app's one moment of
 celebration — when the last dose lands.
 
+## As needed
+
+Below the checklist, and only when the day has one, sits the **As needed**
+panel — and it lists what you _logged_, never what you might. Medications with
+no schedule are reached for from the quick-log **+** (see
+[medications.md](medications.md)); this screen is the list of what the day
+asks of you, and a painkiller you may not need asks nothing. Once one is
+logged it sticks to that day, with a chip to log another, because the second
+one of an afternoon is the likeliest next tap — and it is gone the next day.
+
+It is deliberately not a list of hollow rows. Hollow means _still open_
+everywhere else in the app, and an as-needed dose is not outstanding; so an
+offer is a chip, and only a dose actually logged wears the filled row the
+checklist uses.
+
+A medication you have **started taking** is not in this panel at all. It is
+not "as needed" any more but your schedule for as long as the course runs, so
+its times are up in the checklist with everything else, every day until the
+Meds tab says you are done with it.
+
 ## The quick-log sheet
 
 The **+** in the top bar opens the same act from anywhere in the app: a sheet
@@ -20,8 +40,15 @@ anything further ahead sorts as what it is — not yet reached. What you have
 already logged sits at the bottom, greyed but still tappable, so the sheet
 answers "have I?" as well as "I have" and a mistap is one tap to undo.
 
+The as-needed medications come at the foot of the pending doses, because this
+is _the_ place one is reached for: a dose just swallowed is the thing this
+sheet exists for. It is also where a medication taken in stretches is
+started — after which it leaves the panel and ranks with the rest.
+
 It is a modal rather than a screen on purpose: logging a dose you just took
-should not cost you the month you had open on the Calendar. The rows are the
+should not cost you the month you had open on the Calendar. It blurs and
+darkens the screen behind it, so the sheet reads as a layer above the app
+rather than as one more panel on it. The rows are the
 same rows this screen renders and every tap is the same write — one way to
 mark a dose taken, two arrangements of it. The order is fixed when the sheet
 opens, so nothing moves under your thumb; ticking a dose fills it in place,

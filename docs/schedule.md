@@ -9,14 +9,15 @@ every downstream figure. The derivation lives in `src/app/schedule.ts` and
 ## What a day owes
 
 A medication carries the times of day it is taken (`times`, one dose per
-slot), the weekdays it is taken on (`weekdays`, or null for every day), and
-the span of days its schedule covers: from `startDate` — the day it was added
-— to `endDate`, which is null while the med is current and set to the day
-before it was stopped otherwise.
+slot), the weekdays it is taken on (`weekdays`, or null for every day),
+whether it is on a schedule at all (`asNeeded`), and the span of days its
+schedule covers: from `startDate` — the day it was added — to `endDate`,
+which is null while the med is current and set to the day before it was
+stopped otherwise.
 
 `dueDoses(data, day)` expands that into the day's checklist: one dose per
-active med per slot, sorted by time then name. The three boundary rules do
-the quiet work:
+active med per slot, sorted by time then name. The four boundary rules do the
+quiet work:
 
 - **A day before a med started owes none of its doses.** Adding a medication
   today does not turn last month red.
@@ -25,6 +26,8 @@ the quiet work:
 - **A day off the weekday mask owes none either.** A med taken every day
   except Tuesday and Thursday owes nothing on a Tuesday — which is a day with
   nothing due, not a day you missed.
+- **A day owes an as-needed med nothing unless a course covers it.** The days
+  nobody reached for the painkiller are silence, not misses.
 
 ### The weekday mask
 
@@ -42,6 +45,54 @@ on the calendar and two holes a week in the adherence figure: a day you were
 never meant to take it and a day you forgot were the same day to the
 derivation. With it, the off day is silence — no gap in a streak, no zero in
 the chart, and nothing in the missed list.
+
+### Taken when needed
+
+`asNeeded` says a medication has no schedule to be behind on. It comes in two
+shapes, and they are two different answers to "what puts this on Today":
+
+- **No times at all** (`times: []`) — a painkiller. It is never due, on any
+  day. Each tap is filed under the minute it happened, so its dose keys carry
+  a wall-clock time rather than a slot, and the doses it logs count towards
+  "doses taken" without ever creating something to have missed. Logging one
+  sticks it to that day and no further: a headache is not a schedule.
+- **Times, taken in stretches** — a mucolytic at 08:00, 12:00 and 18:00 for
+  the week a cold lasts. Those stretches are its `courses`, and a day its
+  courses cover owes all of its times, exactly like a scheduled medication's.
+  That is the point of starting one: the times land on Today the moment you
+  say you are taking it and stay there every day until you say you are done,
+  because the course does nothing unless it is kept up — and two of three
+  logged reads as two of three rather than as a clean day.
+
+`asNeededDue(med, day)` answers the second bullet; the first day of a course
+is no exception, so a course started in the evening leaves that day's earlier
+slots unticked, which is both the truthful record and the only way to tick a
+dose taken before anyone got round to starting it.
+
+A course is `{ from, to }`, with `to` null while it is still running.
+`startCourse` opens one from a given day (a no-op on a medication already
+running, so a double tap cannot open two), and `endCourse` closes the running
+one **yesterday** — the same choice stopping a medication makes, and for the
+same reason: its remaining doses leave today's checklist the moment you say
+you are done, and an unfinished today must not turn into a missed day at
+midnight. A course ended on the day it began leaves no span at all. Both are
+pure: the moment is a parameter, like `today`.
+
+A _list_ of courses rather than one span, because stopping must not rewrite
+history: a cold in March and another in November are two courses, and re-using
+one start date for the second would quietly un-score the first.
+
+`asNeededOn(data, day)` is the other half — every as-needed medication whose
+span covers a day, with the course covering that day (or null) and, for a
+medication with no times, the doses already logged. The quick-log sheet shows
+all of them, because that is where an as-needed medication is deliberately
+reached for; Today and the Calendar's day card show only the entries that
+already have a dose logged, so Today stays the list of what the day actually
+asks of you.
+
+A medication being as-needed carries no weekday mask: which days you need it
+is not a fact about the week, so `weekdays` is forced to null (in the form and
+again in `migrations.ts`) and one schedule keeps one representation.
 
 A dose is identified by `medId@HH:MM`, and a day's log maps those keys to the
 timestamps they were ticked at. Editing a slot from 08:00 to 09:00 therefore
@@ -100,6 +151,8 @@ doc.medications["m1"] = {
   name: "Metformin",
   dose: "500 mg",
   times: ["08:00", "20:00"],
+  asNeeded: false, // true = owes nothing except over a course (below)
+  courses: [], // e.g. [{ from: "2026-03-05", to: null }] while taking it
   weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-02",
   endDate: null,

@@ -8,13 +8,14 @@ import {
   type WeekStart,
 } from "@niclaslindstedt/oss-framework/calendar";
 
+import { AsNeededList } from "./AsNeededList.tsx";
 import { DayLegend, DayMark, toneFor } from "./DayMark.tsx";
 import { DoseList } from "./DoseList.tsx";
-import { dayProgress, dueDoses, type Dose } from "./schedule.ts";
+import { asNeededOn, dayProgress, dueDoses, type Dose } from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 import { earliestStart } from "./stats.ts";
-import type { AppData } from "./types.ts";
+import type { AppData, Medication } from "./types.ts";
 
 // The month view — the log at a glance, and the door to mending it.
 //
@@ -35,9 +36,16 @@ type Props = {
   today: DayKey;
   weekStartsOn: WeekStart;
   onToggle: (day: DayKey, dose: Dose, takenAt: string | null) => void;
+  onStartTaking: (med: Medication) => void;
 };
 
-export function CalendarScreen({ data, today, weekStartsOn, onToggle }: Props) {
+export function CalendarScreen({
+  data,
+  today,
+  weekStartsOn,
+  onToggle,
+  onStartTaking,
+}: Props) {
   const t = useT();
   const [selected, setSelected] = useState<DayKey>(today);
 
@@ -47,6 +55,12 @@ export function CalendarScreen({ data, today, weekStartsOn, onToggle }: Props) {
   const start = earliestStart(data);
   const selectedDoses = useMemo(
     () => dueDoses(data, selected),
+    [data, selected],
+  );
+  // Only the days that already have a record of one, exactly as on Today: a
+  // past day is mended here, not planned.
+  const selectedAsNeeded = useMemo(
+    () => asNeededOn(data, selected).filter((e) => e.logged.length > 0),
     [data, selected],
   );
   const selectedProgress = dayProgress(data, selected);
@@ -90,7 +104,8 @@ export function CalendarScreen({ data, today, weekStartsOn, onToggle }: Props) {
         <h2 className="text-sm font-bold text-fg-bright">
           {formatFullDay(selected)}
         </h2>
-        {selectedDoses.length === 0 ? (
+        {selectedDoses.length === 0 &&
+        (future || selectedAsNeeded.length === 0) ? (
           <p className="mt-2 text-sm text-muted">{t("calendar.dayEmpty")}</p>
         ) : future ? (
           <p className="mt-2 text-sm text-muted">
@@ -100,16 +115,33 @@ export function CalendarScreen({ data, today, weekStartsOn, onToggle }: Props) {
           </p>
         ) : (
           <>
-            <p className="mt-1 text-xs text-muted">
-              {t("calendar.dayProgress", {
-                taken: String(selectedProgress.taken),
-                due: String(selectedProgress.due),
-              })}
-            </p>
+            {selectedDoses.length > 0 && (
+              <>
+                <p className="mt-1 text-xs text-muted">
+                  {t("calendar.dayProgress", {
+                    taken: String(selectedProgress.taken),
+                    due: String(selectedProgress.due),
+                  })}
+                </p>
+                <div className="mt-3">
+                  <DoseList
+                    doses={selectedDoses}
+                    onToggle={(dose, takenAt) =>
+                      onToggle(selected, dose, takenAt)
+                    }
+                  />
+                </div>
+              </>
+            )}
+            {/* The as-needed panel on a past day is how a dose taken away
+                from the phone gets filed after the fact — the same act the
+                checklist above serves for a scheduled one. Future days show
+                neither: a dose cannot truthfully be taken tomorrow. */}
             <div className="mt-3">
-              <DoseList
-                doses={selectedDoses}
+              <AsNeededList
+                entries={selectedAsNeeded}
                 onToggle={(dose, takenAt) => onToggle(selected, dose, takenAt)}
+                onStartTaking={onStartTaking}
               />
             </div>
           </>

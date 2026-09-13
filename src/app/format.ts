@@ -7,6 +7,14 @@
 //
 // `Intl` formatters are memoised per format: constructing one is the
 // expensive part, and these run once per rendered calendar cell.
+//
+// One piece of ambient state lives here, for the same reason the locale does:
+// which clock times are written on. It is a *presentation* choice, so it has
+// no business on the document or in the derivation, and threading it through
+// every dose row and slot heading would be a prop on half the component tree
+// to say one word. `App.tsx` projects the setting onto this module on each
+// render — before any screen renders, so a change to it lands in the same
+// paint the setting does.
 
 import {
   dayKeyToDate,
@@ -95,20 +103,46 @@ export function formatMonth(year: number, month: number): string {
   return formatMonthLabel(year, month);
 }
 
-/** A dose slot ("08:00"), in the reader's own clock convention — "8:00 AM"
- *  where the locale says so, "08:00" where it doesn't. The stored form stays
- *  24-hour regardless (see `schedule.ts`); this is display only. */
+/** Which clock this app writes times on — "system" defers to the locale, the
+ *  other two override it. Module state rather than a parameter: see the note
+ *  at the top of this file. */
+let clock: "system" | "24" | "12" = "system";
+
+/** Set by `App.tsx` from the user's setting. */
+export function setClock(choice: "system" | "24" | "12"): void {
+  clock = choice;
+}
+
+/** The `Intl` options every wall-clock time in this app is formatted with. */
+function clockOptions(): Intl.DateTimeFormatOptions {
+  return {
+    hour: clock === "24" ? "2-digit" : "numeric",
+    minute: "2-digit",
+    ...(clock === "system" ? {} : { hour12: clock === "12" }),
+  };
+}
+
+/** A dose slot ("08:00"), on the reader's clock — "8:00 AM" or "08:00",
+ *  depending on the setting and, failing that, the locale. The stored form
+ *  stays zero-padded 24-hour regardless (see `schedule.ts`); this is display
+ *  only. */
 export function formatTime(time: string): string {
   const match = /^(\d{2}):(\d{2})$/.exec(time);
   if (!match) return time;
   return formatDate(
     new Date(2000, 0, 1, Number(match[1]), Number(match[2])),
     undefined,
-    {
-      hour: "numeric",
-      minute: "2-digit",
-    },
+    clockOptions(),
   );
+}
+
+/** An ISO timestamp as a wall-clock time — the "taken at" note on a ticked
+ *  row. Local, because that is when the tap happened for the person who
+ *  tapped, and on the same clock as every slot beside it. */
+export function formatMoment(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDate(date, undefined, clockOptions());
 }
 
 /**

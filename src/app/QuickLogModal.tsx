@@ -8,12 +8,13 @@ import {
   PlusIcon,
 } from "@niclaslindstedt/oss-framework/components";
 
+import { AsNeededList } from "./AsNeededList.tsx";
 import { DoseRow } from "./DoseRow.tsx";
-import { dueDoses, quickLogOrder, type Dose } from "./schedule.ts";
+import { asNeededOn, dueDoses, quickLogOrder, type Dose } from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { PillIcon } from "./icons.tsx";
 import { useT } from "./i18n/index.ts";
-import type { AppData } from "./types.ts";
+import type { AppData, Medication } from "./types.ts";
 
 // The quick-log sheet: the top bar's `+`, from any screen.
 //
@@ -31,6 +32,13 @@ import type { AppData } from "./types.ts";
 // drawn back rather than dropped, so the sheet answers "have I?" as well as
 // "I have".
 //
+// This is also *the* place an as-needed medication is reached for, which is
+// why the whole list of them sits at the foot of the pending doses. Today is
+// the list of what the day asks of you and a painkiller you may not need asks
+// nothing, so it would be clutter there and is exactly right here: a dose
+// just swallowed is the thing this sheet exists for. The same panel is where
+// a medication taken in stretches is started and, later, retracted.
+//
 // The `+` also used to be the only route to the add form, so the footer
 // carries that route now — a person whose next thought is "actually I need to
 // add the new one" should not have to go looking for the Meds tab.
@@ -41,6 +49,8 @@ type Props = {
   today: DayKey;
   /** Tick or untick one of today's doses — the app's one logging edit. */
   onToggle: (dose: Dose, takenAt: string | null) => void;
+  /** Start taking an as-needed medication, from this sheet's offers. */
+  onStartTaking: (med: Medication) => void;
   /** Leave for the add form. */
   onAddMedication: () => void;
   onClose: () => void;
@@ -53,6 +63,7 @@ export function QuickLogModal({
   data,
   today,
   onToggle,
+  onStartTaking,
   onAddMedication,
   onClose,
 }: Props) {
@@ -86,6 +97,7 @@ export function QuickLogModal({
         data={data}
         today={today}
         onToggle={onToggle}
+        onStartTaking={onStartTaking}
         onAddMedication={onAddMedication}
       />
     </Modal>
@@ -96,10 +108,21 @@ function QuickLogBody({
   data,
   today,
   onToggle,
+  onStartTaking,
   onAddMedication,
 }: Omit<Props, "open" | "onClose">) {
   const t = useT();
   const doses = useMemo(() => dueDoses(data, today), [data, today]);
+  // The offers, and only the offers: a medication you have started taking is
+  // not "as needed" any more — its doses are owed, so they are up in the
+  // ranked list with everything else and the Meds tab is where you are done
+  // with it. Not frozen the way that list is, because nothing here moves
+  // under a thumb: tapping an offer either logs a dose under its own chip or
+  // moves the medication out of the panel altogether.
+  const asNeeded = useMemo(
+    () => asNeededOn(data, today).filter((e) => e.course?.to !== null),
+    [data, today],
+  );
 
   // The arrangement is decided once, when the sheet opens, and then held —
   // which is what the `useState` initialiser buys: this component is mounted
@@ -141,6 +164,7 @@ function QuickLogBody({
   const pending = ranked.filter((dose) => !opened.logged.has(dose.key));
   const already = ranked.filter((dose) => opened.logged.has(dose.key));
   const hasMeds = Object.keys(data.medications).length > 0;
+  const empty = ranked.length === 0 && asNeeded.length === 0;
 
   return (
     <>
@@ -157,7 +181,7 @@ function QuickLogBody({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        {ranked.length === 0 ? (
+        {empty ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <PillIcon className="h-8 w-8 text-muted" />
             <p className="text-sm text-muted">
@@ -180,6 +204,12 @@ function QuickLogBody({
                 ))}
               </ul>
             )}
+            <AsNeededList
+              entries={asNeeded}
+              onToggle={onToggle}
+              onStartTaking={onStartTaking}
+              showHint
+            />
             {already.length > 0 && (
               <section>
                 <h3 className="px-1 text-xs font-bold tracking-wide text-muted uppercase">

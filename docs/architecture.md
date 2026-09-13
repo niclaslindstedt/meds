@@ -31,13 +31,15 @@ backend is connected:
 
 ```jsonc
 {
-  "version": 2,
+  "version": 3,
   "medications": {
     "<id>": {
       "id": "<id>",
       "name": "Levaxin",
       "dose": "50 µg", // free text; "" when none
-      "times": ["08:00"], // zero-padded HH:MM, sorted, ≥ 1
+      "times": ["08:00"], // zero-padded HH:MM, sorted; ≥ 1 unless asNeeded
+      "asNeeded": false, // true = nothing is due except over a course
+      "courses": [], // as-needed stretches: [{ from, to }], to null = running
       "weekdays": null, // getDay() numbers (0 = Sun), sorted; null = every day
       "startDate": "2026-03-01", // first day doses are due
       "endDate": null, // last day doses were due; null while current

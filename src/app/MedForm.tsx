@@ -32,7 +32,16 @@ import { newMedicationId, type Medication } from "./types.ts";
 // app could draw, and it yields the zero-padded 24-hour form the schedule
 // sorts by (see `schedule.ts`).
 //
-// The fourth control is the weekday mask, and it is deliberately the one that
+// The "when" section opens with the one question the rest of it depends on:
+// is this on a schedule, or taken when needed? "On a schedule" is lit to
+// begin with, so the common case still costs zero taps — and the other answer
+// changes what follows rather than adding to it. When needed, the times
+// become optional (a painkiller has none; a course taken at 8, 12 and 18 on
+// the days you take it at all has three) and the weekday pills go away
+// entirely, because which days you need it is not a fact about the week. See
+// `asNeededDue` for what the two answers mean to the derivation.
+//
+// The last control is the weekday mask, and it is deliberately the one that
 // answers itself: "Every day" starts lit, and the seven day pills only appear
 // if you turn it off — at which point they all start lit and you switch off
 // the days you skip. That is how these schedules are described out loud ("100
@@ -85,6 +94,7 @@ export function MedForm({
   const [times, setTimes] = useState<string[]>(
     initial?.times ?? [DEFAULT_TIME],
   );
+  const [asNeeded, setAsNeeded] = useState(initial?.asNeeded ?? false);
   // null is "every day" — the same value the document holds, so there is no
   // second representation of the schedule to keep in step.
   const [weekdays, setWeekdays] = useState<number[] | null>(
@@ -131,14 +141,23 @@ export function MedForm({
     }
     // An emptied slot falls back to the default rather than blocking the
     // save: the native picker can be cleared, and "no time" is not a schedule
-    // this document can hold.
+    // this document can hold — unless the medication is taken when needed, for
+    // which no times at all is the whole answer.
     const slots = normalizeTimes(times);
     onSave({
       id: initial?.id ?? newMedicationId(),
       name: trimmed,
       dose: dose.trim(),
-      times: slots.length > 0 ? slots : [DEFAULT_TIME],
-      weekdays: normalizeWeekdays(weekdays),
+      times: asNeeded ? slots : slots.length > 0 ? slots : [DEFAULT_TIME],
+      asNeeded,
+      // The stretches it has been taken over are history, not a form field —
+      // they are started and ended from the quick-log sheet. `normalizeCourses`
+      // (through `migrations.ts`) drops them if the answers above stop this
+      // being a medication that can be on one.
+      courses: initial?.courses ?? [],
+      // One schedule, one representation: an as-needed medication carries no
+      // mask, so switching the answer cannot leave a stale one behind.
+      weekdays: asNeeded ? null : normalizeWeekdays(weekdays),
       startDate: initial?.startDate ?? today,
       endDate: initial?.endDate ?? null,
       updatedAt: new Date().toISOString(),
@@ -267,7 +286,46 @@ export function MedForm({
         <span className="text-xs font-medium text-fg">
           {t("meds.form.times")}
         </span>
-        <p className="text-xs text-muted">{t("meds.form.timesHint")}</p>
+        {/* The two kinds of schedule, in the chips' shape — the same offer
+            grammar the dose strengths and the day pills wear. */}
+        <div
+          role="group"
+          aria-label={t("meds.form.times")}
+          className="mt-1 mb-1 flex flex-wrap gap-1.5"
+        >
+          <ModePill
+            label={t("meds.form.scheduled")}
+            on={!asNeeded}
+            onClick={() => {
+              setAsNeeded(false);
+              // Coming back to a schedule with no times left is not a
+              // schedule — put the morning slot back rather than saving one
+              // silently on submit.
+              setTimes((prev) => (prev.length > 0 ? prev : [DEFAULT_TIME]));
+            }}
+          />
+          <ModePill
+            label={t("meds.form.whenNeeded")}
+            on={asNeeded}
+            onClick={() => {
+              setAsNeeded(true);
+              // The common as-needed medication has no times at all, so the
+              // morning slot the form starts every medication on would be one
+              // more thing to clear. Only the untouched default goes — a slot
+              // list somebody actually chose survives the switch, and comes
+              // back if they switch away and back.
+              setTimes((prev) =>
+                prev.length === 1 && prev[0] === DEFAULT_TIME ? [] : prev,
+              );
+            }}
+          />
+        </div>
+        <p className="text-xs text-muted">
+          {asNeeded ? t("meds.form.whenNeededHint") : t("meds.form.timesHint")}
+        </p>
+        {asNeeded && times.length === 0 && (
+          <p className="mt-1 text-xs text-fg">{t("meds.form.noTimes")}</p>
+        )}
         <ul className="mt-1 flex flex-col gap-1.5">
           {times.map((time, index) => (
             // Index keys, deliberately: a slot has no identity beyond its
@@ -285,10 +343,12 @@ export function MedForm({
                 }}
                 className="flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg-bright outline-none focus:border-accent"
               />
-              {/* The last slot cannot be removed — a medication with no times
-                  is not a schedule — so the button leaves the row rather than
-                  sitting there disabled. */}
-              {times.length > 1 && (
+              {/* The last slot cannot be removed from a *schedule* — a
+                  scheduled medication with no times is not a schedule — so the
+                  button leaves the row rather than sitting there disabled. An
+                  as-needed medication may have none at all, so there it
+                  stays. */}
+              {(times.length > 1 || asNeeded) && (
                 <button
                   type="button"
                   onClick={() =>
@@ -315,75 +375,82 @@ export function MedForm({
         </button>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-fg">
-          {t("meds.form.days")}
-        </span>
-        <p className="text-xs text-muted">{t("meds.form.daysHint")}</p>
-        {/* The "every day" pill and the seven day pills are one control in
+      {/* No weekday mask on an as-needed medication: which days you need it
+          is not a fact about the week, and a mask left over from a schedule
+          would quietly narrow what the panel offers. */}
+      {!asNeeded && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-fg">
+            {t("meds.form.days")}
+          </span>
+          <p className="text-xs text-muted">{t("meds.form.daysHint")}</p>
+          {/* The "every day" pill and the seven day pills are one control in
             two states, so they share the chips' shape — the same rounded-full
             outline the dose strengths wear, lit with the accent when on. */}
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() =>
-              setWeekdays((prev) => (prev === null ? [...ALL_WEEKDAYS] : null))
-            }
-            aria-pressed={weekdays === null}
-            className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-              weekdays === null
-                ? "border-accent bg-accent/15 text-fg-bright"
-                : "border-line text-fg hover:bg-surface-2"
-            }`}
-          >
-            {t("meds.form.everyDay")}
-          </button>
-        </div>
-        {weekdays !== null && (
-          <div
-            role="group"
-            aria-label={t("meds.form.pickDays")}
-            // Seven columns rather than a wrapping row: a week reads as a
-            // week, and a "Sun" that drops to a second line on a narrow
-            // phone stops looking like part of one.
-            className="mt-1 grid grid-cols-7 gap-1"
-          >
-            {weekdayOrder(weekStartsOn).map((day) => {
-              const on = weekdays.includes(day);
-              // The last day standing cannot be switched off — a medication
-              // with no days is not a schedule — so the tap is a no-op rather
-              // than a save that quietly means something else. Same rule the
-              // last time slot follows.
-              const last = on && weekdays.length === 1;
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() =>
-                    setWeekdays((prev) => {
-                      const current = prev ?? [...ALL_WEEKDAYS];
-                      if (!current.includes(day)) return [...current, day];
-                      if (current.length === 1) return current;
-                      return current.filter((d) => d !== day);
-                    })
-                  }
-                  aria-pressed={on}
-                  aria-disabled={last || undefined}
-                  aria-label={formatWeekdayName(day, "long")}
-                  title={formatWeekdayName(day, "long")}
-                  className={`rounded-full border px-1 py-1.5 text-xs transition-colors ${
-                    on
-                      ? "border-accent bg-accent/15 text-fg-bright"
-                      : "border-line text-muted hover:bg-surface-2"
-                  }`}
-                >
-                  {formatWeekdayName(day)}
-                </button>
-              );
-            })}
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                setWeekdays((prev) =>
+                  prev === null ? [...ALL_WEEKDAYS] : null,
+                )
+              }
+              aria-pressed={weekdays === null}
+              className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                weekdays === null
+                  ? "border-accent bg-accent/15 text-fg-bright"
+                  : "border-line text-fg hover:bg-surface-2"
+              }`}
+            >
+              {t("meds.form.everyDay")}
+            </button>
           </div>
-        )}
-      </div>
+          {weekdays !== null && (
+            <div
+              role="group"
+              aria-label={t("meds.form.pickDays")}
+              // Seven columns rather than a wrapping row: a week reads as a
+              // week, and a "Sun" that drops to a second line on a narrow
+              // phone stops looking like part of one.
+              className="mt-1 grid grid-cols-7 gap-1"
+            >
+              {weekdayOrder(weekStartsOn).map((day) => {
+                const on = weekdays.includes(day);
+                // The last day standing cannot be switched off — a medication
+                // with no days is not a schedule — so the tap is a no-op rather
+                // than a save that quietly means something else. Same rule the
+                // last time slot follows.
+                const last = on && weekdays.length === 1;
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() =>
+                      setWeekdays((prev) => {
+                        const current = prev ?? [...ALL_WEEKDAYS];
+                        if (!current.includes(day)) return [...current, day];
+                        if (current.length === 1) return current;
+                        return current.filter((d) => d !== day);
+                      })
+                    }
+                    aria-pressed={on}
+                    aria-disabled={last || undefined}
+                    aria-label={formatWeekdayName(day, "long")}
+                    title={formatWeekdayName(day, "long")}
+                    className={`rounded-full border px-1 py-1.5 text-xs transition-colors ${
+                      on
+                        ? "border-accent bg-accent/15 text-fg-bright"
+                        : "border-line text-muted hover:bg-surface-2"
+                    }`}
+                  >
+                    {formatWeekdayName(day)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <Button type="submit" variant="primary">
@@ -392,5 +459,33 @@ export function MedForm({
         {onCancel && <Button onClick={onCancel}>{t("common.cancel")}</Button>}
       </div>
     </form>
+  );
+}
+
+/** One of the two answers to "when to take it". Same rounded-full outline as
+ *  the dose strengths and the day pills, lit with the accent when it is the
+ *  one in force. */
+function ModePill({
+  label,
+  on,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
+        on
+          ? "border-accent bg-accent/15 text-fg-bright"
+          : "border-line text-fg hover:bg-surface-2"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

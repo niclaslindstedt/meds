@@ -11,7 +11,12 @@ import { addDays } from "@niclaslindstedt/oss-framework/calendar";
 
 import { buildDemoData } from "../src/app/dev/demoData.ts";
 import { normalizeDoc, serializeDoc } from "../src/app/migrations.ts";
-import { dayProgress, dueDoses, weekdayOf } from "../src/app/schedule.ts";
+import {
+  asNeededOn,
+  dayProgress,
+  dueDoses,
+  weekdayOf,
+} from "../src/app/schedule.ts";
 import { adherenceLastDays, missedDoses, streaks } from "../src/app/stats.ts";
 
 const TODAY = "2024-06-15";
@@ -29,13 +34,57 @@ describe("buildDemoData", () => {
     );
   });
 
-  it("carries four current medications, one late-starting and one masked", () => {
+  it("carries six current medications, one late-starting, one masked and two as needed", () => {
     const meds = Object.values(data.medications);
-    expect(meds).toHaveLength(4);
+    expect(meds).toHaveLength(6);
     expect(meds.every((m) => m.endDate === null)).toBe(true);
     const starts = new Set(meds.map((m) => m.startDate));
     expect(starts.size).toBe(2);
     expect(meds.filter((m) => m.weekdays !== null)).toHaveLength(1);
+    // One with no times of its own and one with three — the two shapes the
+    // "As needed" panel has to render.
+    const asNeeded = meds.filter((m) => m.asNeeded);
+    expect(asNeeded).toHaveLength(2);
+    expect(asNeeded.filter((m) => m.times.length === 0)).toHaveLength(1);
+  });
+
+  it("costs the numbers nothing on the days nobody needed the as-needed meds", () => {
+    // Three months of history, and the painkiller is logged on a handful of
+    // days — but it is never *due*, so no day owes it and no day is scored
+    // against it.
+    const painkiller = Object.values(data.medications).find(
+      (m) => m.asNeeded && m.times.length === 0,
+    )!;
+    for (let i = 0; i <= 90; i++) {
+      const day = addDays(TODAY, -i);
+      expect(dueDoses(data, day).some((d) => d.med.id === painkiller.id)).toBe(
+        false,
+      );
+    }
+    // And it is always on offer, which is how a dose of it gets logged.
+    expect(
+      asNeededOn(data, TODAY).some((e) => e.med.id === painkiller.id),
+    ).toBe(true);
+  });
+
+  it("runs the course as a block of scored days surrounded by silent ones", () => {
+    const course = Object.values(data.medications).find(
+      (m) => m.asNeeded && m.times.length > 0,
+    )!;
+    const scored = (day: string) =>
+      dueDoses(data, day).filter((d) => d.med.id === course.id).length;
+    // Five days running owe it something...
+    for (let back = 16; back >= 12; back--) {
+      expect(scored(addDays(TODAY, -back))).toBeGreaterThan(0);
+    }
+    // ...and the days either side of the course owe it nothing at all.
+    expect(scored(addDays(TODAY, -17))).toBe(0);
+    expect(scored(addDays(TODAY, -11))).toBe(0);
+    // One evening dropped in the middle of it, and nothing else.
+    const missed = missedDoses(data, TODAY, 20).filter(
+      (m) => m.dose.med.id === course.id,
+    );
+    expect(missed.map((m) => m.dose.time)).toEqual(["18:00"]);
   });
 
   it("logs nothing for the masked med on the days it is not due", () => {

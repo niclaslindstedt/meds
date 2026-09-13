@@ -18,11 +18,21 @@ import type { WeekStart } from "@niclaslindstedt/oss-framework/calendar";
  *  for fifteen seconds a day does not need a theme gallery. */
 export type ThemeChoice = "light" | "dark" | "system";
 
+/** Which clock times are written on. "system" follows the device's locale,
+ *  which is right for most people and wrong for the ones whose phone is set
+ *  to one region and whose head is in another — a Swede on an en-US phone
+ *  reads "6:00 PM" as a small puzzle every evening. Three values, no more:
+ *  the two clocks, and letting the device decide. */
+export type ClockChoice = "system" | "24" | "12";
+
 export type AppSettings = {
   theme: ThemeChoice;
   /** First day of the week in the calendar grid (`Date.getDay()` numbering:
    *  0 = Sunday, 1 = Monday). */
   weekStartsOn: WeekStart;
+  /** 12- or 24-hour times, or whatever the device says. Display only: slots
+   *  are stored zero-padded 24-hour whatever this says (see `schedule.ts`). */
+  clock: ClockChoice;
   /** Surface the developer affordances (the demo document, the log panel,
    *  the raw document size) in Settings. */
   devMode: boolean;
@@ -36,6 +46,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // means dark.
   theme: "system",
   weekStartsOn: 1,
+  clock: "system",
   devMode: false,
   captureLogs: false,
 };
@@ -59,6 +70,8 @@ function parseSettings(raw: string): AppSettings {
         ? merged.theme
         : "system",
     weekStartsOn: (week >= 0 && week <= 6 ? week : 1) as WeekStart,
+    clock:
+      merged.clock === "24" || merged.clock === "12" ? merged.clock : "system",
     devMode: merged.devMode === true,
     captureLogs: merged.captureLogs === true,
   };

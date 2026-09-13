@@ -19,6 +19,8 @@ function med(overrides: Partial<Medication> = {}): Medication {
     name: "Levothyroxine",
     dose: "50 µg",
     times: ["08:00"],
+    asNeeded: false,
+    courses: [],
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,

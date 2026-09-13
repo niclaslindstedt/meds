@@ -2,7 +2,7 @@
 import { CheckIcon } from "@niclaslindstedt/oss-framework/components";
 
 import type { Dose } from "./schedule.ts";
-import { formatTime } from "./format.ts";
+import { formatMoment, formatTime } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 
 // One dose, as the control that logs it. Three places render this row — the
@@ -34,6 +34,17 @@ type Props = {
 export function DoseRow({ dose, onToggle, showTime, subdued }: Props) {
   const t = useT();
   const taken = dose.takenAt !== null;
+  const slot = formatTime(dose.time);
+  // "Taken 8:32 AM" is only worth saying *against* the slot it was due at —
+  // it is the row's one piece of information the check glyph does not already
+  // carry. When the row is showing that slot and the tap landed in the same
+  // minute, the note is the slot repeated, which is how an as-needed dose
+  // reads every time: its key *is* the minute it was taken (see
+  // `asNeededOn`), so the slot and the note are the same claim by
+  // construction. Say it once.
+  const at = taken ? formatMoment(dose.takenAt!) : "";
+  const sayWhen = taken && !(showTime && at === slot);
+  const subtitle = dose.med.dose || sayWhen;
   return (
     <button
       type="button"
@@ -52,20 +63,30 @@ export function DoseRow({ dose, onToggle, showTime, subdued }: Props) {
           : "border-line bg-surface-3 hover:bg-surface-2"
       } ${subdued ? "opacity-55" : ""}`}
     >
+      {/* The slot is a *column*: every row in a list is rendered by this
+          component and formatted by the same `formatTime`, so reserving the
+          width its format needs lines the names up under each other. Two
+          widths rather than one, because "08:00" and "12:00 PM" are not the
+          same size of thing and a box built for the second leaves a gutter
+          you could park a bus in beside the first. */}
       {showTime && (
-        <span className="shrink-0 text-xs font-bold text-muted tabular-nums">
-          {formatTime(dose.time)}
+        <span
+          className={`shrink-0 text-xs font-bold text-muted tabular-nums ${
+            slot.length > 5 ? "w-[4.25rem]" : "w-11"
+          }`}
+        >
+          {slot}
         </span>
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium text-fg-bright">
           {dose.med.name}
         </span>
-        {(dose.med.dose || taken) && (
+        {subtitle && (
           <span className="block truncate text-xs text-muted">
             {dose.med.dose}
-            {dose.med.dose && taken && " · "}
-            {taken && t("today.takenAt", { time: clockTime(dose.takenAt!) })}
+            {dose.med.dose && sayWhen && " · "}
+            {sayWhen && t("today.takenAt", { time: at })}
           </span>
         )}
       </span>
@@ -84,16 +105,4 @@ export function DoseRow({ dose, onToggle, showTime, subdued }: Props) {
       </span>
     </button>
   );
-}
-
-/** An ISO timestamp as a wall-clock time ("21:03" / "9:03 PM"), for the
- *  "taken at" note on a ticked row. Local time, because that is when the tap
- *  happened for the person who tapped. */
-function clockTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
 }

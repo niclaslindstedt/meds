@@ -14,6 +14,7 @@ import {
 } from "@niclaslindstedt/oss-framework/components";
 
 import { MedForm } from "./MedForm.tsx";
+import { isTaking } from "./schedule.ts";
 import { formatDay, formatTime, formatWeekdays } from "./format.ts";
 import { PillIcon } from "./icons.tsx";
 import { useT } from "./i18n/index.ts";
@@ -26,6 +27,21 @@ import { sortedMedications, type AppData, type Medication } from "./types.ts";
 // a modal or on another screen: the list is short, the context (which med am
 // I changing?) is the row itself, and a phone keyboard over a modal over a
 // list is two layers more than three fields deserve.
+//
+// The list is in three sections, and the third is the point of the split:
+// scheduled medications, then the as-needed ones, then the stopped ones. An
+// as-needed medication has no schedule worth printing on a row — which days
+// you need it is not a fact about the week — so its row is a name and, when
+// it applies, the one thing that is state rather than detail: whether you are
+// taking it at the moment. Its times are read where they matter, in the form
+// and on the sheet that offers to start it.
+//
+// It is also where an as-needed medication is *done with*. Starting one is an
+// offer, so it belongs in the quick-log sheet with the other offers; stopping
+// one is a fact about the medication, and this is the screen that holds those
+// — next to stopping and deleting, the other two ways a medication leaves
+// your days. While it is running its doses are ordinary due doses, so the
+// sheet has nothing left to offer about it.
 //
 // Stopping is the first-class way out, deletion the guarded second. A stopped
 // medication keeps every day it earned in the history and the calendar —
@@ -41,6 +57,8 @@ type Props = {
   weekStartsOn: WeekStart;
   onSave: (med: Medication) => void;
   onRemove: (medId: string) => void;
+  /** Start or end an as-needed medication's course. */
+  onSetTaking: (med: Medication, taking: boolean) => void;
   /** Leave for the add form. This tab is where a person looks for it, now
    *  that the top bar's `+` opens the quick-log sheet. */
   onAddMedication: () => void;
@@ -53,6 +71,7 @@ export function MedsScreen({
   weekStartsOn,
   onSave,
   onRemove,
+  onSetTaking,
   onAddMedication,
   onNotice,
 }: Props) {
@@ -77,7 +96,8 @@ export function MedsScreen({
     );
   }
 
-  const current = meds.filter((m) => m.endDate === null);
+  const current = meds.filter((m) => m.endDate === null && !m.asNeeded);
+  const asNeeded = meds.filter((m) => m.endDate === null && m.asNeeded);
   const stopped = meds.filter((m) => m.endDate !== null);
 
   const stop = (med: Medication) => {
@@ -122,6 +142,30 @@ export function MedsScreen({
                 />
               </div>
               <div className="mt-4 flex flex-col gap-2 border-t border-line pt-3">
+                {/* On your days, or not. Only a medication with times can be
+                    on a course — one without them is a dose at a time, and a
+                    dose at a time is the logging control's business. */}
+                {med.asNeeded &&
+                  med.times.length > 0 &&
+                  med.endDate === null && (
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        onClick={() => {
+                          onSetTaking(med, !isTaking(med, today));
+                          setEditing(null);
+                        }}
+                      >
+                        {t(
+                          isTaking(med, today)
+                            ? "asNeeded.end"
+                            : "asNeeded.start",
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted">
+                        {t("asNeeded.startHint")}
+                      </p>
+                    </div>
+                  )}
                 {med.endDate === null ? (
                   <div className="flex flex-col gap-1">
                     <Button onClick={() => stop(med)}>{t("meds.stop")}</Button>
@@ -159,19 +203,32 @@ export function MedsScreen({
                     </span>
                   )}
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
-                  {med.times.map(formatTime).join(" · ")}
-                  {/* Only a masked med says which days: "every day" is the
-                      absence of a qualifier, and printing it on every row
-                      would say nothing on all of them. */}
-                  {med.weekdays !== null &&
-                    ` · ${formatWeekdays(med.weekdays, weekStartsOn)}`}
-                  {" — "}
-                  {med.endDate !== null
-                    ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
-                    : t("meds.startedOn", { date: formatDay(med.startDate) })}
-                </span>
+                {/* A scheduled medication's row carries its schedule; an
+                    as-needed one has none to carry, so the row stays a name
+                    and the second line is left off entirely. */}
+                {!med.asNeeded && (
+                  <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
+                    {med.times.map(formatTime).join(" · ")}
+                    {/* Only a masked med says which days: "every day" is the
+                        absence of a qualifier, and printing it on every row
+                        would say nothing on all of them. */}
+                    {med.weekdays !== null &&
+                      ` · ${formatWeekdays(med.weekdays, weekStartsOn)}`}
+                    {" — "}
+                    {med.endDate !== null
+                      ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
+                      : t("meds.startedOn", { date: formatDay(med.startDate) })}
+                  </span>
+                )}
               </span>
+              {/* State, not detail: which as-needed medications are on your
+                  days at the moment is the one thing this list cannot leave
+                  to the form. */}
+              {med.asNeeded && isTaking(med, today) && (
+                <span className="shrink-0 rounded-full border border-accent/50 px-2 py-0.5 text-xs text-accent">
+                  {t("meds.takingNow")}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setEditing(med.id)}
@@ -204,6 +261,17 @@ export function MedsScreen({
             {t("meds.current")}
           </h2>
           <div className="mt-1.5">{rows(current)}</div>
+        </section>
+      )}
+      {asNeeded.length > 0 && (
+        <section>
+          <h2 className="px-1 text-xs font-bold tracking-wide text-muted uppercase">
+            {t("meds.asNeededSection")}
+          </h2>
+          <p className="mt-0.5 px-1 text-xs text-muted">
+            {t("meds.asNeededHint")}
+          </p>
+          <div className="mt-1.5">{rows(asNeeded)}</div>
         </section>
       )}
       {stopped.length > 0 && (
