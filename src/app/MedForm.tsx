@@ -16,7 +16,12 @@ import {
   searchCatalog,
   type CatalogEntry,
 } from "./catalog.ts";
-import { normalizeTimes, normalizeWeekdays } from "./schedule.ts";
+import {
+  MAX_PER_DAY_LIMIT,
+  normalizeMaxPerDay,
+  normalizeTimes,
+  normalizeWeekdays,
+} from "./schedule.ts";
 import { formatWeekdayName, weekdayOrder } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 import { newMedicationId, type Medication } from "./types.ts";
@@ -40,6 +45,14 @@ import { newMedicationId, type Medication } from "./types.ts";
 // the days you take it at all has three) and the weekday pills go away
 // entirely, because which days you need it is not a fact about the week. See
 // `asNeededDue` for what the two answers mean to the derivation.
+//
+// A medication taken when needed and at no set times gets one more question,
+// and only that one: the most doses of it meant to be taken in a day. It is
+// the only kind whose doses are unbounded — every other kind counts its own
+// by listing its times — and that number is the thing its owner otherwise has
+// to hold in their head from lunchtime onwards. Blank means no limit, which
+// is what it starts on and what most medications stay on. See `types.ts` for
+// why the app repeats the number back rather than enforcing it.
 //
 // The last control is the weekday mask, and it is deliberately the one that
 // answers itself: "Every day" starts lit, and the seven day pills only appear
@@ -95,6 +108,13 @@ export function MedForm({
     initial?.times ?? [DEFAULT_TIME],
   );
   const [asNeeded, setAsNeeded] = useState(initial?.asNeeded ?? false);
+  // Held as the text in the box rather than as a number, because "" is a
+  // state the number type cannot hold and it is the default: no limit given.
+  const [maxPerDay, setMaxPerDay] = useState(
+    initial?.maxPerDay !== null && initial?.maxPerDay !== undefined
+      ? String(initial.maxPerDay)
+      : "",
+  );
   // null is "every day" — the same value the document holds, so there is no
   // second representation of the schedule to keep in step.
   const [weekdays, setWeekdays] = useState<number[] | null>(
@@ -144,17 +164,31 @@ export function MedForm({
     // this document can hold — unless the medication is taken when needed, for
     // which no times at all is the whole answer.
     const slots = normalizeTimes(times);
+    const finalTimes = asNeeded
+      ? slots
+      : slots.length > 0
+        ? slots
+        : [DEFAULT_TIME];
     onSave({
       id: initial?.id ?? newMedicationId(),
       name: trimmed,
       dose: dose.trim(),
-      times: asNeeded ? slots : slots.length > 0 ? slots : [DEFAULT_TIME],
+      times: finalTimes,
       asNeeded,
       // The stretches it has been taken over are history, not a form field —
       // they are started and ended from the quick-log sheet. `normalizeCourses`
       // (through `migrations.ts`) drops them if the answers above stop this
       // being a medication that can be on one.
       courses: initial?.courses ?? [],
+      // Read against the answers as saved, not as the form last drew them: a
+      // maximum typed before a time was added describes a medication that no
+      // longer exists, and `normalizeMaxPerDay` drops it rather than storing
+      // a number nothing counts against. An unreadable or empty box is no
+      // number at all.
+      maxPerDay: normalizeMaxPerDay(
+        maxPerDay.trim() === "" ? null : Number(maxPerDay),
+        { asNeeded, times: finalTimes },
+      ),
       // One schedule, one representation: an as-needed medication carries no
       // mask, so switching the answer cannot leave a stale one behind.
       weekdays: asNeeded ? null : normalizeWeekdays(weekdays),
@@ -325,6 +359,31 @@ export function MedForm({
         </p>
         {asNeeded && times.length === 0 && (
           <p className="mt-1 text-xs text-fg">{t("meds.form.noTimes")}</p>
+        )}
+        {/* The daily maximum — asked only of the medication whose doses
+            nothing else counts, and answered by leaving the box alone. */}
+        {asNeeded && times.length === 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-fg">
+                {t("meds.form.maxPerDay")}
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_PER_DAY_LIMIT}
+                step={1}
+                value={maxPerDay}
+                placeholder={t("meds.form.maxPerDayPlaceholder")}
+                autoComplete="off"
+                enterKeyHint="done"
+                onInput={(e) => setMaxPerDay(e.currentTarget.value)}
+                className="w-28 rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg-bright tabular-nums outline-none focus:border-accent"
+              />
+            </label>
+            <p className="text-xs text-muted">{t("meds.form.maxPerDayHint")}</p>
+          </div>
         )}
         <ul className="mt-1 flex flex-col gap-1.5">
           {times.map((time, index) => (

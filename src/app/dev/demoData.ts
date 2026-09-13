@@ -53,6 +53,7 @@ export function buildDemoData(today: DayKey): AppData {
       times: ["07:30"],
       asNeeded: false,
       courses: [],
+      maxPerDay: null,
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -65,6 +66,7 @@ export function buildDemoData(today: DayKey): AppData {
       times: ["08:00", "20:00"],
       asNeeded: false,
       courses: [],
+      maxPerDay: null,
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -79,6 +81,7 @@ export function buildDemoData(today: DayKey): AppData {
       times: ["08:00"],
       asNeeded: false,
       courses: [],
+      maxPerDay: null,
       weekdays: null,
       startDate: lateStart,
       endDate: null,
@@ -94,6 +97,7 @@ export function buildDemoData(today: DayKey): AppData {
       times: ["12:00"],
       asNeeded: false,
       courses: [],
+      maxPerDay: null,
       weekdays: [1, 3, 5],
       startDate: start,
       endDate: null,
@@ -110,6 +114,10 @@ export function buildDemoData(today: DayKey): AppData {
       asNeeded: true,
       // No times means no stretches to be on: each dose is its own record.
       courses: [],
+      // The one medication whose doses nothing else counts, so the one that
+      // can carry a daily maximum — and one of the demo days below spends it
+      // exactly, which is the state the "As needed" panel changes shape for.
+      maxPerDay: 4,
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -132,6 +140,9 @@ export function buildDemoData(today: DayKey): AppData {
           to: addDays(today, -12),
         },
       ],
+      // Its three times already say how many doses a day it owes, so there is
+      // no second number to hold (see `normalizeMaxPerDay`).
+      maxPerDay: null,
       weekdays: null,
       startDate: start,
       endDate: null,
@@ -210,8 +221,13 @@ export function buildDemoData(today: DayKey): AppData {
   for (const [back, time] of [
     [55, "14:12"],
     [41, "21:40"],
+    // The one day that spends the whole daily maximum: four doses of a bad
+    // afternoon, so the panel's "that is the most you noted down" state is in
+    // the demo rather than only in the tests.
     [22, "09:05"],
     [22, "15:35"],
+    [22, "19:20"],
+    [22, "23:05"],
     [8, "23:10"],
     [3, "11:27"],
     [0, "10:12"],

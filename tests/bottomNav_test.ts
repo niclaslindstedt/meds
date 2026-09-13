@@ -23,6 +23,7 @@ function med(overrides: Partial<Medication> = {}): Medication {
     times: ["08:00"],
     asNeeded: false,
     courses: [],
+    maxPerDay: null,
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,

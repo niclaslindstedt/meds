@@ -9,10 +9,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_PER_DAY_LIMIT,
   activeOn,
   asNeededOn,
   courseOn,
   dayProgress,
+  doseAllowance,
   dosesByTime,
   doseFor,
   dueDoses,
@@ -21,6 +23,7 @@ import {
   isValidTime,
   normalizeCourses,
   minutesOfDay,
+  normalizeMaxPerDay,
   normalizeTimes,
   normalizeWeekdays,
   quickLogDistance,
@@ -43,6 +46,7 @@ function med(overrides: Partial<Medication> = {}): Medication {
     times: ["08:00"],
     asNeeded: false,
     courses: [],
+    maxPerDay: null,
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,
@@ -622,6 +626,97 @@ describe("as-needed medications", () => {
       expect(asNeededOn(doc([med()]), "2024-03-10")).toEqual([]);
       const stopped = med({ ...painkiller, endDate: "2024-03-09" });
       expect(asNeededOn(doc([stopped]), "2024-03-10")).toEqual([]);
+    });
+  });
+
+  // The daily maximum: the number its owner was given, counted against the
+  // day's taps. It is a *ceiling*, not a schedule — so what is pinned here is
+  // both halves of that: the counting is right, and nothing about what a day
+  // owes moves because of it.
+  describe("the daily maximum", () => {
+    const capped = med({ ...painkiller, maxPerDay: 3 });
+
+    describe("normalizeMaxPerDay", () => {
+      it("keeps a whole number on a medication that can carry one", () => {
+        expect(normalizeMaxPerDay(3, painkiller)).toBe(3);
+        expect(normalizeMaxPerDay(1, painkiller)).toBe(1);
+      });
+
+      it("drops one from every medication that counts its own doses", () => {
+        // A schedule's slots already say how many a day owes, and so do a
+        // course's — a second number beside them could only disagree.
+        expect(normalizeMaxPerDay(3, med())).toBeNull();
+        expect(normalizeMaxPerDay(3, course)).toBeNull();
+      });
+
+      it("reads a number that is not a count as no maximum at all", () => {
+        for (const value of [0, -2, Number.NaN, null, undefined]) {
+          expect(normalizeMaxPerDay(value, painkiller)).toBeNull();
+        }
+      });
+
+      it("floors a fraction and clamps an absurd number", () => {
+        expect(normalizeMaxPerDay(2.7, painkiller)).toBe(2);
+        expect(normalizeMaxPerDay(300, painkiller)).toBe(MAX_PER_DAY_LIMIT);
+      });
+    });
+
+    describe("doseAllowance", () => {
+      it("says nothing about a medication with no maximum", () => {
+        expect(doseAllowance(painkiller, 2)).toBeNull();
+      });
+
+      it("counts what is left inside the number", () => {
+        expect(doseAllowance(capped, 1)).toEqual({ max: 3, taken: 1, left: 2 });
+        expect(doseAllowance(capped, 3)).toEqual({ max: 3, taken: 3, left: 0 });
+      });
+
+      it("floors the remainder at zero on a day that went over", () => {
+        // The log records what happened, so a fourth dose is a real tap and
+        // the count says so — it is "how far over", not a negative remainder.
+        expect(doseAllowance(capped, 4)).toEqual({ max: 3, taken: 4, left: 0 });
+      });
+    });
+
+    describe("asNeededOn", () => {
+      it("carries the day's own taps, counted against the maximum", () => {
+        const data = on([capped], "2024-03-10", [
+          doseKey("p", "09:05"),
+          doseKey("p", "15:35"),
+        ]);
+        expect(asNeededOn(data, "2024-03-10")[0]!.allowance).toEqual({
+          max: 3,
+          taken: 2,
+          left: 1,
+        });
+        // Yesterday's doses are yesterday's: a maximum is a fact about one
+        // day, and the next day starts it over.
+        expect(asNeededOn(data, "2024-03-11")[0]!.allowance).toEqual({
+          max: 3,
+          taken: 0,
+          left: 3,
+        });
+      });
+
+      it("carries none for a medication nobody gave a maximum", () => {
+        const data = on([painkiller], "2024-03-10", [doseKey("p", "09:05")]);
+        expect(asNeededOn(data, "2024-03-10")[0]!.allowance).toBeNull();
+      });
+    });
+
+    it("changes nothing about what a day owes", () => {
+      // The whole invariant: a cap is not a schedule. A day that spent it, a
+      // day that went over it and a day that never touched it all owe exactly
+      // what they owed before the number existed — nothing.
+      const data = on([capped], "2024-03-10", [
+        doseKey("p", "09:05"),
+        doseKey("p", "12:10"),
+        doseKey("p", "15:35"),
+        doseKey("p", "19:20"),
+      ]);
+      expect(dueDoses(data, "2024-03-10")).toEqual([]);
+      expect(dayProgress(data, "2024-03-10").status).toBe("none");
+      expect(dueDoses(data, "2024-03-11")).toEqual([]);
     });
   });
 

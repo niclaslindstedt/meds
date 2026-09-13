@@ -16,6 +16,7 @@ const MED = {
   times: ["08:00"],
   asNeeded: false,
   courses: [],
+  maxPerDay: null,
   weekdays: null,
   startDate: "2024-03-01",
   endDate: null,
@@ -183,7 +184,7 @@ describe("as-needed medications", () => {
       days: {},
     });
     expect(doc.medications.m1?.asNeeded).toBe(false);
-    expect(doc.version).toBe(3);
+    expect(doc.version).toBe(DOC_VERSION);
   });
 
   it("keeps an as-needed medication that has no times", () => {
@@ -251,6 +252,63 @@ describe("as-needed medications", () => {
       days: {},
     });
     expect(doc.medications.m1?.weekdays).toBeNull();
+  });
+
+  it("keeps a daily maximum on a medication that can carry one", () => {
+    const doc = normalizeDoc({
+      version: 4,
+      medications: {
+        m1: { ...MED, times: [], asNeeded: true, maxPerDay: 3 },
+      },
+      days: {},
+    });
+    expect(doc.medications.m1?.maxPerDay).toBe(3);
+  });
+
+  it("reads a pre-v4 medication as having no maximum", () => {
+    // No field at all is what every document written before v4 carries, and
+    // "no maximum given" is exactly what those documents meant.
+    const v3Med: Record<string, unknown> = {
+      ...MED,
+      times: [],
+      asNeeded: true,
+    };
+    delete v3Med.maxPerDay;
+    const doc = normalizeDoc({
+      version: 3,
+      medications: { m1: v3Med },
+      days: {},
+    });
+    expect(doc.medications.m1?.maxPerDay).toBeNull();
+    expect(doc.version).toBe(DOC_VERSION);
+  });
+
+  it("drops a maximum from a medication that counts its own doses", () => {
+    const scheduled = normalizeDoc({
+      version: 4,
+      medications: { m1: { ...MED, maxPerDay: 3 } },
+      days: {},
+    });
+    expect(scheduled.medications.m1?.maxPerDay).toBeNull();
+    const withTimes = normalizeDoc({
+      version: 4,
+      medications: { m1: { ...MED, asNeeded: true, maxPerDay: 3 } },
+      days: {},
+    });
+    expect(withTimes.medications.m1?.maxPerDay).toBeNull();
+  });
+
+  it("reads a maximum that is not a count as none at all", () => {
+    for (const value of ["3", 0, -1, null, undefined]) {
+      const doc = normalizeDoc({
+        version: 4,
+        medications: {
+          m1: { ...MED, times: [], asNeeded: true, maxPerDay: value },
+        },
+        days: {},
+      });
+      expect(doc.medications.m1?.maxPerDay).toBeNull();
+    }
   });
 
   it("reads anything but true as scheduled", () => {
