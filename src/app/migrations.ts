@@ -62,6 +62,7 @@ function parseCourses(
     if (typeof raw.from !== "string") continue;
     courses.push({
       from: raw.from,
+      fromTime: typeof raw.fromTime === "string" ? raw.fromTime : null,
       to: typeof raw.to === "string" ? raw.to : null,
     });
   }

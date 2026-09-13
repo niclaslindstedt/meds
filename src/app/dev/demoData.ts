@@ -125,7 +125,13 @@ export function buildDemoData(today: DayKey): AppData {
       dose: "8 mg",
       times: ["08:00", "12:00", "18:00"],
       asNeeded: true,
-      courses: [{ from: addDays(today, -16), to: addDays(today, -12) }],
+      courses: [
+        {
+          from: addDays(today, -16),
+          fromTime: "07:00",
+          to: addDays(today, -12),
+        },
+      ],
       weekdays: null,
       startDate: start,
       endDate: null,

@@ -108,7 +108,15 @@ export function normalizeCourses(
   if (!courses || !med.asNeeded || med.times.length === 0) return [];
   return courses
     .filter((c) => c.to === null || c.to >= c.from)
-    .map((c) => ({ from: c.from, to: c.to }))
+    .map((c) => ({
+      from: c.from,
+      // A start minute that isn't a time of day is no claim at all, which is
+      // what null means: the first day owes every slot, as the days after it
+      // do.
+      fromTime:
+        c.fromTime !== null && isValidTime(c.fromTime) ? c.fromTime : null,
+      to: c.to,
+    }))
     .sort((a, b) => a.from.localeCompare(b.from));
 }
 
@@ -133,20 +141,26 @@ export function isTaking(med: Medication, today: DayKey): boolean {
   return courseOn(med, today)?.to === null;
 }
 
-/** Start taking an as-needed medication, from `day`. A no-op on one already
- *  running, so a double tap cannot open two courses.
+/** Start taking an as-needed medication, from `day` at `fromTime`. A no-op on
+ *  one already running, so a double tap cannot open two courses.
  *
- *  `now` is a parameter like every other moment in this module: the caller
- *  reads the clock, this stays pure. */
+ *  Both moments are parameters, like every other moment in this module: the
+ *  caller reads the clock (see `clockSlot` in `format.ts`), this stays pure.
+ *  `fromTime` is the minute of `day` the course begins at, and it is what
+ *  keeps that day from owing the slots it predates. */
 export function startCourse(
   med: Medication,
   day: DayKey,
+  fromTime: string,
   now: string,
 ): Medication {
   if (isTaking(med, day)) return med;
   return {
     ...med,
-    courses: normalizeCourses([...med.courses, { from: day, to: null }], med),
+    courses: normalizeCourses(
+      [...med.courses, { from: day, fromTime, to: null }],
+      med,
+    ),
     updatedAt: now,
   };
 }
@@ -164,7 +178,7 @@ export function endCourse(
   now: string,
 ): Medication {
   const courses = med.courses.map((course) =>
-    course.to === null ? { from: course.from, to: addDays(day, -1) } : course,
+    course.to === null ? { ...course, to: addDays(day, -1) } : course,
   );
   return { ...med, courses: normalizeCourses(courses, med), updatedAt: now };
 }
@@ -182,14 +196,19 @@ export function endCourse(
  *  nothing unless it is kept up. It is also why two of three logged reads as
  *  two of three rather than as a clean day.
  *
- *  The first day is no exception, deliberately. A course started at six in
- *  the evening leaves that day's earlier slots on the checklist unticked,
- *  which reads as a part day — and that is both the truthful record and the
- *  useful one, since it is the only way to tick a dose you took before you
- *  got round to starting the course. */
+ *  The exception is the day the course *begins*, which it begins partway
+ *  through. A course started at ten in the morning owes the midday and the
+ *  evening dose and not the eight o'clock one — that slot passed before the
+ *  medication was on the list at all, and nobody can be behind on a dose they
+ *  had not yet decided to take. So the first day's slots run from
+ *  `course.fromTime`; a course with no recorded minute (an imported one) owes
+ *  its first day whole, like every day after it. */
 export function asNeededDue(med: Medication, day: DayKey): string[] {
   if (med.times.length === 0) return [];
-  return courseOn(med, day) === null ? [] : med.times;
+  const course = courseOn(med, day);
+  if (course === null) return [];
+  if (day !== course.from || course.fromTime === null) return med.times;
+  return med.times.filter((time) => time >= course.fromTime!);
 }
 
 /** Every dose a day owes, in the order the Today screen lists them: by time

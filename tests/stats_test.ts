@@ -243,7 +243,7 @@ describe("as-needed medications", () => {
     name: "Bisolvon",
     times: ["08:00", "12:00", "18:00"],
     asNeeded: true,
-    courses: [{ from: "2024-03-09", to: "2024-03-12" }],
+    courses: [{ from: "2024-03-09", fromTime: null, to: "2024-03-12" }],
   });
 
   /** A document with the medications and day logs given verbatim. */
@@ -288,7 +288,10 @@ describe("as-needed medications", () => {
     const day = "2024-03-10";
     // A one-day course, so the window has exactly this day to say anything
     // about.
-    const oneDay = med({ ...course, courses: [{ from: day, to: day }] });
+    const oneDay = med({
+      ...course,
+      courses: [{ from: day, fromTime: null, to: day }],
+    });
     const data = doc([oneDay], {
       [day]: {
         date: day,

@@ -36,7 +36,7 @@ import { SettingsScreen } from "./app/SettingsScreen.tsx";
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
 import { useT } from "./app/i18n/index.ts";
-import { setClock } from "./app/format.ts";
+import { clockSlot, setClock } from "./app/format.ts";
 import { appearanceFor } from "./app/look.ts";
 import { logStore } from "./app/log.ts";
 import { cacheIdForBase } from "./app/pwa.ts";
@@ -221,9 +221,14 @@ export function App() {
   // `saveMedication` every other edit to a medication does.
   const onSetTaking = useCallback(
     (med: Medication, taking: boolean) => {
-      const now = new Date().toISOString();
+      const now = new Date();
+      const iso = now.toISOString();
       store.saveMedication(
-        taking ? startCourse(med, today, now) : endCourse(med, today, now),
+        taking
+          ? // The minute matters: a course started at ten does not owe the
+            // eight o'clock dose of that day (see `asNeededDue`).
+            startCourse(med, today, clockSlot(now), iso)
+          : endCourse(med, today, iso),
       );
       notice(
         t(taking ? "asNeeded.startedNotice" : "asNeeded.endedNotice", {

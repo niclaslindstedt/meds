@@ -213,9 +213,9 @@ describe("as-needed medications", () => {
           ...MED,
           asNeeded: true,
           courses: [
-            { from: "2024-04-01", to: null },
-            { from: "2024-03-01", to: "2024-03-05" },
-            { from: "2024-02-01", to: "2024-01-01" }, // ended before it began
+            { from: "2024-04-01", fromTime: null, to: null },
+            { from: "2024-03-01", fromTime: null, to: "2024-03-05" },
+            { from: "2024-02-01", fromTime: null, to: "2024-01-01" }, // ended before it began
             "nonsense",
           ],
         },
@@ -223,13 +223,13 @@ describe("as-needed medications", () => {
       days: {},
     });
     expect(doc.medications.m1?.courses).toEqual([
-      { from: "2024-03-01", to: "2024-03-05" },
-      { from: "2024-04-01", to: null },
+      { from: "2024-03-01", fromTime: null, to: "2024-03-05" },
+      { from: "2024-04-01", fromTime: null, to: null },
     ]);
   });
 
   it("gives no courses to a medication that cannot be on one", () => {
-    const courses = [{ from: "2024-03-01", to: null }];
+    const courses = [{ from: "2024-03-01", fromTime: null, to: null }];
     const scheduled = normalizeDoc({
       version: 3,
       medications: { m1: { ...MED, courses } },

@@ -55,10 +55,20 @@
 import type { DayKey } from "@niclaslindstedt/oss-framework/calendar";
 
 /** One stretch an as-needed medication is being taken over: the day it was
- *  started, and the last day it was due — null while it is still running, so
- *  its times stay on Today until someone says otherwise. */
+ *  started, the minute of that day it was started at, and the last day it was
+ *  due — null while it is still running, so its times stay on Today until
+ *  someone says otherwise.
+ *
+ *  `fromTime` exists because a course begins partway through its first day. A
+ *  mucolytic at 08:00, 12:00 and 18:00 that you reach for at ten in the
+ *  morning owes the midday and the evening dose and not the morning one you
+ *  slept through before it was ever on the list — so that day's slots run
+ *  from this minute (see `asNeededDue`). Zero-padded "HH:MM" like every other
+ *  slot, or null for a course that has no such claim to make: an imported one,
+ *  or one whose stored minute could not be read. */
 export type Course = {
   from: DayKey;
+  fromTime: string | null;
   to: DayKey | null;
 };
 

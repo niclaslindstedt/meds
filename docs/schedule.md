@@ -64,15 +64,19 @@ shapes, and they are two different answers to "what puts this on Today":
   because the course does nothing unless it is kept up — and two of three
   logged reads as two of three rather than as a clean day.
 
-`asNeededDue(med, day)` answers the second bullet; the first day of a course
-is no exception, so a course started in the evening leaves that day's earlier
-slots unticked, which is both the truthful record and the only way to tick a
-dose taken before anyone got round to starting it.
+`asNeededDue(med, day)` answers the second bullet, with one exception: the day
+a course _begins_, it begins partway through. A course started at ten in the
+morning owes the midday and the evening dose and not the eight o'clock one —
+that slot passed before the medication was on the list at all, and nobody can
+be behind on a dose they had not yet decided to take. So the first day's slots
+run from `course.fromTime`; every day after it owes them whole.
 
-A course is `{ from, to }`, with `to` null while it is still running.
-`startCourse` opens one from a given day (a no-op on a medication already
-running, so a double tap cannot open two), and `endCourse` closes the running
-one **yesterday** — the same choice stopping a medication makes, and for the
+A course is `{ from, fromTime, to }`, with `to` null while it is still running
+and `fromTime` the minute of `from` it started at (null for an imported course
+with no such claim to make, whose first day is then owed whole).
+`startCourse` opens one from a given day and minute (a no-op on a medication
+already running, so a double tap cannot open two), and `endCourse` closes the
+running one **yesterday** — the same choice stopping a medication makes, and for the
 same reason: its remaining doses leave today's checklist the moment you say
 you are done, and an unfinished today must not turn into a missed day at
 midnight. A course ended on the day it began leaves no span at all. Both are
@@ -152,7 +156,7 @@ doc.medications["m1"] = {
   dose: "500 mg",
   times: ["08:00", "20:00"],
   asNeeded: false, // true = owes nothing except over a course (below)
-  courses: [], // e.g. [{ from: "2026-03-05", to: null }] while taking it
+  courses: [], // e.g. [{ from: "2026-03-05", fromTime: "10:00", to: null }]
   weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-02",
   endDate: null,

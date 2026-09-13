@@ -35,9 +35,10 @@ and they differ in what putting it on your day means:
   then leaves Today, stays in the As needed list ready for the next cold, and
   the stretch it just ran keeps scoring in the history.
 
-The first day of a course is no exception: starting one in the evening leaves
-that day's earlier times unticked, which is both the truthful record and the
-only way to tick a dose you took before you got round to starting it.
+A course only owes the times still ahead of it on the day you start it: reach
+for it at ten and that day owes the noon and six o'clock doses, not the eight
+o'clock one you slept through before it was on the list. Every day after it
+owes all of them.
 
 A when-needed medication carries no weekday mask, so the day pills go away:
 which days you need it is not a fact about the week.

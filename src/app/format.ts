@@ -136,6 +136,20 @@ export function formatTime(time: string): string {
   );
 }
 
+/** The wall-clock minute *as the document spells a slot* — zero-padded
+ *  24-hour, local, ready to be stored. The one place in the app that turns
+ *  "now" into a slot, so a dose of an as-needed medication and the minute a
+ *  course was started are filed the same way.
+ *
+ *  Here rather than in `schedule.ts` because that module is clock-free by
+ *  design: every moment it works with is a parameter, and this is where those
+ *  parameters are read. */
+export function clockSlot(now: Date = new Date()): string {
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 /** An ISO timestamp as a wall-clock time — the "taken at" note on a ticked
  *  row. Local, because that is when the tap happened for the person who
  *  tapped, and on the same clock as every slot beside it. */

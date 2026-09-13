@@ -3,7 +3,7 @@ import { PlusIcon } from "@niclaslindstedt/oss-framework/components";
 
 import { DoseRow } from "./DoseRow.tsx";
 import { doseFor, type AsNeededEntry, type Dose } from "./schedule.ts";
-import { formatTime } from "./format.ts";
+import { clockSlot, formatTime } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 import type { Medication } from "./types.ts";
 
@@ -165,15 +165,4 @@ function Chip({
       {label}
     </button>
   );
-}
-
-/** The wall-clock minute, zero-padded — the slot a dose of a medication with
- *  no times of its own is filed under. Local, because that is when the tap
- *  happened for the person who tapped; zero-padded 24-hour because that is
- *  what every other slot in the document is (see `isValidTime`). */
-function clockSlot(): string {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
 }

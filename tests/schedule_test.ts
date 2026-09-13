@@ -379,7 +379,7 @@ describe("as-needed medications", () => {
     name: "Bisolvon",
     times: ["08:00", "12:00", "18:00"],
     asNeeded: true,
-    courses: [{ from: "2024-03-10", to: "2024-03-14" }],
+    courses: [{ from: "2024-03-10", fromTime: null, to: "2024-03-14" }],
   });
 
   /** A document holding one day's taps for the medications given. */
@@ -398,25 +398,37 @@ describe("as-needed medications", () => {
       expect(
         normalizeCourses(
           [
-            { from: "2024-04-01", to: null },
-            { from: "2024-03-10", to: "2024-03-14" },
+            { from: "2024-04-01", fromTime: null, to: null },
+            { from: "2024-03-10", fromTime: null, to: "2024-03-14" },
           ],
           course,
         ),
       ).toEqual([
-        { from: "2024-03-10", to: "2024-03-14" },
-        { from: "2024-04-01", to: null },
+        { from: "2024-03-10", fromTime: null, to: "2024-03-14" },
+        { from: "2024-04-01", fromTime: null, to: null },
       ]);
+    });
+
+    it("drops a start minute that is not a time of day", () => {
+      expect(
+        normalizeCourses(
+          [{ from: "2024-03-10", fromTime: "half past", to: null }],
+          course,
+        ),
+      ).toEqual([{ from: "2024-03-10", fromTime: null, to: null }]);
     });
 
     it("drops a course that ended before it began", () => {
       expect(
-        normalizeCourses([{ from: "2024-03-10", to: "2024-03-09" }], course),
+        normalizeCourses(
+          [{ from: "2024-03-10", fromTime: null, to: "2024-03-09" }],
+          course,
+        ),
       ).toEqual([]);
     });
 
     it("gives none to a medication that cannot be on one", () => {
-      const span = [{ from: "2024-03-10", to: null }];
+      const span = [{ from: "2024-03-10", fromTime: null, to: null }];
       expect(normalizeCourses(span, painkiller)).toEqual([]);
       expect(normalizeCourses(span, med())).toEqual([]);
     });
@@ -427,6 +439,7 @@ describe("as-needed medications", () => {
       expect(courseOn(course, "2024-03-09")).toBeNull();
       expect(courseOn(course, "2024-03-10")).toEqual({
         from: "2024-03-10",
+        fromTime: null,
         to: "2024-03-14",
       });
       expect(courseOn(course, "2024-03-14")).not.toBeNull();
@@ -436,7 +449,7 @@ describe("as-needed medications", () => {
     it("runs from its start onwards while nobody has closed it", () => {
       const running = med({
         ...course,
-        courses: [{ from: "2024-03-10", to: null }],
+        courses: [{ from: "2024-03-10", fromTime: null, to: null }],
       });
       expect(isTaking(running, "2024-03-10")).toBe(true);
       expect(isTaking(running, "2024-04-01")).toBe(true);
@@ -448,45 +461,48 @@ describe("as-needed medications", () => {
   describe("startCourse and endCourse", () => {
     const NOW = "2024-03-20T09:00:00.000Z";
 
-    it("opens a course from the day it is started", () => {
+    it("opens a course from the day and minute it is started", () => {
       const started = startCourse(
         med({ ...course, courses: [] }),
         "2024-03-20",
+        "10:00",
         NOW,
       );
-      expect(started.courses).toEqual([{ from: "2024-03-20", to: null }]);
+      expect(started.courses).toEqual([
+        { from: "2024-03-20", fromTime: "10:00", to: null },
+      ]);
       expect(started.updatedAt).toBe(NOW);
     });
 
     it("keeps the courses it already earned", () => {
-      expect(startCourse(course, "2024-03-20", NOW).courses).toEqual([
-        { from: "2024-03-10", to: "2024-03-14" },
-        { from: "2024-03-20", to: null },
+      expect(startCourse(course, "2024-03-20", "10:00", NOW).courses).toEqual([
+        { from: "2024-03-10", fromTime: null, to: "2024-03-14" },
+        { from: "2024-03-20", fromTime: "10:00", to: null },
       ]);
     });
 
     it("will not open a second course over a running one", () => {
       const running = med({
         ...course,
-        courses: [{ from: "2024-03-10", to: null }],
+        courses: [{ from: "2024-03-10", fromTime: null, to: null }],
       });
-      expect(startCourse(running, "2024-03-20", NOW)).toBe(running);
+      expect(startCourse(running, "2024-03-20", "10:00", NOW)).toBe(running);
     });
 
     it("ends the running course yesterday, so today cannot turn missed", () => {
       const running = med({
         ...course,
-        courses: [{ from: "2024-03-10", to: null }],
+        courses: [{ from: "2024-03-10", fromTime: null, to: null }],
       });
       expect(endCourse(running, "2024-03-20", NOW).courses).toEqual([
-        { from: "2024-03-10", to: "2024-03-19" },
+        { from: "2024-03-10", fromTime: null, to: "2024-03-19" },
       ]);
     });
 
     it("leaves no span at all when it is ended the day it began", () => {
       const running = med({
         ...course,
-        courses: [{ from: "2024-03-20", to: null }],
+        courses: [{ from: "2024-03-20", fromTime: null, to: null }],
       });
       expect(endCourse(running, "2024-03-20", NOW).courses).toEqual([]);
     });
@@ -508,16 +524,49 @@ describe("as-needed medications", () => {
       });
     });
 
-    it("owes every slot from the day a course begins, unlogged ones included", () => {
-      // Starting a course is what puts its times on the checklist — including
-      // the ones already past, which is the only way to tick a dose taken
-      // before anyone got round to starting it.
-      const data = on([course], "2024-03-10", [doseKey("c", "12:00")]);
+    it("owes only the slots at or after the minute a course begins", () => {
+      // Started at ten: the eight o'clock dose passed before the medication
+      // was on the list at all, so that day owes the midday and the evening
+      // one and nothing else.
+      const late = med({
+        ...course,
+        courses: [{ from: "2024-03-10", fromTime: "10:00", to: "2024-03-14" }],
+      });
+      const data = on([late], "2024-03-10", [doseKey("c", "12:00")]);
       expect(dayProgress(data, "2024-03-10")).toEqual({
-        due: 3,
+        due: 2,
         taken: 1,
         status: "partial",
       });
+      // Every later day of the course owes all of them.
+      expect(dueDoses(data, "2024-03-11")).toHaveLength(3);
+    });
+
+    it("owes a slot at the very minute the course begins", () => {
+      const late = med({
+        ...course,
+        courses: [{ from: "2024-03-10", fromTime: "12:00", to: null }],
+      });
+      expect(dueDoses(doc([late]), "2024-03-10").map((d) => d.time)).toEqual([
+        "12:00",
+        "18:00",
+      ]);
+    });
+
+    it("owes nothing on a first day whose slots are already past", () => {
+      const late = med({
+        ...course,
+        courses: [{ from: "2024-03-10", fromTime: "22:00", to: null }],
+      });
+      expect(dueDoses(doc([late]), "2024-03-10")).toEqual([]);
+      expect(dueDoses(doc([late]), "2024-03-11")).toHaveLength(3);
+    });
+
+    it("owes an imported course its first day whole", () => {
+      // No recorded minute is no claim: the day owes every slot, as the days
+      // after it do.
+      const data = on([course], "2024-03-10", [doseKey("c", "12:00")]);
+      expect(dayProgress(data, "2024-03-10").due).toBe(3);
     });
 
     it("owes them on a day nothing was logged at all", () => {
@@ -557,6 +606,7 @@ describe("as-needed medications", () => {
       expect(asNeededOn(data, "2024-03-20")[0]!.course).toBeNull();
       expect(asNeededOn(data, "2024-03-12")[0]!.course).toEqual({
         from: "2024-03-10",
+        fromTime: null,
         to: "2024-03-14",
       });
       // Its own doses are due doses, so the panel never carries them.
