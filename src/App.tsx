@@ -36,12 +36,14 @@ import { SettingsScreen } from "./app/SettingsScreen.tsx";
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
 import { useT } from "./app/i18n/index.ts";
+import { clockSlot, setClock } from "./app/format.ts";
 import { appearanceFor } from "./app/look.ts";
 import { logStore } from "./app/log.ts";
 import { cacheIdForBase } from "./app/pwa.ts";
-import type { Dose } from "./app/schedule.ts";
+import { endCourse, startCourse, type Dose } from "./app/schedule.ts";
 import { useAppSettings } from "./app/useAppSettings.ts";
 import { localDocBackend, useDocStore } from "./app/useDocStore.ts";
+import type { Medication } from "./app/types.ts";
 import { useSyncEngine } from "./app/useSyncEngine.ts";
 import { status } from "./output.ts";
 
@@ -62,6 +64,11 @@ export function App() {
   const t = useT();
   const { settings, update } = useAppSettings();
   useApplyTheme(useMemo(() => appearanceFor(settings.theme), [settings.theme]));
+  // Which clock the screens write times on. Applied during render rather than
+  // in an effect, so the screens below — which read it through `formatTime` —
+  // are formatted with the setting this render was given rather than with the
+  // previous one (see `format.ts`).
+  setClock(settings.clock);
 
   // Today, as a calendar day. Recomputed on focus rather than on a timer:
   // the only way the answer changes while the app is open is midnight passing
@@ -157,6 +164,17 @@ export function App() {
   // month you were looking at on the Calendar (see `QuickLogModal.tsx`).
   const [quickLogOpen, setQuickLogOpen] = useState(false);
 
+  // A sheet is about the screen it was opened over, so it does not survive
+  // leaving that screen. Every route to another tab runs through `setTab`
+  // above, and some of them are not taps on this shell at all — an installed
+  // PWA whose viewport rect leaves a strip of the bar outside the backdrop
+  // will happily change tab underneath an open sheet, and the sheet then
+  // floats over a screen it has nothing to do with. Closing on the tab itself
+  // catches every one of those paths, including the ones added later.
+  useEffect(() => {
+    setQuickLogOpen(false);
+  }, [tab]);
+
   const [syncDetailsOpen, setSyncDetailsOpen] = useState(false);
   // Applying an update (skip-waiting → the new worker takes control → the
   // page reloads) has a visible gap. Flip a flag on the tap so the toast
@@ -195,6 +213,34 @@ export function App() {
       store.setDoseTaken(day, dose.key, takenAt);
     },
     [store],
+  );
+
+  // Starting and ending an as-needed medication's course. It is an edit to
+  // the medication, not to a day: `startCourse` / `endCourse` are pure (the
+  // moment is a parameter), and the result goes through the same
+  // `saveMedication` every other edit to a medication does.
+  const onSetTaking = useCallback(
+    (med: Medication, taking: boolean) => {
+      const now = new Date();
+      const iso = now.toISOString();
+      store.saveMedication(
+        taking
+          ? // The minute matters: a course started at ten does not owe the
+            // eight o'clock dose of that day (see `asNeededDue`).
+            startCourse(med, today, clockSlot(now), iso)
+          : endCourse(med, today, iso),
+      );
+      notice(
+        t(taking ? "asNeeded.startedNotice" : "asNeeded.endedNotice", {
+          name: med.name,
+        }),
+      );
+    },
+    [store, today, notice, t],
+  );
+  const onStartTaking = useCallback(
+    (med: Medication) => onSetTaking(med, true),
+    [onSetTaking],
   );
 
   const pwa = usePwaUpdate({
@@ -266,6 +312,7 @@ export function App() {
               data={store.data}
               today={today}
               onToggle={onToggleDose}
+              onStartTaking={onStartTaking}
               onAddMedication={() => toggle("add")}
             />
           )}
@@ -287,6 +334,7 @@ export function App() {
               today={today}
               weekStartsOn={settings.weekStartsOn}
               onToggle={onToggleDose}
+              onStartTaking={onStartTaking}
             />
           )}
           {tab === "history" && (
@@ -299,6 +347,7 @@ export function App() {
               weekStartsOn={settings.weekStartsOn}
               onSave={store.saveMedication}
               onRemove={store.removeMedication}
+              onSetTaking={onSetTaking}
               onAddMedication={() => toggle("add")}
               onNotice={notice}
             />
@@ -374,6 +423,7 @@ export function App() {
         data={store.data}
         today={today}
         onToggle={(dose, takenAt) => onToggleDose(today, dose, takenAt)}
+        onStartTaking={onStartTaking}
         onAddMedication={() => {
           setQuickLogOpen(false);
           if (tab !== "add") toggle("add");

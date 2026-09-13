@@ -28,11 +28,18 @@ visible, per-medication adherence, and the recent missed doses by name. Today
 in progress never counts against you, and days from before a medication
 existed count as silence rather than as failures.
 
+Not everything is on a schedule, so a medication can be marked **as needed**
+instead. One with no set times — a painkiller — is logged when you take it and
+sticks to that day only. One with set times is _started_ when you need it and
+puts its times on Today every day until you say you are done, which is what a
+course taken for the week a cold lasts actually needs. Either way the days
+nobody needed it owe nothing, so they never count as missed.
+
 The focus is simplicity over features on purpose. A medication is a name, a
-dose, its time slots and its days — no stock counter, no prescriber field, no
-notification engine — because the cost of every added question is paid at
-every dose, and the app's whole job is to make "did I take it?" a glance and
-"I just did" one tap.
+dose, its time slots, its days and whether it is on a schedule at all — no
+stock counter, no prescriber field, no notification engine — because the cost
+of every added question is paid at every dose, and the app's whole job is to
+make "did I take it?" a glance and "I just did" one tap.
 
 It is built on [`@niclaslindstedt/oss-framework`](https://github.com/niclaslindstedt/oss-framework),
 the shared React/Preact surface behind the sibling
@@ -103,17 +110,17 @@ grid, which takes the swipe for itself and pages the month:
 
 | Tab          | What it does                                                                                                                                                                                                                                          |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Today**    | The day's doses as a checklist grouped by time of day. The whole row is the tap target; the header counts you through the day and flips to "All done" when the last dose is ticked.                                                                   |
+| **Today**    | The day's doses as a checklist grouped by time of day. The whole row is the tap target; the header counts you through the day and flips to "All done" when the last dose is ticked. Below it, the doses of an as-needed medication you logged today.  |
 | **Calendar** | A month at a glance: filled days where every dose landed, hollow part-done days, a warning tint on missed days. Tap any day to open its checklist below the grid — this is where a forgotten dose is logged after the fact. Pages by swipe or arrows. |
 | **History**  | Adherence over the last 7 and 30 days, the current streak, a per-day chart that makes gaps visible, per-medication adherence bars, and the recent missed doses by name and slot.                                                                      |
-| **Meds**     | The medication list. Add a new one, edit in place, **stop** a med you are done with (the history stays, and it can be resumed), or delete one entered by mistake.                                                                                     |
+| **Meds**     | The medication list, in three sections — scheduled, as needed, stopped. Add a new one, edit in place, be **done with** a course you are on, **stop** a med for good (the history stays, and it can be resumed), or delete one entered by mistake.     |
 
 …and two buttons on the top bar, for the two things you do and then leave:
 
-| Button | What it does                                                                                                                                                                                                      |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **+**  | Log a dose, from any screen: a sheet of today's doses with the likeliest first and what you already took greyed at the bottom. Its footer leads to the add form when a new medication is what you actually meant. |
-| **⚙**  | Settings: theme, week start, cloud sync, backup / restore / delete, and the build's version.                                                                                                                      |
+| Button | What it does                                                                                                                                                                                                                                                                                                               |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **+**  | Log a dose, from any screen: a sheet of today's doses with the likeliest first and what you already took greyed at the bottom. It is also where an as-needed medication is reached for — logged, or started for as long as you need it. Its footer leads to the add form when a new medication is what you actually meant. |
+| **⚙**  | Settings: theme, week start, time format, cloud sync, backup / restore / delete, and the build's version.                                                                                                                                                                                                                  |
 
 ## Configuration
 
@@ -147,6 +154,9 @@ doc.medications["m1"] = {
   name: "Levaxin",
   dose: "50 µg",
   times: ["08:00"],
+  asNeeded: false, // true = nothing is due except over a course
+  courses: [], // as-needed stretches: [{ from, to }], to null = running
+  weekdays: null, // every day; e.g. [1, 3, 5] for Mon/Wed/Fri
   startDate: "2026-03-01",
   endDate: null,
   updatedAt: "2026-03-01T08:00:00.000Z",

@@ -14,6 +14,8 @@ const MED = {
   name: "Levothyroxine",
   dose: "50 µg",
   times: ["08:00"],
+  asNeeded: false,
+  courses: [],
   weekdays: null,
   startDate: "2024-03-01",
   endDate: null,
@@ -165,5 +167,100 @@ describe("serializeDoc / parseDoc", () => {
 
   it("throws on bytes that are not JSON", () => {
     expect(() => parseDoc("{not json")).toThrow();
+  });
+});
+
+// v3: the as-needed flag. A pre-v3 medication carries no such field and means
+// a scheduled one; an as-needed medication is the only kind allowed to carry
+// no times at all.
+describe("as-needed medications", () => {
+  it("reads a pre-v3 medication as scheduled", () => {
+    const v2Med: Record<string, unknown> = { ...MED };
+    delete v2Med.asNeeded;
+    const doc = normalizeDoc({
+      version: 2,
+      medications: { m1: v2Med },
+      days: {},
+    });
+    expect(doc.medications.m1?.asNeeded).toBe(false);
+    expect(doc.version).toBe(3);
+  });
+
+  it("keeps an as-needed medication that has no times", () => {
+    const doc = normalizeDoc({
+      version: 3,
+      medications: { m1: { ...MED, times: [], asNeeded: true } },
+      days: {},
+    });
+    expect(doc.medications.m1?.times).toEqual([]);
+    expect(doc.medications.m1?.asNeeded).toBe(true);
+  });
+
+  it("still drops a scheduled medication that has no times", () => {
+    const doc = normalizeDoc({
+      version: 3,
+      medications: { m1: { ...MED, times: [], asNeeded: false } },
+      days: {},
+    });
+    expect(doc.medications.m1).toBeUndefined();
+  });
+
+  it("keeps the courses of an as-needed medication with times", () => {
+    const doc = normalizeDoc({
+      version: 3,
+      medications: {
+        m1: {
+          ...MED,
+          asNeeded: true,
+          courses: [
+            { from: "2024-04-01", fromTime: null, to: null },
+            { from: "2024-03-01", fromTime: null, to: "2024-03-05" },
+            { from: "2024-02-01", fromTime: null, to: "2024-01-01" }, // ended before it began
+            "nonsense",
+          ],
+        },
+      },
+      days: {},
+    });
+    expect(doc.medications.m1?.courses).toEqual([
+      { from: "2024-03-01", fromTime: null, to: "2024-03-05" },
+      { from: "2024-04-01", fromTime: null, to: null },
+    ]);
+  });
+
+  it("gives no courses to a medication that cannot be on one", () => {
+    const courses = [{ from: "2024-03-01", fromTime: null, to: null }];
+    const scheduled = normalizeDoc({
+      version: 3,
+      medications: { m1: { ...MED, courses } },
+      days: {},
+    });
+    expect(scheduled.medications.m1?.courses).toEqual([]);
+    const slotless = normalizeDoc({
+      version: 3,
+      medications: { m1: { ...MED, times: [], asNeeded: true, courses } },
+      days: {},
+    });
+    expect(slotless.medications.m1?.courses).toEqual([]);
+  });
+
+  it("clears a weekday mask left on an as-needed medication", () => {
+    const doc = normalizeDoc({
+      version: 3,
+      medications: { m1: { ...MED, asNeeded: true, weekdays: [1, 3] } },
+      days: {},
+    });
+    expect(doc.medications.m1?.weekdays).toBeNull();
+  });
+
+  it("reads anything but true as scheduled", () => {
+    for (const value of ["yes", 1, null, undefined]) {
+      const doc = normalizeDoc({
+        version: 3,
+        medications: { m1: { ...MED, asNeeded: value } },
+        days: {},
+      });
+      expect(doc.medications.m1?.asNeeded).toBe(false);
+    }
   });
 });

@@ -13,8 +13,9 @@ import type { ThemeChoice } from "./useAppSettings.ts";
 // keep legible.
 //
 // Everything else (font family, scale, density, elevation) stays at the
-// framework defaults, except two: the sans font, because the screens are
-// prose and numbers rather than code, and the corner radius.
+// framework defaults, except three: the sans font, because the screens are
+// prose and numbers rather than code; the corner radius; and how a modal
+// separates itself from the screen it opened over.
 //
 // The radius is the framework's largest preset. It is projected onto
 // `--radius-sm` / `--radius-md` / `--radius-lg` on <html> at paint time, which
@@ -24,6 +25,22 @@ import type { ThemeChoice } from "./useAppSettings.ts";
 // apart later by being styled one corner at a time. The two ends of the scale
 // the engine does not write (`rounded` and `rounded-xl` upwards) are matched to
 // it in `styles.css`, so the ramp stays in order.
+//
+// The backdrop is the other one. This app is dark cards on a dark page, and
+// at the framework's default — a flat half-black scrim, no blur — the
+// quick-log sheet's own surface sat on a dimmed copy of the same greys and
+// read as one more panel on the page rather than as a layer above it: the
+// checklist behind it stayed legible enough to compete with the list you had
+// just asked for. Blur is what fixes that and dimming alone is not — content
+// that is out of focus reads as *behind* at a glance, at any contrast — and
+// the darker scrim is what keeps the blurred page from showing through the
+// sheet's edges.
+//
+// Set here rather than as a `--modal-backdrop-*` rule in `styles.css`,
+// because the theme engine writes both onto <html> as inline styles at paint
+// time and an inline style beats any stylesheet rule. Same reason the radius
+// is set here: these are the engine's to write, so this is the one place a
+// change to them can actually take.
 
 /** The framework preset behind each of the three choices. */
 const PRESET = {
@@ -38,7 +55,12 @@ export function appearanceFor(choice: ThemeChoice): ThemeAppearance {
     ...DEFAULT_THEME_APPEARANCE,
     theme: PRESET[choice],
     fontFamily: "sans",
-    ui: { ...DEFAULT_THEME_APPEARANCE.ui, radius: "lg" },
+    ui: {
+      ...DEFAULT_THEME_APPEARANCE.ui,
+      radius: "lg",
+      backdropBlur: "strong",
+      backdropDarkness: "dark",
+    },
   };
 }
 

@@ -17,7 +17,11 @@ What the log adds up to, from forgiving to specific:
 
 Every figure applies the two rules documented in
 [`../schedule.md`](../schedule.md): an unfinished today never counts against
-you, and a day with nothing due says nothing. The percentages are floored,
+you, and a day with nothing due says nothing. The second is what keeps
+[medications taken when needed](medications.md) out of the numbers — a day
+nobody needed the painkiller owed nothing, so it neither dents a share nor
+breaks a streak. The stretches you _were_ taking one over score like any other
+schedule for as long as they ran, dropped doses included. The percentages are floored,
 print `100%` only for a genuinely perfect share, and print `<1%` rather than
 a dishonest `0%`.
 

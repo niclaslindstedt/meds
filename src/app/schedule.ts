@@ -7,6 +7,7 @@
 // the same day cannot disagree.
 
 import {
+  addDays,
   parseDayKey,
   type DayKey,
 } from "@niclaslindstedt/oss-framework/calendar";
@@ -15,6 +16,7 @@ import {
   doseKey,
   sortedMedications,
   type AppData,
+  type Course,
   type DayLog,
   type Medication,
 } from "./types.ts";
@@ -74,19 +76,161 @@ export function onWeekday(med: Medication, day: DayKey): boolean {
 export function activeOn(med: Medication, day: DayKey): boolean {
   if (day < med.startDate) return false;
   if (med.endDate !== null && day > med.endDate) return false;
-  return onWeekday(med, day);
+  // An as-needed medication carries no mask — which days you need it is not a
+  // fact about the week — and what a covered day owes it is `asNeededDue`'s
+  // question, not this one's.
+  return med.asNeeded || onWeekday(med, day);
+}
+
+/** One dose of one medication at one slot, in the shape every logging control
+ *  speaks. The slot is a scheduled time for a scheduled medication, and the
+ *  minute the tap happened for an as-needed one with no times of its own. */
+export function doseFor(
+  med: Medication,
+  time: string,
+  takenAt: string | null = null,
+): Dose {
+  return { med, time, key: doseKey(med.id, time), takenAt };
+}
+
+/** Normalise a medication's courses on the way into the document: real day
+ *  spans only, oldest first — and none at all for a medication that cannot be
+ *  on one (a scheduled medication, or an as-needed one with no times, whose
+ *  doses are each their own record).
+ *
+ *  A course whose end fell before its start is dropped rather than kept as an
+ *  empty span: that is a course started and ended the same day, which is a
+ *  course nobody was ever on. */
+export function normalizeCourses(
+  courses: readonly Course[] | null | undefined,
+  med: Pick<Medication, "asNeeded" | "times">,
+): Course[] {
+  if (!courses || !med.asNeeded || med.times.length === 0) return [];
+  return courses
+    .filter((c) => c.to === null || c.to >= c.from)
+    .map((c) => ({
+      from: c.from,
+      // A start minute that isn't a time of day is no claim at all, which is
+      // what null means: the first day owes every slot, as the days after it
+      // do.
+      fromTime:
+        c.fromTime !== null && isValidTime(c.fromTime) ? c.fromTime : null,
+      to: c.to,
+    }))
+    .sort((a, b) => a.from.localeCompare(b.from));
+}
+
+/** The course covering a day, or null when the medication was not being taken
+ *  then. An unfinished course (`to === null`) covers every day from its start
+ *  onwards, today and tomorrow included — which is exactly what "I am on this
+ *  at the moment" means. */
+export function courseOn(med: Medication, day: DayKey): Course | null {
+  if (!med.asNeeded) return null;
+  for (const course of med.courses) {
+    if (day < course.from) continue;
+    if (course.to !== null && day > course.to) continue;
+    return course;
+  }
+  return null;
+}
+
+/** Whether a medication is being taken *right now* — on a course nobody has
+ *  closed. This is what puts its times on Today every day, and what the
+ *  "done with it" control retracts. */
+export function isTaking(med: Medication, today: DayKey): boolean {
+  return courseOn(med, today)?.to === null;
+}
+
+/** Start taking an as-needed medication, from `day` at `fromTime`. A no-op on
+ *  one already running, so a double tap cannot open two courses.
+ *
+ *  Both moments are parameters, like every other moment in this module: the
+ *  caller reads the clock (see `clockSlot` in `format.ts`), this stays pure.
+ *  `fromTime` is the minute of `day` the course begins at, and it is what
+ *  keeps that day from owing the slots it predates. */
+export function startCourse(
+  med: Medication,
+  day: DayKey,
+  fromTime: string,
+  now: string,
+): Medication {
+  if (isTaking(med, day)) return med;
+  return {
+    ...med,
+    courses: normalizeCourses(
+      [...med.courses, { from: day, fromTime, to: null }],
+      med,
+    ),
+    updatedAt: now,
+  };
+}
+
+/** Stop taking it. The course ends *yesterday*, for the same reason stopping
+ *  a medication does (see `MedsScreen`): its remaining doses leave today's
+ *  checklist the moment you say you are done, and an unfinished today must
+ *  not turn into a missed day at midnight. The cost is that doses logged
+ *  earlier today stop being scored — which errs forgiving, the direction
+ *  every rule in this app errs. A course ended on the day it began leaves no
+ *  span at all (see `normalizeCourses`). */
+export function endCourse(
+  med: Medication,
+  day: DayKey,
+  now: string,
+): Medication {
+  const courses = med.courses.map((course) =>
+    course.to === null ? { ...course, to: addDays(day, -1) } : course,
+  );
+  return { ...med, courses: normalizeCourses(courses, med), updatedAt: now };
+}
+
+/** The slots an as-needed medication owes on a day.
+ *
+ *  None at all for one with no times of its own: a painkiller is never due,
+ *  on any day, and the doses of it you logged are a record rather than a
+ *  checklist (see `asNeededOn`).
+ *
+ *  For one with times, every day its courses cover owes all of them — that is
+ *  what being on a course means, and it is the whole point of starting one:
+ *  the times appear on Today the moment you say you are taking it, and stay
+ *  there every day until you say you are done, because the course does
+ *  nothing unless it is kept up. It is also why two of three logged reads as
+ *  two of three rather than as a clean day.
+ *
+ *  The exception is the day the course *begins*, which it begins partway
+ *  through. A course started at ten in the morning owes the midday and the
+ *  evening dose and not the eight o'clock one — that slot passed before the
+ *  medication was on the list at all, and nobody can be behind on a dose they
+ *  had not yet decided to take. So the first day's slots run from
+ *  `course.fromTime`; a course with no recorded minute (an imported one) owes
+ *  its first day whole, like every day after it.
+ *
+ *  One slot always survives that cut: a course started *after* the day's last
+ *  slot owes that last one. Reaching for a medication at nine in the evening
+ *  when its last dose was at six is what taking a dose and then going to log
+ *  it looks like — so the row is there to tick, rather than the day quietly
+ *  owing nothing at all. */
+export function asNeededDue(med: Medication, day: DayKey): string[] {
+  if (med.times.length === 0) return [];
+  const course = courseOn(med, day);
+  if (course === null) return [];
+  if (day !== course.from || course.fromTime === null) return med.times;
+  const ahead = med.times.filter((time) => time >= course.fromTime!);
+  return ahead.length > 0 ? ahead : med.times.slice(-1);
 }
 
 /** Every dose a day owes, in the order the Today screen lists them: by time
  *  slot, then by name within a slot. A day before a med started — or after it
  *  stopped, or off its weekday mask — owes none of its doses, so old days
- *  never turn red when the schedule changes. */
+ *  never turn red when the schedule changes. Nor does a day owe an as-needed
+ *  medication anything until one of its doses is logged (see `asNeededDue`),
+ *  which is what keeps the days nobody needed it out of every number. */
 export function dueDoses(data: AppData, day: DayKey): Dose[] {
   const log: DayLog | undefined = data.days[day];
   const doses: Dose[] = [];
   for (const med of sortedMedications(data)) {
     if (!activeOn(med, day)) continue;
-    for (const time of med.times) {
+    const times = med.asNeeded ? asNeededDue(med, day) : med.times;
+    for (const time of times) {
       const key = doseKey(med.id, time);
       doses.push({ med, time, key, takenAt: log?.taken[key] ?? null });
     }
@@ -110,6 +254,61 @@ export function dosesByTime(doses: Dose[]): { time: string; doses: Dose[] }[] {
     time,
     doses: group,
   }));
+}
+
+/** One as-needed medication, as the quick-log sheet offers it on a day.
+ *
+ *  `course` is the stretch covering that day, or null when the medication is
+ *  not being taken then — which is what the sheet's "start taking it" /
+ *  "done with it" control reads. `logged` is the doses of a medication with
+ *  no times at all, each filed under the minute it was taken; a medication
+ *  with times has none of its own, because on a course its doses are *due*
+ *  doses and the checklist above already has them. */
+export type AsNeededEntry = {
+  med: Medication;
+  course: Course | null;
+  logged: Dose[];
+};
+
+/** Every as-needed medication whose span covers a day, with what can be done
+ *  about it there.
+ *
+ *  The quick-log sheet shows all of them — that is where an as-needed
+ *  medication is reached for, deliberately, so Today stays the list of what
+ *  the day actually asks of you. Today and the Calendar's day card show only
+ *  the entries that already have a dose logged: a painkiller sticks to the
+ *  day you took it on and is gone tomorrow, which is all the stickiness a
+ *  headache earns. */
+export function asNeededOn(data: AppData, day: DayKey): AsNeededEntry[] {
+  const log: DayLog | undefined = data.days[day];
+  const entries: AsNeededEntry[] = [];
+  for (const med of sortedMedications(data)) {
+    if (!med.asNeeded) continue;
+    if (day < med.startDate) continue;
+    if (med.endDate !== null && day > med.endDate) continue;
+    entries.push({
+      med,
+      course: courseOn(med, day),
+      logged: med.times.length === 0 ? freeDoses(med, log) : [],
+    });
+  }
+  return entries;
+}
+
+/** The doses logged on a day for an as-needed medication with no slots, in
+ *  clock order. Its dose keys carry the minute of the tap rather than a slot
+ *  — the same `medId@HH:MM` shape, because a dose taken at 14:23 *is* one
+ *  medication at one time of day, and one key shape keeps one write path. */
+function freeDoses(med: Medication, log: DayLog | undefined): Dose[] {
+  const prefix = `${med.id}@`;
+  const doses: Dose[] = [];
+  for (const [key, takenAt] of Object.entries(log?.taken ?? {})) {
+    if (!key.startsWith(prefix)) continue;
+    const time = key.slice(prefix.length);
+    if (!isValidTime(time)) continue;
+    doses.push({ med, time, key, takenAt });
+  }
+  return doses.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 /** How far through a day's doses the log is. */

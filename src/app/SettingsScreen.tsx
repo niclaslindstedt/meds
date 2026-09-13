@@ -24,7 +24,11 @@ import { useT } from "./i18n/index.ts";
 import { mergeDocs } from "./merge.ts";
 import { serializeDoc } from "./migrations.ts";
 import { emptyDoc } from "./types.ts";
-import type { AppSettings, ThemeChoice } from "./useAppSettings.ts";
+import type {
+  AppSettings,
+  ClockChoice,
+  ThemeChoice,
+} from "./useAppSettings.ts";
 import type { DocStore } from "./useDocStore.ts";
 import {
   AVAILABLE_BACKENDS,
@@ -97,7 +101,7 @@ export function SettingsScreen({
       </Section>
 
       <Section
-        title={t("settings.calendar")}
+        title={t("settings.dateTime")}
         icon={<CogIcon className="h-3.5 w-3.5" />}
       >
         <Labelled label={t("settings.weekStart")}>
@@ -115,6 +119,23 @@ export function SettingsScreen({
           />
         </Labelled>
         <p className="text-xs text-muted">{t("settings.weekStartHint")}</p>
+        {/* Display only — a slot is stored zero-padded 24-hour whatever this
+            says (see `schedule.ts`), so switching it can never change what a
+            day owes. */}
+        <Labelled label={t("settings.clock")}>
+          <SegmentedControl<ClockChoice>
+            value={settings.clock}
+            options={[
+              { value: "system", label: t("settings.clockSystem") },
+              { value: "24", label: t("settings.clock24") },
+              { value: "12", label: t("settings.clock12") },
+            ]}
+            onChange={(next) => update("clock", next)}
+            ariaLabel={t("settings.clock")}
+            fullWidth
+          />
+        </Labelled>
+        <p className="text-xs text-muted">{t("settings.clockHint")}</p>
       </Section>
 
       <Section

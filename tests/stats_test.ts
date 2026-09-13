@@ -30,6 +30,8 @@ function med(overrides: Partial<Medication> = {}): Medication {
     name: "Levothyroxine",
     dose: "",
     times: ["08:00"],
+    asNeeded: false,
+    courses: [],
     weekdays: null,
     startDate: "2024-03-01",
     endDate: null,
@@ -221,5 +223,107 @@ describe("a weekday-masked medication", () => {
     expect(missed.every((m) => [1, 3, 5].includes(weekdayOf(m.day)))).toBe(
       true,
     );
+  });
+});
+
+// As-needed medications against the two rules. A day nobody needed one is a
+// day with nothing due, and a day with nothing due says nothing — so an
+// untaken painkiller must not dent a share, break a streak or earn a row in
+// the missed list. A course that *was* started is an ordinary scheduled day
+// for as long as it runs.
+describe("as-needed medications", () => {
+  const painkiller = med({
+    id: "p",
+    name: "Alvedon",
+    times: [],
+    asNeeded: true,
+  });
+  const course = med({
+    id: "c",
+    name: "Bisolvon",
+    times: ["08:00", "12:00", "18:00"],
+    asNeeded: true,
+    courses: [{ from: "2024-03-09", fromTime: null, to: "2024-03-12" }],
+  });
+
+  /** A document with the medications and day logs given verbatim. */
+  function doc(meds: Medication[], days: AppData["days"] = {}): AppData {
+    return {
+      ...emptyDoc(),
+      medications: Object.fromEntries(meds.map((m) => [m.id, m])),
+      days,
+    };
+  }
+
+  it("says nothing about the days nobody needed one", () => {
+    // The painkiller is never due; the course medication is not on one over
+    // this window. Both are silence.
+    const data = doc([painkiller, med({ ...course, courses: [] })]);
+    expect(adherence(data, "2024-03-01", "2024-03-10").share).toBeNull();
+    expect(missedDoses(data, "2024-03-11", 10)).toEqual([]);
+    expect(
+      dailyShares(data, "2024-03-11", 3).every((d) => d.share === null),
+    ).toBe(true);
+  });
+
+  it("does not break a streak a scheduled medication is keeping", () => {
+    const scheduled = med({ id: "s", times: ["08:00"] });
+    const data = doc(
+      [scheduled, painkiller],
+      Object.fromEntries(
+        ["2024-03-01", "2024-03-02", "2024-03-03"].map((day) => [
+          day,
+          {
+            date: day,
+            taken: { [doseKey("s", "08:00")]: `${day}T08:00:00.000Z` },
+            updatedAt: `${day}T08:00:00.000Z`,
+          },
+        ]),
+      ),
+    );
+    expect(streaks(data, "2024-03-04").longest).toBe(3);
+  });
+
+  it("counts the slots a course day owed, and names the one it dropped", () => {
+    const day = "2024-03-10";
+    // A one-day course, so the window has exactly this day to say anything
+    // about.
+    const oneDay = med({
+      ...course,
+      courses: [{ from: day, fromTime: null, to: day }],
+    });
+    const data = doc([oneDay], {
+      [day]: {
+        date: day,
+        taken: {
+          [doseKey("c", "08:00")]: `${day}T08:00:00.000Z`,
+          [doseKey("c", "12:00")]: `${day}T12:00:00.000Z`,
+        },
+        updatedAt: `${day}T12:00:00.000Z`,
+      },
+    });
+    expect(adherence(data, day, day)).toEqual({
+      taken: 2,
+      due: 3,
+      share: 2 / 3,
+    });
+    const missed = missedDoses(data, "2024-03-11", 5);
+    expect(missed).toHaveLength(1);
+    expect(missed[0]!.dose.time).toBe("18:00");
+  });
+
+  it("counts every logged dose in the doses-taken total", () => {
+    const day = "2024-03-10";
+    const data = doc([painkiller], {
+      [day]: {
+        date: day,
+        taken: {
+          [doseKey("p", "09:05")]: `${day}T09:05:00.000Z`,
+          [doseKey("p", "21:40")]: `${day}T21:40:00.000Z`,
+        },
+        updatedAt: `${day}T21:40:00.000Z`,
+      },
+    });
+    expect(totalTaken(data)).toBe(2);
   });
 });

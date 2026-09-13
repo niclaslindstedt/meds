@@ -46,6 +46,10 @@ export const en = {
     progress: "{taken} of {due} taken",
     allDone: "All done for today",
     nothingDue: "Nothing scheduled today",
+    // Said in the header card when the day owes nothing but there are
+    // as-needed medications listed below it — "nothing scheduled" would read
+    // as an empty screen with a panel of medications sitting under it.
+    nothingScheduled: "Nothing scheduled — take what you need below",
     // The empty install. The one useful thing an empty Today screen can do is
     // hand you to the form that fills it.
     noMeds: "Add your medications and today's doses appear here.",
@@ -84,6 +88,40 @@ export const en = {
     done: "Done",
   },
 
+  // As-needed medications — the ones with no schedule to be behind on.
+  //
+  // They are deliberately *not* on Today until the day has something to do
+  // with them. Today is the list of what the day asks of you, and a
+  // painkiller you may not need asks nothing; so the offer lives behind the
+  // quick-log `+`, where you go when you have actually taken something, and
+  // on the Meds tab, where the things you take are listed.
+  //
+  // What lands on Today is what you did: a painkiller you logged sticks to
+  // that day and is gone the next, and a medication you have *started taking*
+  // puts its times on the checklist every day until you say you are done —
+  // which is the whole point of it, since a course does nothing unless it is
+  // kept up.
+  asNeeded: {
+    title: "As needed",
+    // Said in the quick-log sheet, where the whole list is offered. Today
+    // shows only what is already logged, and needs no explaining.
+    hint: "Nothing here counts as missed. Reach for it when you need it.",
+    // The medication with no times of its own. Each tap files a dose under
+    // the minute it happened.
+    logNow: "Log a dose",
+    logNowLabel: "Log a dose of {name}",
+    // Starting and ending a course — the medication taken at set times for as
+    // long as the cold lasts. Starting is an offer, so it is said in the
+    // quick-log sheet; ending is a fact about the medication, so it is said
+    // on the Meds tab, where the other two ways out of your days live.
+    start: "Start taking it",
+    startLabel: "Start taking {name}",
+    startHint: "Puts its times on Today every day until you are done with it.",
+    end: "Done with it",
+    startedNotice: "{name} is on your days",
+    endedNotice: "{name} is off your days",
+  },
+
   meds: {
     title: "Medications",
     empty: "No medications yet.",
@@ -95,6 +133,15 @@ export const en = {
     startedOn: "Since {date}",
     timesPerDay: "{count}× daily",
     oncePerDay: "1× daily",
+    // The third section of the Meds list, after the scheduled medications
+    // and before the stopped ones. Its rows are names and nothing else: an
+    // as-needed medication has no schedule worth printing on every row, and
+    // the times it does have are read where they matter — in the form, and
+    // on the sheet that offers to start it.
+    asNeededSection: "As needed",
+    asNeededHint: "No schedule. Reach for these with the + button.",
+    // The one thing about such a row that is state rather than detail.
+    takingNow: "Taking now",
     // The Meds screen's "new medication" button, now that the top bar's `+`
     // opens the quick-log sheet instead.
     addNew: "New medication",
@@ -118,6 +165,17 @@ export const en = {
         "One dose per time of day. Add a slot for each dose — morning and evening is two slots.",
       addTime: "Add a time",
       removeTime: "Remove {time}",
+      // The two kinds of schedule, as the first thing the "when" section
+      // asks. On a schedule is the default and the common case; when needed
+      // is the painkiller, and the course you are only on some weeks.
+      scheduled: "On a schedule",
+      whenNeeded: "When needed",
+      // Chosen "when needed": the times become optional, and the weekday
+      // pills go away entirely — which days you need it is not a fact about
+      // the week.
+      whenNeededHint:
+        "Nothing is scheduled and no day counts as missed — it waits under “As needed” until you log a dose. Add times only if it has set ones on the days you do take it, like 8, 12 and 18 for a few days at a stretch; logging the first then puts the rest of that day's times on the list.",
+      noTimes: "No set times — log a dose whenever you take one.",
       // The weekday mask. "Every day" is the default and answers itself, so
       // the seven pills stay out of the way until it is switched off — at
       // which point they all start lit and you turn off the days you skip,
@@ -212,11 +270,19 @@ export const en = {
     themeLight: "Light",
     themeDark: "Dark",
     themeSystem: "System",
-    calendar: "Calendar",
+    // Week start and clock together: both are "how this app writes a date or
+    // a time at me", and neither is big enough to be a section of its own.
+    dateTime: "Dates and times",
     weekStart: "Week starts on",
     weekStartHint: "The first column of the month grid.",
     monday: "Monday",
     sunday: "Sunday",
+    clock: "Time format",
+    clockHint:
+      "How slots and logged doses are written. What is stored never changes.",
+    clockSystem: "Device",
+    clock24: "24-hour",
+    clock12: "12-hour",
     sync: "Sync",
     syncHint:
       "Your log lives on this device. Connect a cloud account to keep a copy and read it on your other devices.",

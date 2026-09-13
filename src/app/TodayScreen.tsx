@@ -4,12 +4,13 @@ import { useMemo } from "react";
 import type { DayKey } from "@niclaslindstedt/oss-framework/calendar";
 import { Button, CheckIcon } from "@niclaslindstedt/oss-framework/components";
 
+import { AsNeededList } from "./AsNeededList.tsx";
 import { DoseList } from "./DoseList.tsx";
-import { dueDoses, type Dose } from "./schedule.ts";
+import { asNeededOn, dueDoses, type Dose } from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { PillIcon } from "./icons.tsx";
 import { useT } from "./i18n/index.ts";
-import type { AppData } from "./types.ts";
+import type { AppData, Medication } from "./types.ts";
 
 // The first screen: today's doses, as a checklist you clear.
 //
@@ -20,6 +21,16 @@ import type { AppData } from "./types.ts";
 // one visual block; and when the last dose is ticked the header says so, in
 // the one moment of colour the app allows itself.
 //
+// Under the checklist, and only when the day has one, is the "As needed"
+// panel — and it lists what you *logged*, never what you might. An as-needed
+// medication is reached for from the quick-log `+`; this screen is the list
+// of what the day asks of you, and a painkiller you may not need asks
+// nothing. Once one is logged it sticks to that day (and is gone the next),
+// because the second one of an afternoon is the likeliest next tap.
+//
+// A medication you have *started taking* is not here at all: its times are
+// owed, so they are in the checklist above with everything else.
+//
 // Deliberately not on this screen: yesterday. A forgotten evening is logged
 // from the Calendar, where the day is picked explicitly — a "yesterday" row
 // here would double the screen for a case that is the exception, and the
@@ -29,17 +40,33 @@ type Props = {
   data: AppData;
   today: DayKey;
   onToggle: (day: DayKey, dose: Dose, takenAt: string | null) => void;
+  /** Start taking an as-needed medication. Never actually reached from this
+   *  screen — it only ever shows the entries a dose is already logged
+   *  against, and those are the ones with no times to start — but the panel
+   *  is one component and this is its one write it does not share. */
+  onStartTaking: (med: Medication) => void;
   /** Hand-off to the Add screen, for the empty install. */
   onAddMedication: () => void;
 };
 
-export function TodayScreen({ data, today, onToggle, onAddMedication }: Props) {
+export function TodayScreen({
+  data,
+  today,
+  onToggle,
+  onStartTaking,
+  onAddMedication,
+}: Props) {
   const t = useT();
   const doses = useMemo(() => dueDoses(data, today), [data, today]);
+  // Only what the day already has a record of — see the note above.
+  const asNeeded = useMemo(
+    () => asNeededOn(data, today).filter((e) => e.logged.length > 0),
+    [data, today],
+  );
   const taken = doses.filter((d) => d.takenAt !== null).length;
   const allDone = doses.length > 0 && taken === doses.length;
 
-  if (doses.length === 0) {
+  if (doses.length === 0 && asNeeded.length === 0) {
     const hasMeds = Object.keys(data.medications).length > 0;
     return (
       <div className="flex flex-1 flex-col justify-center gap-3 px-3 py-3">
@@ -79,31 +106,44 @@ export function TodayScreen({ data, today, onToggle, onAddMedication }: Props) {
         </p>
         <p className="mt-2 flex items-center gap-2 text-sm text-fg">
           {allDone && <CheckIcon className="h-4 w-4 shrink-0 text-accent" />}
-          {allDone
-            ? t("today.allDone")
-            : t("today.progress", {
-                taken: String(taken),
-                due: String(doses.length),
-              })}
+          {doses.length === 0
+            ? t("today.nothingScheduled")
+            : allDone
+              ? t("today.allDone")
+              : t("today.progress", {
+                  taken: String(taken),
+                  due: String(doses.length),
+                })}
         </p>
         {/* The progress bar under the count: the same fact, readable from
             further away than a number. `bg-accent/45` matches the calendar's
             "all taken" fill, so the bar filling up and the day filling in are
-            visibly one thing. */}
-        <div
-          aria-hidden="true"
-          className="mt-3 h-1.5 overflow-hidden rounded-full bg-line/60"
-        >
+            visibly one thing. A day that owes nothing has no share to draw —
+            the bar would be a nought out of nought — so it is left off. */}
+        {doses.length > 0 && (
           <div
-            className="h-full rounded-full bg-accent transition-[width] duration-300"
-            style={{ width: `${(taken / doses.length) * 100}%` }}
-          />
-        </div>
+            aria-hidden="true"
+            className="mt-3 h-1.5 overflow-hidden rounded-full bg-line/60"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-300"
+              style={{ width: `${(taken / doses.length) * 100}%` }}
+            />
+          </div>
+        )}
       </div>
 
-      <DoseList
-        doses={doses}
+      {doses.length > 0 && (
+        <DoseList
+          doses={doses}
+          onToggle={(dose, takenAt) => onToggle(today, dose, takenAt)}
+        />
+      )}
+
+      <AsNeededList
+        entries={asNeeded}
         onToggle={(dose, takenAt) => onToggle(today, dose, takenAt)}
+        onStartTaking={onStartTaking}
       />
     </div>
   );

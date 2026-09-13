@@ -9,15 +9,21 @@
 // bumping `DOC_VERSION` in `types.ts` and appending one step here — never
 // editing an existing step, which would silently rewrite documents that
 // already migrated through it. v1 is the first published shape; v2 added the
-// medication weekday mask.
+// medication weekday mask; v3 as-needed medications — the flag and the
+// courses together.
 
 import { createMigrator } from "@niclaslindstedt/oss-framework/storage";
 
-import { isValidTime, normalizeWeekdays } from "./schedule.ts";
+import {
+  isValidTime,
+  normalizeCourses,
+  normalizeWeekdays,
+} from "./schedule.ts";
 import {
   DOC_VERSION,
   emptyDoc,
   type AppData,
+  type Course,
   type DayLog,
   type Medication,
 } from "./types.ts";
@@ -42,10 +48,34 @@ function parseWeekdays(value: unknown): number[] | null {
   );
 }
 
+/** Coerce a stored course list. Anything that isn't a `{ from, to }` pair of
+ *  day keys is dropped; `normalizeCourses` then throws away the spans a
+ *  medication of this kind cannot be on at all. */
+function parseCourses(
+  value: unknown,
+  med: Pick<Medication, "asNeeded" | "times">,
+): Course[] {
+  if (!Array.isArray(value)) return [];
+  const courses: Course[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw)) continue;
+    if (typeof raw.from !== "string") continue;
+    courses.push({
+      from: raw.from,
+      fromTime: typeof raw.fromTime === "string" ? raw.fromTime : null,
+      to: typeof raw.to === "string" ? raw.to : null,
+    });
+  }
+  return normalizeCourses(courses, med);
+}
+
 /** Coerce one stored medication, or drop it when it can't be one. A med needs
- *  a name and at least one valid time to mean anything — one without either is
- *  discarded rather than resurrected as an empty row the form then chokes
- *  on. Unknown fields are dropped rather than carried forward. */
+ *  a name, and a *scheduled* med needs at least one valid time to mean
+ *  anything — one without either is discarded rather than resurrected as an
+ *  empty row the form then chokes on. An as-needed med is allowed no times at
+ *  all: taken when it is taken is a complete answer, and its doses are filed
+ *  under the minute of the tap (see `asNeededOn` in `schedule.ts`). Unknown
+ *  fields are dropped rather than carried forward. */
 function parseMedication(id: string, value: unknown): Medication | null {
   if (!isRecord(value)) return null;
   const name = typeof value.name === "string" ? value.name.trim() : "";
@@ -58,13 +88,20 @@ function parseMedication(id: string, value: unknown): Medication | null {
         ),
       ].sort()
     : [];
-  if (name === "" || times.length === 0) return null;
+  // Strictly `=== true`: a missing field is a pre-v3 medication, which was a
+  // scheduled one.
+  const asNeeded = value.asNeeded === true;
+  if (name === "" || (times.length === 0 && !asNeeded)) return null;
   return {
     id: typeof value.id === "string" ? value.id : id,
     name,
     dose: typeof value.dose === "string" ? value.dose : "",
     times,
-    weekdays: parseWeekdays(value.weekdays),
+    asNeeded,
+    courses: parseCourses(value.courses, { asNeeded, times }),
+    // An as-needed medication carries no mask: which days you need it is not
+    // a fact about the week, and one schedule gets one representation.
+    weekdays: asNeeded ? null : parseWeekdays(value.weekdays),
     startDate:
       typeof value.startDate === "string" ? value.startDate : "1970-01-01",
     endDate: typeof value.endDate === "string" ? value.endDate : null,
@@ -103,6 +140,13 @@ const migrator = createMigrator({
     // described. So the shape needs no rewriting; the step exists so the
     // stored number moves and a later step has a floor to build on.
     1: (doc) => ({ ...doc, version: 2 }),
+    // v2 → v3: medications gained the as-needed flag and its courses. A v2
+    // medication carries neither field; `parseMedication` reads a missing
+    // `asNeeded` as false — a scheduled medication, which is the only kind
+    // those documents could describe — and a scheduled medication has no
+    // courses. So again the shape needs no rewriting and the step exists so
+    // the stored number moves.
+    2: (doc) => ({ ...doc, version: 3 }),
   },
 });
 

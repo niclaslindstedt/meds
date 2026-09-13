@@ -17,8 +17,15 @@ calendar, not failures: the schedule's own span decides what a day owes (see
 **Tapping a day opens it below the grid** as the same checklist Today shows,
 live toggles included. This is where a forgotten evening is logged after the
 fact, with the day named in full above the rows so a mis-tap cannot silently
-mislabel a dose. Future days show what will be due but take no taps — a dose
-cannot truthfully be taken tomorrow.
+mislabel a dose — and, under it, the same **As needed** panel Today shows, so
+a painkiller taken away from the phone can be filed after the fact too.
+Future days show what will be due but take no taps — a dose cannot truthfully
+be taken tomorrow.
+
+A day whose only record is an as-needed dose stays unpainted: nothing was due,
+so the day has nothing to say. The days you were taking one over _are_
+painted, because over a course its times are owed like any other
+medication's (see [`../schedule.md`](../schedule.md)).
 
 The grid pages with the arrows, `PageUp`/`PageDown`, or a horizontal swipe —
 the swipe that elsewhere moves between tabs belongs to the month here, since
