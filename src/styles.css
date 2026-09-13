@@ -180,10 +180,24 @@ input:disabled,
 html,
 body {
   height: 100%;
+  overflow: hidden;
   overscroll-behavior-y: none;
 }
 
+/* `position: fixed` is what actually holds the shell against the top of the
+   screen on iOS. The shell is already exactly viewport-height, so on paper
+   there is nothing for the document to scroll — but iOS scrolls it anyway:
+   focusing a field (the med name, the dose text) makes WebKit scroll the
+   *page* to lift the input clear of the keyboard, and under
+   `viewport-fit=cover` that drags the header up behind the status bar and
+   does not reliably put it back when the keyboard closes. `overflow: hidden`
+   alone has never stopped that on iOS; taking the body out of flow does,
+   because then there is no document scroll position to move. Everything that
+   needs to scroll — `<main>`, and the framework's modal bodies — is its own
+   scroller inside. */
 body {
+  position: fixed;
+  inset: 0;
   margin: 0;
   background: var(--page-bg);
   color: var(--fg);
