@@ -553,12 +553,17 @@ describe("as-needed medications", () => {
       ]);
     });
 
-    it("owes nothing on a first day whose slots are already past", () => {
+    it("owes the last slot when the course begins after all of them", () => {
+      // Reaching for it at ten at night when the last dose was at six is
+      // what "I took one and came to log it" looks like, so that dose is
+      // there to tick rather than the day owing nothing at all.
       const late = med({
         ...course,
         courses: [{ from: "2024-03-10", fromTime: "22:00", to: null }],
       });
-      expect(dueDoses(doc([late]), "2024-03-10")).toEqual([]);
+      expect(dueDoses(doc([late]), "2024-03-10").map((d) => d.time)).toEqual([
+        "18:00",
+      ]);
       expect(dueDoses(doc([late]), "2024-03-11")).toHaveLength(3);
     });
 

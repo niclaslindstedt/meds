@@ -37,8 +37,9 @@ and they differ in what putting it on your day means:
 
 A course only owes the times still ahead of it on the day you start it: reach
 for it at ten and that day owes the noon and six o'clock doses, not the eight
-o'clock one you slept through before it was on the list. Every day after it
-owes all of them.
+o'clock one you slept through before it was on the list. Start it later than
+all of them and you get the last one, because reaching for it then usually
+means you have just taken it. Every day after owes all of them.
 
 A when-needed medication carries no weekday mask, so the day pills go away:
 which days you need it is not a fact about the week.

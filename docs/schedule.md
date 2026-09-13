@@ -71,6 +71,11 @@ that slot passed before the medication was on the list at all, and nobody can
 be behind on a dose they had not yet decided to take. So the first day's slots
 run from `course.fromTime`; every day after it owes them whole.
 
+One slot always survives that cut: a course started _after_ the day's last
+slot owes that last one. Reaching for a medication at nine in the evening when
+its last dose was at six is what taking a dose and then going to log it looks
+like, so the row is there to tick rather than the day quietly owing nothing.
+
 A course is `{ from, fromTime, to }`, with `to` null while it is still running
 and `fromTime` the minute of `from` it started at (null for an imported course
 with no such claim to make, whose first day is then owed whole).

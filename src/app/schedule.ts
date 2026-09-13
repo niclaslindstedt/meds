@@ -202,13 +202,20 @@ export function endCourse(
  *  medication was on the list at all, and nobody can be behind on a dose they
  *  had not yet decided to take. So the first day's slots run from
  *  `course.fromTime`; a course with no recorded minute (an imported one) owes
- *  its first day whole, like every day after it. */
+ *  its first day whole, like every day after it.
+ *
+ *  One slot always survives that cut: a course started *after* the day's last
+ *  slot owes that last one. Reaching for a medication at nine in the evening
+ *  when its last dose was at six is what taking a dose and then going to log
+ *  it looks like — so the row is there to tick, rather than the day quietly
+ *  owing nothing at all. */
 export function asNeededDue(med: Medication, day: DayKey): string[] {
   if (med.times.length === 0) return [];
   const course = courseOn(med, day);
   if (course === null) return [];
   if (day !== course.from || course.fromTime === null) return med.times;
-  return med.times.filter((time) => time >= course.fromTime!);
+  const ahead = med.times.filter((time) => time >= course.fromTime!);
+  return ahead.length > 0 ? ahead : med.times.slice(-1);
 }
 
 /** Every dose a day owes, in the order the Today screen lists them: by time
