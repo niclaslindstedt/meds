@@ -10,7 +10,7 @@
 // editing an existing step, which would silently rewrite documents that
 // already migrated through it. v1 is the first published shape; v2 added the
 // medication weekday mask; v3 as-needed medications — the flag and the
-// courses together; v4 the daily maximum.
+// courses together; v4 the daily maximum; v5 the longest stretch.
 
 import { createMigrator } from "@niclaslindstedt/oss-framework/storage";
 
@@ -18,6 +18,7 @@ import {
   isValidTime,
   normalizeCourses,
   normalizeMaxPerDay,
+  normalizeMaxRun,
   normalizeWeekdays,
 } from "./schedule.ts";
 import {
@@ -27,6 +28,7 @@ import {
   type Course,
   type DayLog,
   type Medication,
+  type RunUnit,
 } from "./types.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -81,6 +83,22 @@ function parseMaxPerDay(
   return normalizeMaxPerDay(typeof value === "number" ? value : null, med);
 }
 
+/** Coerce a stored stretch and its unit. Anything that isn't a number reads
+ *  as "no stretch given" — which is also what a pre-v5 medication, with
+ *  neither field, reads as — and any unit but "weeks" reads as days, so a
+ *  stored typo cannot multiply a limit by seven. */
+function parseMaxRun(
+  run: unknown,
+  unit: unknown,
+  med: Pick<Medication, "asNeeded" | "times">,
+): Pick<Medication, "maxRun" | "maxRunUnit"> {
+  return normalizeMaxRun(
+    typeof run === "number" ? run : null,
+    unit === "weeks" ? ("weeks" as RunUnit) : ("days" as RunUnit),
+    med,
+  );
+}
+
 /** Coerce one stored medication, or drop it when it can't be one. A med needs
  *  a name, and a *scheduled* med needs at least one valid time to mean
  *  anything — one without either is discarded rather than resurrected as an
@@ -112,6 +130,7 @@ function parseMedication(id: string, value: unknown): Medication | null {
     asNeeded,
     courses: parseCourses(value.courses, { asNeeded, times }),
     maxPerDay: parseMaxPerDay(value.maxPerDay, { asNeeded, times }),
+    ...parseMaxRun(value.maxRun, value.maxRunUnit, { asNeeded, times }),
     // An as-needed medication carries no mask: which days you need it is not
     // a fact about the week, and one schedule gets one representation.
     weekdays: asNeeded ? null : parseWeekdays(value.weekdays),
@@ -165,6 +184,12 @@ const migrator = createMigrator({
     // no maximum given, which is what every document written before the field
     // existed meant. Nothing to rewrite; the step moves the stored number.
     3: (doc) => ({ ...doc, version: 4 }),
+    // v4 → v5: medications gained the longest stretch and the unit it was
+    // given in. A v4 medication carries neither; `parseMedication` reads a
+    // missing `maxRun` as null — no stretch given, which is what those
+    // documents meant — and null forces the unit back to "days". Nothing to
+    // rewrite; the step moves the stored number.
+    4: (doc) => ({ ...doc, version: 5 }),
   },
 });
 

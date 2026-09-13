@@ -31,7 +31,7 @@ backend is connected:
 
 ```jsonc
 {
-  "version": 4,
+  "version": 5,
   "medications": {
     "<id>": {
       "id": "<id>",
@@ -41,6 +41,8 @@ backend is connected:
       "asNeeded": false, // true = nothing is due except over a course
       "courses": [], // as-needed stretches: [{ from, fromTime, to }]; to null = running
       "maxPerDay": null, // most doses in a day; only an as-needed med with no times
+      "maxRun": null, // longest stretch of days in a row, in maxRunUnit; same meds
+      "maxRunUnit": "days", // "days" | "weeks"; forced to "days" when maxRun is null
       "weekdays": null, // getDay() numbers (0 = Sun), sorted; null = every day
       "startDate": "2026-03-01", // first day doses are due
       "endDate": null, // last day doses were due; null while current

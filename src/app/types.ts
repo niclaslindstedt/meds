@@ -58,12 +58,24 @@
 // number on Today, the Calendar or History, and deliberately so — a dose you
 // were never scheduled to take cannot be missed, and a cap is not a schedule.
 //
-// It is a ceiling the app repeats back, never one it enforces: reaching it
-// withdraws the one-tap offer and leaves a deliberate one, because a log that
-// refuses to record a dose that was actually swallowed is a log that lies,
-// and the truth of the record outranks the ceiling. What the app must never
-// do is decide the number — that belongs to the prescriber, and this field
-// only remembers it.
+// `maxRun` is the other half of the same sentence — "no more than three in a
+// day, and not for more than a week" — and it is the same kind of fact: a
+// ceiling its owner was given, for the same medication, read at the same
+// moment. Held in the unit it was said in (`maxRunUnit`, days or weeks),
+// because "two weeks" is what a person was told and "14 days" is only the
+// arithmetic. What it counts is the *stretch* you are on: the run of
+// consecutive days ending today that a dose was logged on (see `runDays` in
+// `schedule.ts`). Nothing new is stored for it — the taps already say which
+// days you took it on — and a day skipped entirely ends a stretch and starts
+// the next, which is both the plain reading of "not more than seven days in
+// a row" and the forgiving one.
+//
+// Both are ceilings the app repeats back, never ones it enforces: reaching
+// one withdraws the one-tap offer and leaves a deliberate one, because a log
+// that refuses to record a dose that was actually swallowed is a log that
+// lies, and the truth of the record outranks the ceiling. What the app must
+// never do is decide the numbers — they belong to the prescriber, and these
+// fields only remember them.
 //
 // A day's log is keyed by *dose* — `medId@HH:MM` — so "taken" is a claim about
 // one medication at one slot, and a day with two slots half done is exactly
@@ -88,6 +100,10 @@ export type Course = {
   fromTime: string | null;
   to: DayKey | null;
 };
+
+/** How a `maxRun` was said: "for a week" and "for seven days" are the same
+ *  ceiling, and the app keeps whichever one its owner used. */
+export type RunUnit = "days" | "weeks";
 
 /** One medication on the schedule. */
 export type Medication = {
@@ -141,6 +157,23 @@ export type Medication = {
    *  says where they stand. It is the user's own ceiling, not the app's
    *  opinion. */
   maxPerDay: number | null;
+  /** The longest stretch of days in a row this medication is meant to be
+   *  taken over, in the unit it was given in (`maxRunUnit`) — or null when no
+   *  such number was given, which is what every pre-v5 document carries.
+   *
+   *  Carried by exactly the medications that can carry `maxPerDay`, and for
+   *  the same reason (see `normalizeMaxRun`): a medication with times of its
+   *  own is either on a schedule or on a course, and both of those already
+   *  say when they end.
+   *
+   *  Counted against the run of consecutive days a dose was logged on, so it
+   *  needs nothing stored and resets itself the first day you do without.
+   *  Recorded, not enforced. */
+  maxRun: number | null;
+  /** The unit `maxRun` was given in. Forced to "days" whenever `maxRun` is
+   *  null, so one answer keeps one representation and two devices holding the
+   *  same medication serialize to the same bytes. */
+  maxRunUnit: RunUnit;
   /** The weekdays doses are due on, in `Date.getDay()` numbering (0 = Sunday),
    *  sorted and deduplicated — or null for every day, which is what an
    *  unmasked medication and every pre-v2 document carry. Never an empty
@@ -179,8 +212,8 @@ export type AppData = {
 
 /** The current document schema version. v1 is the first published shape; v2
  *  added the medication weekday mask; v3 as-needed medications — the flag and
- *  the courses together; v4 the daily maximum. */
-export const DOC_VERSION = 4;
+ *  the courses together; v4 the daily maximum; v5 the longest stretch. */
+export const DOC_VERSION = 5;
 
 /** The document a first run starts from. */
 export function emptyDoc(): AppData {

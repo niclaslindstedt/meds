@@ -50,6 +50,29 @@ import { sortedMedications, type AppData, type Medication } from "./types.ts";
 // the prescription comes back. Deleting exists for the entered-by-mistake
 // case and says out loud that it rewrites history.
 
+/** The ceilings on one row, in the units they were given in: "Max 3 a day",
+ *  "Up to 2 weeks", or both joined — and null for the medication that was
+ *  given neither, whose row stays a name. */
+function ceilings(med: Medication, t: ReturnType<typeof useT>): string | null {
+  const perDay =
+    med.maxPerDay === null
+      ? null
+      : t("meds.maxPerDayRow", { count: String(med.maxPerDay) });
+  const run =
+    med.maxRun === null
+      ? null
+      : med.maxRunUnit === "weeks"
+        ? med.maxRun === 1
+          ? t("meds.maxRunRowOneWeek")
+          : t("meds.maxRunRowWeeks", { count: String(med.maxRun) })
+        : med.maxRun === 1
+          ? t("meds.maxRunRowOne")
+          : t("meds.maxRunRow", { count: String(med.maxRun) });
+  if (perDay === null) return run;
+  if (run === null) return perDay;
+  return t("meds.maxBothRow", { perDay, run });
+}
+
 type Props = {
   data: AppData;
   today: DayKey;
@@ -122,136 +145,143 @@ export function MedsScreen({
 
   const rows = (list: Medication[]) => (
     <ul className="flex flex-col gap-1.5">
-      {list.map((med) => (
-        <li key={med.id}>
-          {editing === med.id ? (
-            <div className="rounded-xl border border-accent/40 bg-surface-3 p-3">
-              <h3 className="text-xs font-bold tracking-wide text-accent uppercase">
-                {t("meds.form.editTitle")}
-              </h3>
-              <div className="mt-3">
-                <MedForm
-                  initial={med}
-                  today={today}
-                  weekStartsOn={weekStartsOn}
-                  onSave={(next) => {
-                    onSave(next);
-                    setEditing(null);
-                    onNotice(t("meds.saved"));
-                  }}
-                  onCancel={() => setEditing(null)}
-                />
-              </div>
-              <div className="mt-4 flex flex-col gap-2 border-t border-line pt-3">
-                {/* On your days, or not. Only a medication with times can be
+      {list.map((med) => {
+        const noted = ceilings(med, t);
+        return (
+          <li key={med.id}>
+            {editing === med.id ? (
+              <div className="rounded-xl border border-accent/40 bg-surface-3 p-3">
+                <h3 className="text-xs font-bold tracking-wide text-accent uppercase">
+                  {t("meds.form.editTitle")}
+                </h3>
+                <div className="mt-3">
+                  <MedForm
+                    initial={med}
+                    today={today}
+                    weekStartsOn={weekStartsOn}
+                    onSave={(next) => {
+                      onSave(next);
+                      setEditing(null);
+                      onNotice(t("meds.saved"));
+                    }}
+                    onCancel={() => setEditing(null)}
+                  />
+                </div>
+                <div className="mt-4 flex flex-col gap-2 border-t border-line pt-3">
+                  {/* On your days, or not. Only a medication with times can be
                     on a course — one without them is a dose at a time, and a
                     dose at a time is the logging control's business. */}
-                {med.asNeeded &&
-                  med.times.length > 0 &&
-                  med.endDate === null && (
+                  {med.asNeeded &&
+                    med.times.length > 0 &&
+                    med.endDate === null && (
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          onClick={() => {
+                            onSetTaking(med, !isTaking(med, today));
+                            setEditing(null);
+                          }}
+                        >
+                          {t(
+                            isTaking(med, today)
+                              ? "asNeeded.end"
+                              : "asNeeded.start",
+                          )}
+                        </Button>
+                        <p className="text-xs text-muted">
+                          {t("asNeeded.startHint")}
+                        </p>
+                      </div>
+                    )}
+                  {med.endDate === null ? (
                     <div className="flex flex-col gap-1">
-                      <Button
-                        onClick={() => {
-                          onSetTaking(med, !isTaking(med, today));
-                          setEditing(null);
-                        }}
-                      >
-                        {t(
-                          isTaking(med, today)
-                            ? "asNeeded.end"
-                            : "asNeeded.start",
-                        )}
+                      <Button onClick={() => stop(med)}>
+                        {t("meds.stop")}
                       </Button>
-                      <p className="text-xs text-muted">
-                        {t("asNeeded.startHint")}
-                      </p>
+                      <p className="text-xs text-muted">{t("meds.stopHint")}</p>
                     </div>
+                  ) : (
+                    <Button onClick={() => resume(med)}>
+                      {t("meds.resume")}
+                    </Button>
                   )}
-                {med.endDate === null ? (
                   <div className="flex flex-col gap-1">
-                    <Button onClick={() => stop(med)}>{t("meds.stop")}</Button>
-                    <p className="text-xs text-muted">{t("meds.stopHint")}</p>
+                    <Button
+                      variant="danger"
+                      onClick={() => setConfirmDelete(med)}
+                    >
+                      {t("meds.deleteMed")}
+                    </Button>
+                    <p className="text-xs text-muted">{t("meds.deleteHint")}</p>
                   </div>
-                ) : (
-                  <Button onClick={() => resume(med)}>
-                    {t("meds.resume")}
-                  </Button>
-                )}
-                <div className="flex flex-col gap-1">
-                  <Button
-                    variant="danger"
-                    onClick={() => setConfirmDelete(med)}
-                  >
-                    {t("meds.deleteMed")}
-                  </Button>
-                  <p className="text-xs text-muted">{t("meds.deleteHint")}</p>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div
-              className={`flex items-center gap-3 rounded-xl border border-line bg-surface-3 px-3 py-2.5 ${
-                med.endDate !== null ? "opacity-70" : ""
-              }`}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-fg-bright">
-                  {med.name}
-                  {med.dose && (
-                    <span className="font-normal text-muted">
-                      {" "}
-                      · {med.dose}
+            ) : (
+              <div
+                className={`flex items-center gap-3 rounded-xl border border-line bg-surface-3 px-3 py-2.5 ${
+                  med.endDate !== null ? "opacity-70" : ""
+                }`}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-fg-bright">
+                    {med.name}
+                    {med.dose && (
+                      <span className="font-normal text-muted">
+                        {" "}
+                        · {med.dose}
+                      </span>
+                    )}
+                  </span>
+                  {/* A scheduled medication's row carries its schedule; an
+                    as-needed one has none to carry, so the row stays a name
+                    and the second line is left off entirely. */}
+                  {!med.asNeeded && (
+                    <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
+                      {med.times.map(formatTime).join(" · ")}
+                      {/* Only a masked med says which days: "every day" is the
+                        absence of a qualifier, and printing it on every row
+                        would say nothing on all of them. */}
+                      {med.weekdays !== null &&
+                        ` · ${formatWeekdays(med.weekdays, weekStartsOn)}`}
+                      {" — "}
+                      {med.endDate !== null
+                        ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
+                        : t("meds.startedOn", {
+                            date: formatDay(med.startDate),
+                          })}
+                    </span>
+                  )}
+                  {/* The only detail an as-needed row carries, for the
+                    medication that has it: the ceilings its owner noted
+                    down. Everything else about such a row is "whenever you
+                    need it", which is the absence of a qualifier. */}
+                  {med.asNeeded && noted !== null && (
+                    <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
+                      {noted}
                     </span>
                   )}
                 </span>
-                {/* A scheduled medication's row carries its schedule; an
-                    as-needed one has none to carry, so the row stays a name
-                    and the second line is left off entirely. */}
-                {!med.asNeeded && (
-                  <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
-                    {med.times.map(formatTime).join(" · ")}
-                    {/* Only a masked med says which days: "every day" is the
-                        absence of a qualifier, and printing it on every row
-                        would say nothing on all of them. */}
-                    {med.weekdays !== null &&
-                      ` · ${formatWeekdays(med.weekdays, weekStartsOn)}`}
-                    {" — "}
-                    {med.endDate !== null
-                      ? t("meds.stoppedOn", { date: formatDay(med.endDate) })
-                      : t("meds.startedOn", { date: formatDay(med.startDate) })}
-                  </span>
-                )}
-                {/* The one detail an as-needed row does carry, for the
-                    medication that has it: the most its owner noted down for
-                    a day. Everything else about such a row is "whenever you
-                    need it", which is the absence of a qualifier. */}
-                {med.asNeeded && med.maxPerDay !== null && (
-                  <span className="mt-0.5 block truncate text-xs text-muted tabular-nums">
-                    {t("meds.maxPerDayRow", { count: String(med.maxPerDay) })}
-                  </span>
-                )}
-              </span>
-              {/* State, not detail: which as-needed medications are on your
+                {/* State, not detail: which as-needed medications are on your
                   days at the moment is the one thing this list cannot leave
                   to the form. */}
-              {med.asNeeded && isTaking(med, today) && (
-                <span className="shrink-0 rounded-full border border-accent/50 px-2 py-0.5 text-xs text-accent">
-                  {t("meds.takingNow")}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => setEditing(med.id)}
-                aria-label={`${t("meds.edit")}: ${med.name}`}
-                title={t("meds.edit")}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-        </li>
-      ))}
+                {med.asNeeded && isTaking(med, today) && (
+                  <span className="shrink-0 rounded-full border border-accent/50 px-2 py-0.5 text-xs text-accent">
+                    {t("meds.takingNow")}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEditing(med.id)}
+                  aria-label={`${t("meds.edit")}: ${med.name}`}
+                  title={t("meds.edit")}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 

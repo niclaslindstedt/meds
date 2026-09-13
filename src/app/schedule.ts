@@ -19,6 +19,7 @@ import {
   type Course,
   type DayLog,
   type Medication,
+  type RunUnit,
 } from "./types.ts";
 
 /** One dose a day owes: the medication, the slot, and the key the log files
@@ -148,6 +149,112 @@ export function normalizeMaxPerDay(
   const whole = Math.floor(max);
   if (whole < 1) return null;
   return Math.min(whole, MAX_PER_DAY_LIMIT);
+}
+
+/** The largest stretch the document will hold, in whichever unit it was given
+ *  in. A sanity bound, like `MAX_PER_DAY_LIMIT`: past this the number has
+ *  stopped being a stretch anyone is counting down. */
+export const MAX_RUN_LIMIT = 99;
+
+/** The most days in a row this medication is meant to be taken over, and the
+ *  unit that answer was given in, normalised on the way into the document.
+ *
+ *  Carried by exactly the medications `normalizeMaxPerDay` lets carry a daily
+ *  maximum, and for the same reason: a medication with times of its own is
+ *  either on a schedule, which has its own `endDate`, or on a course, which
+ *  ends when you say you are done with it. Neither needs a second answer to
+ *  "how long for".
+ *
+ *  The unit rides along rather than being multiplied away, because "two
+ *  weeks" is what a person was told and "14 days" is only the arithmetic —
+ *  but `maxRunUnit` is forced back to "days" whenever there is no number, so
+ *  one answer keeps one representation.
+ */
+export function normalizeMaxRun(
+  run: number | null | undefined,
+  unit: RunUnit | null | undefined,
+  med: Pick<Medication, "asNeeded" | "times">,
+): Pick<Medication, "maxRun" | "maxRunUnit"> {
+  const none = { maxRun: null, maxRunUnit: "days" as const };
+  if (!med.asNeeded || med.times.length > 0) return none;
+  if (typeof run !== "number" || !Number.isFinite(run)) return none;
+  const whole = Math.floor(run);
+  if (whole < 1) return none;
+  return {
+    maxRun: Math.min(whole, MAX_RUN_LIMIT),
+    maxRunUnit: unit === "weeks" ? "weeks" : "days",
+  };
+}
+
+/** A medication's longest stretch as a number of days — the form the count is
+ *  actually done in. Null when no stretch was given. */
+export function maxRunDays(med: Medication): number | null {
+  if (med.maxRun === null) return null;
+  return med.maxRunUnit === "weeks" ? med.maxRun * 7 : med.maxRun;
+}
+
+/** Whether a day holds any dose of a medication at all. For the medication
+ *  with no times of its own, whose keys carry the minute of the tap rather
+ *  than a slot, this is the only thing "took it that day" can mean. */
+function tookOn(data: AppData, med: Medication, day: DayKey): boolean {
+  const prefix = `${med.id}@`;
+  for (const key of Object.keys(data.days[day]?.taken ?? {})) {
+    if (key.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
+/** How many days into the current stretch `day` is: the run of consecutive
+ *  days, ending at `day`, that a dose was logged on. Zero when there is no
+ *  stretch running.
+ *
+ *  Two rules, and both are readings of how such a limit is actually said —
+ *  "not more than seven days in a row":
+ *
+ *  - **A day skipped entirely ends the stretch.** The next dose starts a new
+ *    one at day one. This is what makes the count need nothing stored: the
+ *    taps already say which days it was taken on, so there is no "course" to
+ *    start and none to forget to end, and a stretch resets itself the first
+ *    day you do without.
+ *  - **The day being asked about counts, logged or not.** Start on Monday and
+ *    it is day four on Thursday, whether or not Thursday's dose has been
+ *    taken yet — because the stretch is a span of days, and the question
+ *    ("how long have I been on this?") is asked *before* the tap as often as
+ *    after it. So a day with nothing logged continues yesterday's stretch;
+ *    it is the day after that, with the gap now behind it, that starts over.
+ */
+export function runDays(data: AppData, med: Medication, day: DayKey): number {
+  // Today, still open, is the next day of whatever was running yesterday.
+  const last = tookOn(data, med, day) ? day : addDays(day, -1);
+  if (!tookOn(data, med, last)) return 0;
+  let count = last === day ? 1 : 2;
+  let cursor = last;
+  while (tookOn(data, med, addDays(cursor, -1))) {
+    cursor = addDays(cursor, -1);
+    count++;
+  }
+  return count;
+}
+
+/** How far into its longest stretch a medication is on a day, against the
+ *  number its owner recorded. Null when they recorded none.
+ *
+ *  `left` is floored at zero for the same reason `doseAllowance`'s is: a
+ *  stretch that ran long reads `days: 9, maxDays: 7, left: 0`, and "how far
+ *  over" is `days - maxDays`. */
+export type RunAllowance = {
+  maxDays: number;
+  days: number;
+  left: number;
+};
+
+export function runAllowance(
+  med: Medication,
+  days: number,
+): RunAllowance | null {
+  const maxDays = maxRunDays(med);
+  if (maxDays === null) return null;
+  return { maxDays, days, left: Math.max(0, maxDays - days) };
 }
 
 /** The course covering a day, or null when the medication was not being taken
@@ -302,6 +409,9 @@ export type AsNeededEntry = {
    *  or null when no maximum was recorded — which is every medication until
    *  someone types one. See `doseAllowance`. */
   allowance: DoseAllowance | null;
+  /** How far into the current stretch this day is, against the longest one
+   *  recorded — or null when none was. See `runAllowance`. */
+  run: RunAllowance | null;
 };
 
 /** A day's doses of one medication, counted against the maximum its owner
@@ -360,6 +470,11 @@ export function asNeededOn(data: AppData, day: DayKey): AsNeededEntry[] {
       // the day's own taps are the whole count — there is no due list to add
       // to them (see `normalizeMaxPerDay`).
       allowance: doseAllowance(med, logged.length),
+      // Walked only for the medication that has a stretch to be counted
+      // against — every other one would be a walk back through the log for an
+      // answer nothing reads.
+      run:
+        med.maxRun === null ? null : runAllowance(med, runDays(data, med, day)),
     });
   }
   return entries;
