@@ -398,3 +398,81 @@ describe("as-needed medications", () => {
     }
   });
 });
+
+// v6: the doses a day was told to stop asking about. A pre-v6 day carries no
+// such field and means none of them.
+describe("doses set aside", () => {
+  it("reads a pre-v6 day as having set none aside", () => {
+    const doc = normalizeDoc({
+      version: 5,
+      medications: { m1: MED },
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: { "m1@08:00": "2024-03-05T08:05:00.000Z" },
+          updatedAt: "2024-03-05T08:05:00.000Z",
+        },
+      },
+    });
+    expect(doc.version).toBe(DOC_VERSION);
+    expect(doc.days["2024-03-05"]?.skipped).toEqual({});
+  });
+
+  it("keeps a day that holds nothing but doses set aside", () => {
+    // The day the whole checklist was declined. It has no taps at all, and it
+    // is still a day the document has to carry — dropping it as "empty" would
+    // silently turn it back into a day of missed doses.
+    const doc = normalizeDoc({
+      version: DOC_VERSION,
+      medications: { m1: MED },
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: {},
+          skipped: { "m1@08:00": "2024-03-05T07:00:00.000Z" },
+          updatedAt: "2024-03-05T07:00:00.000Z",
+        },
+      },
+    });
+    expect(doc.days["2024-03-05"]?.skipped["m1@08:00"]).toBe(
+      "2024-03-05T07:00:00.000Z",
+    );
+  });
+
+  it("drops malformed marks, and the day when nothing survives either map", () => {
+    const doc = normalizeDoc({
+      version: DOC_VERSION,
+      medications: { m1: MED },
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: { "m1@08:00": 12345 },
+          skipped: { "m1@20:00": false },
+          updatedAt: "x",
+        },
+      },
+    });
+    expect(doc.days).toEqual({});
+  });
+
+  it("lets a tap win a dose that bytes claim is both", () => {
+    // Not a document this app can write — the store clears one side when it
+    // writes the other — so it is exactly the shape the trust boundary is for.
+    const doc = normalizeDoc({
+      version: DOC_VERSION,
+      medications: { m1: MED },
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: { "m1@08:00": "2024-03-05T08:05:00.000Z" },
+          skipped: { "m1@08:00": "2024-03-05T07:00:00.000Z" },
+          updatedAt: "2024-03-05T08:05:00.000Z",
+        },
+      },
+    });
+    expect(doc.days["2024-03-05"]?.taken["m1@08:00"]).toBe(
+      "2024-03-05T08:05:00.000Z",
+    );
+    expect(doc.days["2024-03-05"]?.skipped).toEqual({});
+  });
+});

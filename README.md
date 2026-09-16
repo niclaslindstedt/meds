@@ -28,6 +28,12 @@ visible, per-medication adherence, and the recent missed doses by name. Today
 in progress never counts against you, and days from before a medication
 existed count as silence rather than as failures.
 
+A dose you decide against is not a dose you forgot, so it can be **skipped**:
+long-press its row (right-click with a mouse) and the day stops asking for it.
+It stays on the checklist, marked and reversible, and leaves the arithmetic
+entirely — it does not count as missed, and it does not count as taken either,
+so a day with nothing left but skipped doses is simply a quiet day.
+
 Not everything is on a schedule, so a medication can be marked **as needed**
 instead. One with no set times — a painkiller — is logged when you take it and
 sticks to that day only. One with set times is _started_ when you need it and
@@ -115,12 +121,12 @@ Four tabs, on a bottom bar — swipe left or right to move between them, and the
 screen slides in from the side it lives on. The one exception is the month
 grid, which takes the swipe for itself and pages the month:
 
-| Tab          | What it does                                                                                                                                                                                                                                          |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Today**    | The day's doses as a checklist grouped by time of day. The whole row is the tap target; the header counts you through the day and flips to "All done" when the last dose is ticked. Below it, the doses of an as-needed medication you logged today.  |
-| **Calendar** | A month at a glance: filled days where every dose landed, hollow part-done days, a warning tint on missed days. Tap any day to open its checklist below the grid — this is where a forgotten dose is logged after the fact. Pages by swipe or arrows. |
-| **History**  | Adherence over the last 7 and 30 days, the current streak, a per-day chart that makes gaps visible, per-medication adherence bars, and the recent missed doses by name and slot.                                                                      |
-| **Meds**     | The medication list, in three sections — scheduled, as needed, stopped. Add a new one, edit in place, be **done with** a course you are on, **stop** a med for good (the history stays, and it can be resumed), or delete one entered by mistake.     |
+| Tab          | What it does                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Today**    | The day's doses as a checklist grouped by time of day. The whole row is the tap target; the header counts you through the day and flips to "All done" when the last dose is ticked. Long-press a row (right-click with a mouse) to **skip** that dose — the day stops asking for it, and it never counts as missed. Below it, the doses of an as-needed medication you logged today. |
+| **Calendar** | A month at a glance: filled days where every dose landed, hollow part-done days, a warning tint on missed days. Tap any day to open its checklist below the grid — this is where a forgotten dose is logged after the fact. Pages by swipe or arrows.                                                                                                                                |
+| **History**  | Adherence over the last 7 and 30 days, the current streak, a per-day chart that makes gaps visible, per-medication adherence bars, and the recent missed doses by name and slot.                                                                                                                                                                                                     |
+| **Meds**     | The medication list, in three sections — scheduled, as needed, stopped. Add a new one, edit in place, be **done with** a course you are on, **stop** a med for good (the history stays, and it can be resumed), or delete one entered by mistake.                                                                                                                                    |
 
 …and two buttons on the top bar, for the two things you do and then leave:
 
@@ -175,6 +181,7 @@ for (const date of ["2026-03-01", "2026-03-02", "2026-03-03"]) {
   doc.days[date] = {
     date,
     taken: { [doseKey("m1", "08:00")]: `${date}T08:05:00.000Z` },
+    skipped: {}, // doseKey → when the dose was set aside; out of every count
     updatedAt: `${date}T08:05:00.000Z`,
   };
 }
@@ -190,12 +197,12 @@ drags a number down: the windows simply end at yesterday.
 
 ## Troubleshooting
 
-| Symptom                                     | Fix                                                                                                                           |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `npm install` fails with `401 Unauthorized` | The framework comes from GitHub Packages — see Prerequisites.                                                                 |
-| A day is marked missed that shouldn't be    | Open it from **Calendar** and tick the doses — the history recomputes instantly. A day before the med was added owes nothing. |
-| Today lists a med you no longer take        | **Meds** → the pencil → **Stop this medication**. The schedule ends, the history stays.                                       |
-| Cloud sync shows "Reconnect needed"         | The provider's session lapsed. Tap the sync glyph → Reconnect.                                                                |
+| Symptom                                     | Fix                                                                                                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm install` fails with `401 Unauthorized` | The framework comes from GitHub Packages — see Prerequisites.                                                                                                                                    |
+| A day is marked missed that shouldn't be    | Open it from **Calendar** and tick the doses — the history recomputes instantly. A dose you decided against is a long-press away from **skipped**, which is counted as neither taken nor missed. |
+| Today lists a med you no longer take        | **Meds** → the pencil → **Stop this medication**. The schedule ends, the history stays.                                                                                                          |
+| Cloud sync shows "Reconnect needed"         | The provider's session lapsed. Tap the sync glyph → Reconnect.                                                                                                                                   |
 
 More in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 

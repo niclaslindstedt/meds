@@ -136,6 +136,18 @@ export function FlameIcon({ className }: IconProps) {
   );
 }
 
+/** A dose set aside — the bar that stands where a taken dose's check goes.
+ *  Deliberately neither a check nor a cross: the dose was not taken, and it
+ *  was not a failure either. A rule through the slot is what the app means by
+ *  "the day stopped asking". */
+export function SkippedIcon({ className }: IconProps) {
+  return (
+    <Glyph className={className}>
+      <path d="M6 12h12" />
+    </Glyph>
+  );
+}
+
 /** A dose still standing — the hollow circle a taken dose's check fills. */
 export function CircleIcon({ className }: IconProps) {
   return (

@@ -10,7 +10,8 @@
 // editing an existing step, which would silently rewrite documents that
 // already migrated through it. v1 is the first published shape; v2 added the
 // medication weekday mask; v3 as-needed medications — the flag and the
-// courses together; v4 the daily maximum; v5 the longest stretch.
+// courses together; v4 the daily maximum; v5 the longest stretch; v6 the day
+// log's skipped doses.
 
 import { createMigrator } from "@niclaslindstedt/oss-framework/storage";
 
@@ -141,20 +142,40 @@ function parseMedication(id: string, value: unknown): Medication | null {
   };
 }
 
-/** Coerce one stored day log. Taken entries whose value isn't a timestamp
- *  string are dropped; a day left with no marks at all is dropped whole, so
- *  the document never accumulates empty days. */
+/** Coerce one stored map of dose marks — `doseKey` → ISO timestamp. Entries
+ *  whose value isn't a timestamp string are dropped. */
+function parseMarks(value: unknown): Record<string, string> {
+  const raw = isRecord(value) ? value : {};
+  const marks: Record<string, string> = {};
+  for (const [key, at] of Object.entries(raw)) {
+    if (typeof at === "string") marks[key] = at;
+  }
+  return marks;
+}
+
+/** Coerce one stored day log. A day left with no marks at all — neither taken
+ *  nor skipped — is dropped whole, so the document never accumulates empty
+ *  days.
+ *
+ *  A dose both maps claim is resolved in favour of `taken`, here as everywhere
+ *  else: the two are one claim's two answers (see `types.ts`), and bytes this
+ *  app did not write must not be able to produce a dose that is somehow both.
+ *  A pre-v6 document carries no `skipped` field at all, which reads as none —
+ *  what those documents already meant. */
 function parseDayLog(day: string, value: unknown): DayLog | null {
   if (!isRecord(value)) return null;
-  const takenRaw = isRecord(value.taken) ? value.taken : {};
-  const taken: Record<string, string> = {};
-  for (const [key, at] of Object.entries(takenRaw)) {
-    if (typeof at === "string") taken[key] = at;
+  const taken = parseMarks(value.taken);
+  const skipped: Record<string, string> = {};
+  for (const [key, at] of Object.entries(parseMarks(value.skipped))) {
+    if (!(key in taken)) skipped[key] = at;
   }
-  if (Object.keys(taken).length === 0) return null;
+  if (Object.keys(taken).length === 0 && Object.keys(skipped).length === 0) {
+    return null;
+  }
   return {
     date: typeof value.date === "string" ? value.date : day,
     taken,
+    skipped,
     updatedAt: parseTimestamp(value.updatedAt),
   };
 }
@@ -190,6 +211,11 @@ const migrator = createMigrator({
     // documents meant — and null forces the unit back to "days". Nothing to
     // rewrite; the step moves the stored number.
     4: (doc) => ({ ...doc, version: 5 }),
+    // v5 → v6: day logs gained the doses that were deliberately set aside. A
+    // v5 day carries no `skipped` field, and `parseDayLog` reads a missing one
+    // as none — which is what every document written before a skip could be
+    // recorded meant. Nothing to rewrite; the step moves the stored number.
+    5: (doc) => ({ ...doc, version: 6 }),
   },
 });
 

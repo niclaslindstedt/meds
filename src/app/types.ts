@@ -80,6 +80,34 @@
 // A day's log is keyed by *dose* — `medId@HH:MM` — so "taken" is a claim about
 // one medication at one slot, and a day with two slots half done is exactly
 // half done rather than ambiguously "logged".
+//
+// It holds a second claim about a dose, and only one further one: that it was
+// deliberately **skipped**. Until it did, an absent dose had to mean two
+// things at once — the evening you forgot, and the evening you decided
+// against — and the derivation could only read the first, so a considered
+// decision scored as a lapse: red on the calendar, a hole in the adherence
+// figure, a broken streak, a row in the missed list. That is the same
+// pathology the weekday mask and the as-needed flag were added to fix, in the
+// one shape neither can express, because "not this evening" is a fact about
+// that evening and nothing else.
+//
+// So it passes the bar those two passed, and in the same four places: a
+// skipped dose leaves the day's arithmetic, and the day mark, the share, the
+// streak and the missed list all move to the truth. It leaves it rather than
+// counting as taken — a skip is not credit, it is the day no longer asking —
+// which is exactly how a masked-off Tuesday is already treated. A day whose
+// every dose was set aside owes nothing, and a day with nothing due says
+// nothing (see `stats.ts`).
+//
+// It costs nothing at log time either, which is the other half of that bar:
+// the row is already on the screen and already under a thumb, so the decision
+// is a long press on it (a right-click, on a pointer that has one) rather
+// than a question anybody is asked.
+//
+// Taken and skipped are the same claim's two answers, so the two maps are
+// disjoint: one wins the dose and the other drops it (see `setDoseTaken` and
+// `setDoseSkipped`). And only a dose a day actually *owes* can be set aside —
+// there is nothing to decline about a painkiller nobody scheduled.
 
 import type { DayKey } from "@niclaslindstedt/oss-framework/calendar";
 
@@ -191,13 +219,20 @@ export type Medication = {
   updatedAt: string;
 };
 
-/** One day's log: which due doses were taken, and when. */
+/** One day's log: which due doses were taken, which were set aside, and
+ *  when. */
 export type DayLog = {
   date: DayKey;
-  /** `doseKey` → ISO timestamp of the tap that logged it. Absence means "not
-   *  taken" — there is no explicit skip state, because a dose that is neither
-   *  taken nor due says everything a skip would. */
+  /** `doseKey` → ISO timestamp of the tap that logged it. */
   taken: Record<string, string>;
+  /** `doseKey` → ISO timestamp of the moment it was set aside. A dose in here
+   *  is one its owner decided against, and the day stops asking about it: it
+   *  leaves the count both sides (see `countedDoses` in `schedule.ts`), so it
+   *  neither earns credit nor reads as a lapse.
+   *
+   *  Never a key `taken` also holds — the two are one claim's two answers —
+   *  and empty for every pre-v6 document, which had no way to say this. */
+  skipped: Record<string, string>;
   /** ISO timestamp of the last edit to this day. */
   updatedAt: string;
 };
@@ -212,8 +247,9 @@ export type AppData = {
 
 /** The current document schema version. v1 is the first published shape; v2
  *  added the medication weekday mask; v3 as-needed medications — the flag and
- *  the courses together; v4 the daily maximum; v5 the longest stretch. */
-export const DOC_VERSION = 5;
+ *  the courses together; v4 the daily maximum; v5 the longest stretch; v6 the
+ *  day log's skipped doses. */
+export const DOC_VERSION = 6;
 
 /** The document a first run starts from. */
 export function emptyDoc(): AppData {
@@ -255,5 +291,5 @@ export function activeMedications(data: AppData): Medication[] {
 
 /** A day's log, or an empty one when nothing was logged that day. */
 export function dayLog(data: AppData, day: DayKey): DayLog {
-  return data.days[day] ?? { date: day, taken: {}, updatedAt: "" };
+  return data.days[day] ?? { date: day, taken: {}, skipped: {}, updatedAt: "" };
 }

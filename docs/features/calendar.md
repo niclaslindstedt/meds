@@ -22,6 +22,13 @@ a painkiller taken away from the phone can be filed after the fact too.
 Future days show what will be due but take no taps — a dose cannot truthfully
 be taken tomorrow.
 
+Doses you **skipped** are on the day's checklist like any other — with a
+dashed mark, and a long press (or right-click) away from being put back — but
+out of the count above it, which reads `2 of 2 taken · 1 skipped`. So a day
+you set one dose aside on can still be painted filled, and a day you set aside
+whole is left blank rather than red: it owed nothing, so it says nothing (see
+[`today.md`](today.md)).
+
 A day whose only record is an as-needed dose stays unpainted: nothing was due,
 so the day has nothing to say. The days you were taking one over _are_
 painted, because over a course its times are owed like any other

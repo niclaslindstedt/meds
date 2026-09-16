@@ -13,8 +13,10 @@ import {
   MAX_RUN_LIMIT,
   activeOn,
   asNeededOn,
+  countedDoses,
   courseOn,
   dayProgress,
+  isSettled,
   doseAllowance,
   dosesByTime,
   doseFor,
@@ -108,6 +110,7 @@ describe("dueDoses", () => {
       "2024-03-15": {
         date: "2024-03-15",
         taken: { [key]: "2024-03-15T08:05:00.000Z" },
+        skipped: {},
         updatedAt: "2024-03-15T08:05:00.000Z",
       },
     });
@@ -136,6 +139,7 @@ describe("dayProgress", () => {
       "2024-03-15": {
         date: "2024-03-15",
         taken: { [key]: "2024-03-15T08:05:00.000Z" },
+        skipped: {},
         updatedAt: "2024-03-15T08:05:00.000Z",
       },
     });
@@ -152,6 +156,7 @@ describe("dayProgress", () => {
       "2024-03-15": {
         date: "2024-03-15",
         taken: { [doseKey("m1", "08:00")]: "2024-03-15T08:05:00.000Z" },
+        skipped: {},
         updatedAt: "2024-03-15T08:05:00.000Z",
       },
     });
@@ -166,6 +171,7 @@ describe("dayProgress", () => {
       "2024-03-15": {
         date: "2024-03-15",
         taken: { [doseKey("m1", "08:00")]: "2024-03-15T08:05:00.000Z" },
+        skipped: {},
         updatedAt: "2024-03-15T08:05:00.000Z",
       },
     });
@@ -174,6 +180,88 @@ describe("dayProgress", () => {
       taken: 0,
       status: "missed",
     });
+  });
+});
+
+// The skip's whole contract: the dose stays on the day's list — it has to be
+// visible to be reversible — and leaves the day's arithmetic from both sides.
+// It is neither a tap nor a lapse, and the failure mode worth pinning is it
+// being quietly read as either.
+describe("doses set aside", () => {
+  const two = med({ times: ["08:00", "20:00"] });
+  const morning = doseKey("m1", "08:00");
+  const evening = doseKey("m1", "20:00");
+
+  /** The evening dose set aside, the morning one as `taken` says. */
+  function dayWith(taken: Record<string, string>): AppData {
+    return doc([two], {
+      "2024-03-15": {
+        date: "2024-03-15",
+        taken,
+        skipped: { [evening]: "2024-03-15T19:00:00.000Z" },
+        updatedAt: "2024-03-15T19:00:00.000Z",
+      },
+    });
+  }
+
+  it("still lists the dose, carrying the moment it was set aside", () => {
+    const doses = dueDoses(dayWith({}), "2024-03-15");
+    expect(doses).toHaveLength(2);
+    expect(doses[1]?.skippedAt).toBe("2024-03-15T19:00:00.000Z");
+    expect(doses[1]?.takenAt).toBeNull();
+    expect(doses[0]?.skippedAt).toBeNull();
+  });
+
+  it("drops it from the doses a day is scored on", () => {
+    const counted = countedDoses(dueDoses(dayWith({}), "2024-03-15"));
+    expect(counted.map((d) => d.time)).toEqual(["08:00"]);
+  });
+
+  it("leaves the day full when everything still owed was taken", () => {
+    const data = dayWith({ [morning]: "2024-03-15T08:05:00.000Z" });
+    expect(dayProgress(data, "2024-03-15")).toEqual({
+      due: 1,
+      taken: 1,
+      status: "full",
+    });
+  });
+
+  it("does not make an untaken day look better than it was", () => {
+    expect(dayProgress(dayWith({}), "2024-03-15")).toEqual({
+      due: 1,
+      taken: 0,
+      status: "missed",
+    });
+  });
+
+  it("says nothing at all about a day set aside whole", () => {
+    const data = doc([two], {
+      "2024-03-15": {
+        date: "2024-03-15",
+        taken: {},
+        skipped: {
+          [morning]: "2024-03-15T07:00:00.000Z",
+          [evening]: "2024-03-15T19:00:00.000Z",
+        },
+        updatedAt: "2024-03-15T19:00:00.000Z",
+      },
+    });
+    // Not "0 of 0 missed": a day that owes nothing is silent, exactly like a
+    // day off the weekday mask (see `stats.ts`).
+    expect(dayProgress(data, "2024-03-15")).toEqual({
+      due: 0,
+      taken: 0,
+      status: "none",
+    });
+  });
+
+  it("counts as answered, so the quick-log sheet stops offering it", () => {
+    const doses = dueDoses(dayWith({}), "2024-03-15");
+    expect(doses.map(isSettled)).toEqual([false, true]);
+    // 19:00: the evening slot is the nearest, and would lead without the
+    // skip — a dose already decided must not be the row under the thumb.
+    const order = quickLogOrder(doses, 19 * 60);
+    expect(order.map((d) => d.time)).toEqual(["08:00", "20:00"]);
   });
 });
 
@@ -356,6 +444,7 @@ describe("quickLogOrder", () => {
         "2024-03-15": {
           date: "2024-03-15",
           taken: { "a@08:00": "2024-03-15T08:02:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-15T08:02:00.000Z",
         },
       },
@@ -399,6 +488,7 @@ describe("as-needed medications", () => {
       [day]: {
         date: day,
         taken: Object.fromEntries(keys.map((k) => [k, `${day}T09:00:00.000Z`])),
+        skipped: {},
         updatedAt: `${day}T09:00:00.000Z`,
       },
     });
@@ -744,6 +834,7 @@ describe("as-needed medications", () => {
             {
               date: day,
               taken: { [doseKey("p", "09:00")]: `${day}T09:00:00.000Z` },
+              skipped: {},
               updatedAt: `${day}T09:00:00.000Z`,
             },
           ]),
@@ -847,6 +938,7 @@ describe("as-needed medications", () => {
           [day]: {
             date: day,
             taken: { [doseKey("p", "23:58")]: `${day}T23:58:00.000Z` },
+            skipped: {},
             updatedAt: `${day}T23:58:00.000Z`,
           },
         });
@@ -922,6 +1014,7 @@ describe("as-needed medications", () => {
         time: "14:12",
         key: "p@14:12",
         takenAt: null,
+        skippedAt: null,
       });
     });
   });

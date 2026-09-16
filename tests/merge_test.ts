@@ -72,6 +72,7 @@ describe("day-log merge", () => {
         "2024-03-05": {
           date: "2024-03-05",
           taken: { [morning]: "2024-03-05T08:05:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-05T08:05:00.000Z",
         },
       },
@@ -81,6 +82,7 @@ describe("day-log merge", () => {
         "2024-03-05": {
           date: "2024-03-05",
           taken: { [evening]: "2024-03-05T20:10:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-05T20:10:00.000Z",
         },
       },
@@ -99,6 +101,7 @@ describe("day-log merge", () => {
         "2024-03-05": {
           date: "2024-03-05",
           taken: { [morning]: "2024-03-05T08:05:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-05T08:05:00.000Z",
         },
       },
@@ -108,6 +111,7 @@ describe("day-log merge", () => {
         "2024-03-05": {
           date: "2024-03-05",
           taken: { [morning]: "2024-03-05T09:30:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-05T09:30:00.000Z",
         },
       },
@@ -126,6 +130,7 @@ describe("day-log merge", () => {
         "2024-03-05": {
           date: "2024-03-05",
           taken: { [morning]: "2024-03-05T08:05:00.000Z" },
+          skipped: {},
           updatedAt: "2024-03-05T08:05:00.000Z",
         },
       },
@@ -133,5 +138,66 @@ describe("day-log merge", () => {
     const merged = mergeDocs(local, emptyDoc());
     expect(merged.days["2024-03-05"]).toBeDefined();
     expect(mergeDocs(emptyDoc(), local).days["2024-03-05"]).toBeDefined();
+  });
+
+  it("unions the doses each side set aside", () => {
+    const local = docWith({
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: {},
+          skipped: { [morning]: "2024-03-05T07:50:00.000Z" },
+          updatedAt: "2024-03-05T07:50:00.000Z",
+        },
+      },
+    });
+    const remote = docWith({
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: {},
+          skipped: { [evening]: "2024-03-05T19:40:00.000Z" },
+          updatedAt: "2024-03-05T19:40:00.000Z",
+        },
+      },
+    });
+    const merged = mergeDocs(local, remote);
+    expect(Object.keys(merged.days["2024-03-05"]!.skipped).sort()).toEqual(
+      [morning, evening].sort(),
+    );
+  });
+
+  it("lets a tap win over a skip of the same dose, either way round", () => {
+    // One device set the dose aside, the other took it. The two are one
+    // claim's two answers, so the merge has to pick — and the answer with a
+    // swallowed dose behind it is the one the log must not lose.
+    const took = docWith({
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: { [morning]: "2024-03-05T08:05:00.000Z" },
+          skipped: {},
+          updatedAt: "2024-03-05T08:05:00.000Z",
+        },
+      },
+    });
+    const setAside = docWith({
+      days: {
+        "2024-03-05": {
+          date: "2024-03-05",
+          taken: {},
+          skipped: { [morning]: "2024-03-05T07:50:00.000Z" },
+          updatedAt: "2024-03-05T07:50:00.000Z",
+        },
+      },
+    });
+    for (const merged of [
+      mergeDocs(took, setAside),
+      mergeDocs(setAside, took),
+    ]) {
+      const day = merged.days["2024-03-05"]!;
+      expect(day.taken[morning]).toBe("2024-03-05T08:05:00.000Z");
+      expect(day.skipped).toEqual({});
+    }
   });
 });

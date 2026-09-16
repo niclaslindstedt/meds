@@ -14,9 +14,10 @@ import * as output from "../output.ts";
 
 // The app's data store. Holds the document in state, persists it to
 // localStorage, and exposes the edits the app can make — save or remove a
-// medication, and tick or untick one dose of one day. This is the framework's
-// "store stays in the app" seam: the framework owns the storage adapters and
-// the UI kit, this hook owns where the document lives and what an edit means.
+// medication, tick or untick one dose of one day, and set one aside. This is
+// the framework's "store stays in the app" seam: the framework owns the
+// storage adapters and the UI kit, this hook owns where the document lives
+// and what an edit means.
 //
 // The local copy is always the working copy. Cloud sync (see `useSyncEngine`)
 // reads and writes *around* this hook rather than through it, so losing the
@@ -106,6 +107,17 @@ export type DocStore = {
    *  null to retract it. A day whose last mark is retracted drops out of the
    *  document entirely, so it never accumulates empty days. */
   setDoseTaken: (day: DayKey, doseKey: string, takenAt: string | null) => void;
+  /** Set one dose of one day aside, or take it back off the shelf.
+   *  `skippedAt` is the moment the decision was made, or null to retract it.
+   *
+   *  A sibling of `setDoseTaken` rather than a second way to log a dose: the
+   *  two write the two answers to one claim, so each clears the other and
+   *  neither can leave a dose both taken and skipped. */
+  setDoseSkipped: (
+    day: DayKey,
+    doseKey: string,
+    skippedAt: string | null,
+  ) => void;
   /** Replace the whole document — used by the cloud adopt path and by the
    *  Settings import flow. */
   replaceAll: (doc: AppData) => void;
@@ -122,6 +134,68 @@ export type DocStore = {
    *  is true. */
   writeFailures: number;
 };
+
+/** One mark map with every dose of a medication swept out of it — a dose key
+ *  names its med, so the sweep is a prefix match. */
+function withoutMed(
+  marks: Record<string, string>,
+  medId: string,
+): Record<string, string> {
+  const kept: Record<string, string> = {};
+  for (const [key, at] of Object.entries(marks)) {
+    if (!key.startsWith(`${medId}@`)) kept[key] = at;
+  }
+  return kept;
+}
+
+/** Write one of a dose's two marks on one day, and clear the other — the edit
+ *  behind both `setDoseTaken` and `setDoseSkipped`. `at` is the moment, or
+ *  null to retract the mark.
+ *
+ *  Clearing the other side is what keeps taken and skipped disjoint (see
+ *  `types.ts`): they answer the same question, so writing one is answering it
+ *  again. Retracting only ever clears the mark named — untaking a dose leaves
+ *  a day that owes it, which is the honest reading of "actually, I didn't".
+ *
+ *  A day left with no marks at all drops out of the document, so a log that
+ *  is ticked and unticked never leaves an empty day behind. */
+function setMark(
+  prev: AppData,
+  day: DayKey,
+  doseKey: string,
+  at: string | null,
+  mark: "taken" | "skipped",
+): AppData {
+  const log: DayLog = prev.days[day] ?? {
+    date: day,
+    taken: {},
+    skipped: {},
+    updatedAt: "",
+  };
+  const marks = { ...log[mark] };
+  const others = { ...log[mark === "taken" ? "skipped" : "taken"] };
+  if (at === null) {
+    if (!(doseKey in marks)) return prev;
+    delete marks[doseKey];
+  } else {
+    marks[doseKey] = at;
+    delete others[doseKey];
+  }
+  const taken = mark === "taken" ? marks : others;
+  const skipped = mark === "taken" ? others : marks;
+  const days = { ...prev.days };
+  if (Object.keys(taken).length === 0 && Object.keys(skipped).length === 0) {
+    delete days[day];
+  } else {
+    days[day] = {
+      date: day,
+      taken,
+      skipped,
+      updatedAt: at ?? new Date().toISOString(),
+    };
+  }
+  return { ...prev, days };
+}
 
 export function useDocStore(backend: DocBackend = localDocBackend): DocStore {
   // Read synchronously on the first render: localStorage can answer before
@@ -163,11 +237,11 @@ export function useDocStore(backend: DocBackend = localDocBackend): DocStore {
       // a dose key names its med, so the sweep is a prefix match.
       const days: AppData["days"] = {};
       for (const [day, log] of Object.entries(prev.days)) {
-        const taken: Record<string, string> = {};
-        for (const [key, at] of Object.entries(log.taken)) {
-          if (!key.startsWith(`${medId}@`)) taken[key] = at;
+        const taken = withoutMed(log.taken, medId);
+        const skipped = withoutMed(log.skipped, medId);
+        if (Object.keys(taken).length > 0 || Object.keys(skipped).length > 0) {
+          days[day] = { ...log, taken, skipped };
         }
-        if (Object.keys(taken).length > 0) days[day] = { ...log, taken };
       }
       return { ...prev, medications, days };
     });
@@ -176,31 +250,15 @@ export function useDocStore(backend: DocBackend = localDocBackend): DocStore {
 
   const setDoseTaken = useCallback(
     (day: DayKey, doseKey: string, takenAt: string | null) => {
-      setData((prev) => {
-        const log: DayLog = prev.days[day] ?? {
-          date: day,
-          taken: {},
-          updatedAt: "",
-        };
-        const taken = { ...log.taken };
-        if (takenAt === null) {
-          if (!(doseKey in taken)) return prev;
-          delete taken[doseKey];
-        } else {
-          taken[doseKey] = takenAt;
-        }
-        const days = { ...prev.days };
-        if (Object.keys(taken).length === 0) {
-          delete days[day];
-        } else {
-          days[day] = {
-            date: day,
-            taken,
-            updatedAt: takenAt ?? new Date().toISOString(),
-          };
-        }
-        return { ...prev, days };
-      });
+      setData((prev) => setMark(prev, day, doseKey, takenAt, "taken"));
+      setEditCount((n) => n + 1);
+    },
+    [],
+  );
+
+  const setDoseSkipped = useCallback(
+    (day: DayKey, doseKey: string, skippedAt: string | null) => {
+      setData((prev) => setMark(prev, day, doseKey, skippedAt, "skipped"));
       setEditCount((n) => n + 1);
     },
     [],
@@ -217,6 +275,7 @@ export function useDocStore(backend: DocBackend = localDocBackend): DocStore {
       saveMedication,
       removeMedication,
       setDoseTaken,
+      setDoseSkipped,
       replaceAll,
       editCount,
       loaded: loadedRef.current,
@@ -227,6 +286,7 @@ export function useDocStore(backend: DocBackend = localDocBackend): DocStore {
       saveMedication,
       removeMedication,
       setDoseTaken,
+      setDoseSkipped,
       replaceAll,
       editCount,
       writeFailures,

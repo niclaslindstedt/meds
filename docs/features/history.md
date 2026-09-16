@@ -21,7 +21,18 @@ you, and a day with nothing due says nothing. The second is what keeps
 [medications taken when needed](medications.md) out of the numbers — a day
 nobody needed the painkiller owed nothing, so it neither dents a share nor
 breaks a streak. The stretches you _were_ taking one over score like any other
-schedule for as long as they ran, dropped doses included. The percentages are floored,
+schedule for as long as they ran, dropped doses included.
+
+The same rule reaches one dose at a time: a dose you **skipped** from Today or
+the Calendar (see [`today.md`](today.md)) is out of every figure on this
+screen, both halves of it. It does not dent a share, break a streak or earn a
+row in the missed list — that list is the gaps worth going back for, and a
+decision already made is not one — and it does not pad a share either, which
+is what stops the state being a way to make a bad month read well. The only
+tile that behaves differently is **Doses taken**, which counts taps, and a
+skip is not one.
+
+The percentages are floored,
 print `100%` only for a genuinely perfect share, and print `<1%` rather than
 a dishonest `0%`.
 

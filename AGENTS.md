@@ -126,11 +126,16 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
 - `src/app/types.ts` — the `Medication` / `DayLog` / `AppData` model. A
   medication is a name, an optional free-text dose, its time slots, the
   weekdays it is due on (`weekdays`, null for every day), and the span of days
-  its schedule covers (`startDate` / `endDate`); a day's log is a map of
-  `medId@HH:MM` dose keys to the timestamps they were ticked at.
+  its schedule covers (`startDate` / `endDate`); a day's log is two maps of
+  `medId@HH:MM` dose keys — `taken`, against the timestamps they were ticked
+  at, and `skipped`, against the moment they were deliberately set aside.
+  The two are disjoint, and a skipped dose leaves the day's arithmetic
+  entirely rather than counting as taken.
 - `src/app/schedule.ts` — the derivation: which doses a day owes
-  (`dueDoses`), how far through them a log is (`dayProgress`), slot and
-  weekday-mask validation, and the quick-log sheet's likelihood ordering
+  (`dueDoses`), which of those a day is scored on (`countedDoses` — the one
+  place a skip is applied), how far through them a log is (`dayProgress`),
+  slot and weekday-mask validation, and the quick-log sheet's likelihood
+  ordering
   (`quickLogOrder`, which takes the moment as a parameter). **Pure and
   clock-free.**
 - `src/app/stats.ts` — adherence over a window, per-medication adherence,
@@ -147,13 +152,15 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   Läkemedelsverket's open LiiV/NPL data into this same trivial shape). Rides
   in its own chunk behind `import()`.
 - `src/app/merge.ts` — the document merge both cloud sync and backup restore
-  run through: medications by last edit, day logs by union of taps.
+  run through: medications by last edit, day logs by union of marks (a tap
+  wins a dose one side took and the other set aside).
 - `src/app/migrations.ts` — parse / normalise / serialize; the only module
   that trusts stored bytes.
 - `src/app/useDocStore.ts` — the document store, over a `DocBackend` seam
   rather than `localStorage` directly (which is what demo data swaps). Its
   edits are the app's whole write vocabulary: save/remove a medication, tick
-  or untick one dose of one day, replace the document.
+  or untick one dose of one day, set one aside or put it back, replace the
+  document.
 - `src/app/useSyncEngine.ts` — the sync engine over the framework's storage
   adapters (debounced push, conflict / auth / throttle handling). Suspended
   wholesale while demo data has taken over storage.
@@ -171,7 +178,10 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   the Meds screen's inline editor, with the catalog autocomplete, the dose
   chips and the "every day"/day-pill weekday control.
 - `src/app/DoseRow.tsx` — one dose as the control that logs it. The app's
-  only logging control; all three places that log a dose render it.
+  only logging control; all three places that log a dose render it. It also
+  carries the row's _other_ answer — a long press (a right-click on a
+  pointer) sets the dose aside — as a gesture rather than a second button,
+  so the tap target stays the whole row.
 - `src/app/DoseList.tsx` — a day's doses as a tappable checklist grouped by
   slot, shared by Today and the Calendar's selected-day card so logging feels
   identical in both places.
@@ -243,6 +253,12 @@ a gap in the chart rather than a zero). A change that makes an unfinished
 today read as a miss, or an empty pre-history week read as 100%, is a bug even
 if the code is otherwise cleaner.
 
+Both reach one dose at a time through `countedDoses`: a dose set aside on
+purpose is out of every figure, numerator **and** denominator. Counting a
+skip as taken would make the state a way to fake a good month; counting it
+as missed is the bug it was added to fix. Any new number goes through
+`countedDoses` too.
+
 ### Stopping is not deleting
 
 `endDate` is how a medication leaves the schedule: the history it earned
@@ -269,6 +285,7 @@ dates without fake timers.
 | A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts`                                                                                                                          |
 | A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                                                    |
 | A change to the Medication shape  | `types.ts` + `migrations.ts` (bump `DOC_VERSION`, append a step — never edit one) + every `Medication` literal in `tests/` and `dev/`                                            |
+| A change to the DayLog shape      | The same, plus `merge.ts` (a new mark map merges too) and every `DayLog` literal in `tests/` and `dev/`                                                                          |
 | A catalog entry or ranking change | `src/app/data/medications.ts` (data) or `src/app/catalog.ts` (ranking), with tests in `tests/catalog_test.ts`                                                                    |
 | A new screen                      | `src/app/<Name>Screen.tsx` + a tab in `src/app/BottomNav.tsx`, or a button in `src/app/TopBar.tsx` if it is an action rather than a place                                        |
 | A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                        |

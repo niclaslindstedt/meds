@@ -17,9 +17,11 @@ type Props = {
   doses: Dose[];
   /** Tick or untick one dose. `takenAt` is null to retract. */
   onToggle: (dose: Dose, takenAt: string | null) => void;
+  /** Set one dose aside, or put it back — the row's other answer. */
+  onSkip: (dose: Dose, skippedAt: string | null) => void;
 };
 
-export function DoseList({ doses, onToggle }: Props) {
+export function DoseList({ doses, onToggle, onSkip }: Props) {
   return (
     <div className="flex flex-col gap-3">
       {dosesByTime(doses).map(({ time, doses: group }) => (
@@ -30,7 +32,7 @@ export function DoseList({ doses, onToggle }: Props) {
           <ul className="mt-1.5 flex flex-col gap-1.5">
             {group.map((dose) => (
               <li key={dose.key}>
-                <DoseRow dose={dose} onToggle={onToggle} />
+                <DoseRow dose={dose} onToggle={onToggle} onSkip={onSkip} />
               </li>
             ))}
           </ul>

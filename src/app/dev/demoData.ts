@@ -12,7 +12,10 @@
 // a weekday mask (the days that owe nothing and therefore say nothing), and
 // two taken when needed — a painkiller with no times at all, and a five-day
 // course at three set times that only the days it was taken owe anything for
-// (the "As needed" panel, and the rule in `asNeededDue`).
+// (the "As needed" panel, and the rule in `asNeededDue`) — and two doses set
+// aside on purpose, one of them a whole day of them (the day that owes
+// nothing because its owner said so, and the dose the missed list must not
+// name).
 
 import { addDays, type DayKey } from "@niclaslindstedt/oss-framework/calendar";
 
@@ -194,7 +197,12 @@ export function buildDemoData(today: DayKey): AppData {
       }
     }
     if (Object.keys(taken).length > 0) {
-      days[day] = { date: day, taken, updatedAt: `${day}T21:00:00.000Z` };
+      days[day] = {
+        date: day,
+        taken,
+        skipped: {},
+        updatedAt: `${day}T21:00:00.000Z`,
+      };
     }
   }
 
@@ -213,6 +221,7 @@ export function buildDemoData(today: DayKey): AppData {
   days[today] = {
     date: today,
     taken: todayTaken,
+    skipped: {},
     updatedAt: `${today}T08:05:00.000Z`,
   };
 
@@ -224,6 +233,26 @@ export function buildDemoData(today: DayKey): AppData {
     days[day] = {
       date: day,
       taken,
+      skipped: { ...(existing?.skipped ?? {}) },
+      updatedAt: existing?.updatedAt ?? `${day}T21:00:00.000Z`,
+    };
+  };
+
+  /** Set one dose of a day aside, the way a long press on its row does: the
+   *  decision replaces whatever that dose held, since a dose cannot be both
+   *  taken and skipped (see `setMark` in `useDocStore.ts`). */
+  const skip = (day: DayKey, medId: string, time: string) => {
+    const existing = days[day];
+    const key = doseKey(medId, time);
+    const taken = { ...(existing?.taken ?? {}) };
+    delete taken[key];
+    days[day] = {
+      date: day,
+      taken,
+      skipped: {
+        ...(existing?.skipped ?? {}),
+        [key]: `${day}T${time}:00.000Z`,
+      },
       updatedAt: existing?.updatedAt ?? `${day}T21:00:00.000Z`,
     };
   };
@@ -266,6 +295,20 @@ export function buildDemoData(today: DayKey): AppData {
   }
   for (const time of ["08:00", "12:00"]) {
     log(addDays(today, -13), "demo-bisolvon", time);
+  }
+
+  // Two deliberate skips, because the whole point of the state is that a
+  // decision and a lapse must not look alike on any screen. One evening dose
+  // set aside nine days back — that day still reads full, and the missed list
+  // never names it — and one day five days back set aside whole, which
+  // therefore owes nothing at all and leaves the calendar blank there rather
+  // than red. Written after the taps above, since a skip takes the dose off
+  // whichever of them landed on it.
+  skip(addDays(today, -9), "demo-metformin", "20:00");
+  const setAside = addDays(today, -5);
+  for (const med of meds) {
+    if (med.asNeeded || !activeOn(med, setAside)) continue;
+    for (const time of med.times) skip(setAside, med.id, time);
   }
 
   return {

@@ -13,10 +13,16 @@
 //     medication existed — or where every med's schedule had ended — are not
 //     "100% adherent", they are silence, and they neither pad a percentage
 //     nor break a streak.
+//
+// Both rules reach one dose at a time through `countedDoses`: a dose set
+// aside on purpose is out of every count below, numerator and denominator
+// alike, exactly as a masked-off weekday is (see `types.ts`). So a decision
+// never scores as a lapse, never earns credit it wasn't owed, and a day whose
+// every dose was set aside is silent like any other day with nothing due.
 
 import { addDays, type DayKey } from "@niclaslindstedt/oss-framework/calendar";
 
-import { dayProgress, dueDoses, type Dose } from "./schedule.ts";
+import { countedDoses, dayProgress, dueDoses, type Dose } from "./schedule.ts";
 import type { AppData, Medication } from "./types.ts";
 
 /** Doses taken against doses due. `share` is null when nothing was due — the
@@ -63,7 +69,8 @@ export function adherenceLastDays(
 }
 
 /** One medication's adherence over the last `days` finished days. Only the
- *  days that med was actually scheduled count. */
+ *  days that med was actually scheduled count, and only the doses of it the
+ *  day still asked for — a dose set aside is out of both halves. */
 export function medAdherence(
   data: AppData,
   med: Medication,
@@ -74,7 +81,7 @@ export function medAdherence(
   let due = 0;
   for (let i = days; i >= 1; i--) {
     const day = addDays(today, -i);
-    for (const dose of dueDoses(data, day)) {
+    for (const dose of countedDoses(dueDoses(data, day))) {
       if (dose.med.id !== med.id) continue;
       due += 1;
       if (dose.takenAt !== null) taken += 1;
@@ -155,7 +162,11 @@ export type MissedDose = { day: DayKey; dose: Dose };
 
 /** Every missed dose in the last `days` finished days, newest first — the
  *  History screen's gap list. Newest first because the miss worth acting on
- *  is the recent one. */
+ *  is the recent one.
+ *
+ *  A dose set aside is not one of them, and this is the reading the list most
+ *  needs to get right: it is a list of gaps to go and mend, and a decision
+ *  already made is not a gap. */
 export function missedDoses(
   data: AppData,
   today: DayKey,
@@ -164,7 +175,7 @@ export function missedDoses(
   const out: MissedDose[] = [];
   for (let i = 1; i <= days; i++) {
     const day = addDays(today, -i);
-    for (const dose of dueDoses(data, day)) {
+    for (const dose of countedDoses(dueDoses(data, day))) {
       if (dose.takenAt === null) out.push({ day, dose });
     }
   }
