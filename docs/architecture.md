@@ -31,7 +31,7 @@ backend is connected:
 
 ```jsonc
 {
-  "version": 5,
+  "version": 6,
   "medications": {
     "<id>": {
       "id": "<id>",
@@ -54,6 +54,9 @@ backend is connected:
       "date": "2026-03-02",
       // doseKey (`<medId>@<HH:MM>`) → ISO timestamp of the tap
       "taken": { "<id>@08:00": "2026-03-02T08:04:00.000Z" },
+      // the same keys → when the dose was deliberately set aside; a dose in
+      // here leaves the day's arithmetic and is never also in `taken`
+      "skipped": { "<id>@20:00": "2026-03-02T20:30:00.000Z" },
       "updatedAt": "2026-03-02T08:04:00.000Z",
     },
   },
@@ -85,7 +88,7 @@ src/
     ├── stats.ts             adherence, streaks, gaps (pure, clock-free)
     ├── catalog.ts           autocomplete search over the bundled catalog
     ├── data/medications.ts  the catalog data (own chunk, lazy-loaded)
-    ├── merge.ts             meds by last edit, day logs by union of taps
+    ├── merge.ts             meds by last edit, day logs by union of marks
     ├── migrations.ts        parse / normalise / serialize
     ├── useDocStore.ts       the document store over a DocBackend seam
     ├── useSyncEngine.ts     debounced push / pull over the framework adapters
@@ -100,7 +103,7 @@ src/
     ├── MedsScreen.tsx       the list: edit in place, stop / resume / delete
     ├── CalendarScreen.tsx   the month grid + the selected day's checklist
     ├── DoseList.tsx         a day's doses grouped by slot (Today + Calendar)
-    ├── DoseRow.tsx          one dose as the control that logs it (all three)
+    ├── DoseRow.tsx          one dose as the control that logs (or skips) it
     ├── DayMark.tsx          day progress → mark + legend (one table)
     ├── HistoryScreen.tsx    tiles, the gap chart, per-med bars, missed list
     ├── HistoryChart.tsx     the chart, from the framework's primitives

@@ -29,6 +29,9 @@ quiet work:
 - **A day owes an as-needed med nothing unless a course covers it.** The days
   nobody reached for the painkiller are silence, not misses.
 
+A fifth rule is not about the schedule but about one dose of one day: **a dose
+set aside owes nothing either** (below).
+
 ### The weekday mask
 
 `weekdays` is a sorted list of `Date.getDay()` numbers (0 = Sunday), or null
@@ -167,6 +170,44 @@ panel and leaves a plainly labelled one ("Log one anyway"), because a log that
 refuses to record a dose that was actually swallowed is a log that lies. The
 app counts; it never decides the numbers.
 
+### Doses set aside
+
+Until schema v6 an absent dose had to mean two things at once: the evening you
+forgot, and the evening you decided against. The derivation could only read
+the first, so a considered decision scored as a lapse — red on the calendar, a
+hole in the adherence figure, a broken streak, a row in the missed list.
+
+A day log therefore carries a second map beside `taken`: `skipped`, the same
+`medId@HH:MM` keys against the moment the decision was made. A dose in it
+**leaves the day's arithmetic from both sides**. It is not credit — that would
+make the state a way to fake a good month — it is the day no longer asking,
+which is exactly how a masked-off Tuesday is already treated, one dose at a
+time instead of a whole day.
+
+`countedDoses(doses)` is the one place that is applied, so every number in the
+app applies it the same way:
+
+- `dueDoses` still lists the dose — it is a row on the checklist, wearing a
+  dashed mark, because the decision has to be reversible.
+- `dayProgress` counts `countedDoses` of that list, so a day of three with one
+  set aside and two taken is **full**, and a day set aside whole is `none` —
+  silent, like any other day with nothing due.
+- `medAdherence` and `missedDoses` drop it too. The missed list is the reading
+  that matters most: it is a list of gaps to go and mend, and a decision
+  already made is not a gap.
+
+The two maps are disjoint by construction: writing one clears the other
+(`setDoseTaken` / `setDoseSkipped` in `useDocStore.ts`), the merge lets a tap
+win a dose both sides claim, and `parseDoc` resolves the same way for bytes
+this app did not write. A day holding nothing but skips is still a day the
+document keeps — dropping it as "empty" would silently turn it back into a day
+of missed doses. Every document written before v6 has no `skipped` field at
+all, which reads as none.
+
+Only a dose a day actually owes can be set aside. An as-needed medication with
+no times of its own has nothing to decline — its doses are each their own
+record, filed under the minute of the tap — so those rows carry no skip.
+
 A dose is identified by `medId@HH:MM`, and a day's log maps those keys to the
 timestamps they were ticked at. Editing a slot from 08:00 to 09:00 therefore
 orphans old taps at 08:00 — those days now owe the new slot — which is the
@@ -176,11 +217,12 @@ happened under the old one.
 ## How a day is judged
 
 `dayProgress(data, day)` counts taken against due and answers in one word:
-`none` (nothing was due), `full`, `partial`, or `missed` (due and nothing
-taken). The counts never consult the clock — whether an unfinished day is
-"missed" or merely "still open" is the caller's call, and the Calendar makes
-it with `today` in hand: today and future days wear the hollow "still open"
-mark whenever anything remains, and only finished days can be painted missed.
+`none` (nothing was due, or every dose of it was set aside), `full`,
+`partial`, or `missed` (due and nothing taken). The counts never consult the
+clock — whether an unfinished day is "missed" or merely "still open" is the
+caller's call, and the Calendar makes it with `today` in hand: today and
+future days wear the hollow "still open" mark whenever anything remains, and
+only finished days can be painted missed.
 
 ## The two rules every number applies
 
@@ -196,6 +238,9 @@ adherence chart rather than zeroes, and in a streak walk they are stepped
 over without counting — a weekend before your first medication existed is not
 two days of perfect adherence, and it does not break a streak either.
 
+Both rules reach one dose at a time through `countedDoses`: a dose set aside
+is out of every figure below, numerator and denominator alike.
+
 ## The numbers History shows
 
 | Figure           | Source              | Definition                                                                    |
@@ -206,6 +251,9 @@ two days of perfect adherence, and it does not break a streak either.
 | The daily chart  | `dailyShares`       | One point per finished day: taken/due, null where nothing was due.            |
 | By medication    | `medAdherence`      | The same window, scored against only the days that med was scheduled.         |
 | Missed doses     | `missedDoses`       | Every due-but-unlogged dose in the last two weeks, newest first.              |
+
+Every row but "Doses taken" reads `countedDoses`, so a dose set aside is
+outside it. "Doses taken" counts taps, which a skip is not one of.
 
 The percentage formatting has its own honesty rule (`adherencePercent` in
 `format.ts`): floored to a whole percent, `100%` printed only for a genuinely
@@ -237,6 +285,7 @@ doc.medications["m1"] = {
 doc.days["2026-03-02"] = {
   date: "2026-03-02",
   taken: { [doseKey("m1", "08:00")]: "2026-03-02T08:04:00.000Z" },
+  skipped: {}, // doseKey → the moment the dose was set aside
   updatedAt: "2026-03-02T08:04:00.000Z",
 };
 
@@ -249,3 +298,15 @@ streaks(doc, "2026-03-03"); // → { current: 0, longest: 0 }
 The March 1st the window covers contributes nothing — the med did not exist —
 and the half-done March 2nd is what breaks the streak, not the empty days
 before it.
+
+Set the evening dose aside instead of leaving it open, and the same day reads
+differently — it owed one dose and got it:
+
+```ts
+doc.days["2026-03-02"]!.skipped[doseKey("m1", "20:00")] =
+  "2026-03-02T20:30:00.000Z";
+
+dayProgress(doc, "2026-03-02"); // → { due: 1, taken: 1, status: "full" }
+adherenceLastDays(doc, "2026-03-03", 7); // → { taken: 1, due: 1, share: 1 }
+streaks(doc, "2026-03-03"); // → { current: 1, longest: 1 }
+```

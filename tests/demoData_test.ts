@@ -143,6 +143,30 @@ describe("buildDemoData", () => {
     expect(dayProgress(data, TODAY).status).toBe("partial");
   });
 
+  it("shows a dose set aside, and a day set aside whole", () => {
+    // Nine days back: one evening dose declined. The day still reads full —
+    // it owed everything else and got it — and the missed list never names
+    // the dose.
+    const evening = addDays(TODAY, -9);
+    expect(data.days[evening]?.skipped["demo-metformin@20:00"]).toBeDefined();
+    expect(data.days[evening]?.taken["demo-metformin@20:00"]).toBeUndefined();
+    expect(dayProgress(data, evening).status).toBe("full");
+    expect(missedDoses(data, TODAY, 14).some((m) => m.day === evening)).toBe(
+      false,
+    );
+
+    // Five days back: the whole checklist declined. The day owes nothing, so
+    // it is silent — blank on the calendar rather than red — and it is still
+    // a day the document carries.
+    const whole = addDays(TODAY, -5);
+    expect(dueDoses(data, whole).length).toBeGreaterThan(0);
+    expect(dayProgress(data, whole)).toEqual({
+      due: 0,
+      taken: 0,
+      status: "none",
+    });
+  });
+
   it("contains the gap week and scattered misses", () => {
     // The gap week plus the scattered misses give the History screen real
     // gaps to show...

@@ -50,6 +50,7 @@ function docTaken(meds: Medication[], takenDays: string[]): AppData {
     days[day] = {
       date: day,
       taken: { [doseKey("m1", "08:00")]: `${day}T08:05:00.000Z` },
+      skipped: {},
       updatedAt: `${day}T08:05:00.000Z`,
     };
   }
@@ -229,6 +230,77 @@ describe("a weekday-masked medication", () => {
   });
 });
 
+// Doses set aside against the two rules. A dose its owner decided against is
+// out of every number both ways: it must not dent a share, break a streak or
+// earn a row in the missed list — and it must not pad a share either, which
+// is the mistake that would make the whole state a way to fake a good month.
+describe("doses set aside", () => {
+  // 2024-03-11 is a Monday. One med, one dose a day, skipped on the 13th.
+  const key = doseKey("m1", "08:00");
+
+  /** `takenDays` logged, `skippedDays` set aside. */
+  function docSkipping(takenDays: string[], skippedDays: string[]): AppData {
+    const data = docTaken([med()], takenDays);
+    for (const day of skippedDays) {
+      data.days[day] = {
+        date: day,
+        taken: {},
+        skipped: { [key]: `${day}T07:00:00.000Z` },
+        updatedAt: `${day}T07:00:00.000Z`,
+      };
+    }
+    return data;
+  }
+
+  it("leaves the window's adherence to the days that still asked", () => {
+    // Mon and Wed taken, Tue set aside, Thu missed: 2 of 3, not 2 of 4 and
+    // not 3 of 4.
+    const data = docSkipping(["2024-03-11", "2024-03-13"], ["2024-03-12"]);
+    expect(adherence(data, "2024-03-11", "2024-03-14")).toEqual({
+      taken: 2,
+      due: 3,
+      share: 2 / 3,
+    });
+  });
+
+  it("leaves the day silent in the daily series", () => {
+    const data = docSkipping(["2024-03-11"], ["2024-03-12"]);
+    // Taken, set aside, missed — a gap in the chart where the decision was,
+    // rather than a zero that reads as a dose forgotten.
+    expect(dailyShares(data, "2024-03-14", 3).map((d) => d.share)).toEqual([
+      1,
+      null,
+      0,
+    ]);
+  });
+
+  it("keeps a streak alive across it without counting it", () => {
+    const data = docSkipping(
+      ["2024-03-11", "2024-03-13", "2024-03-15"],
+      ["2024-03-12", "2024-03-14"],
+    );
+    // The three days that counted. The two set aside are silence: they
+    // neither break the run nor pad it.
+    expect(streaks(data, "2024-03-16").current).toBe(3);
+  });
+
+  it("never names it in the missed list", () => {
+    const data = docSkipping([], ["2024-03-13"]);
+    const missed = missedDoses(data, "2024-03-16", 7);
+    expect(missed.length).toBeGreaterThan(0);
+    expect(missed.some((m) => m.day === "2024-03-13")).toBe(false);
+  });
+
+  it("leaves it out of the medication's own adherence", () => {
+    const data = docSkipping(["2024-03-15"], ["2024-03-14"]);
+    expect(medAdherence(data, med(), "2024-03-16", 2)).toEqual({
+      taken: 1,
+      due: 1,
+      share: 1,
+    });
+  });
+});
+
 // As-needed medications against the two rules. A day nobody needed one is a
 // day with nothing due, and a day with nothing due says nothing — so an
 // untaken painkiller must not dent a share, break a streak or earn a row in
@@ -279,6 +351,7 @@ describe("as-needed medications", () => {
           {
             date: day,
             taken: { [doseKey("s", "08:00")]: `${day}T08:00:00.000Z` },
+            skipped: {},
             updatedAt: `${day}T08:00:00.000Z`,
           },
         ]),
@@ -302,6 +375,7 @@ describe("as-needed medications", () => {
           [doseKey("c", "08:00")]: `${day}T08:00:00.000Z`,
           [doseKey("c", "12:00")]: `${day}T12:00:00.000Z`,
         },
+        skipped: {},
         updatedAt: `${day}T12:00:00.000Z`,
       },
     });
@@ -324,6 +398,7 @@ describe("as-needed medications", () => {
           [doseKey("p", "09:05")]: `${day}T09:05:00.000Z`,
           [doseKey("p", "21:40")]: `${day}T21:40:00.000Z`,
         },
+        skipped: {},
         updatedAt: `${day}T21:40:00.000Z`,
       },
     });

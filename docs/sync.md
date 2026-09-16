@@ -41,10 +41,14 @@ Two levels, matched to what the data means:
 - **Medications** merge by id, with the later edit winning. Renaming a med on
   the phone and changing its times on the tablet keeps whichever edit was
   later — the only honest answer when both touched the same record.
-- **Day logs** merge as a **union of taps**. Each tick is one dose of one day,
+- **Day logs** merge as a **union of marks**. Each tick is one dose of one day,
   so a dose ticked on the phone and a different dose ticked on the tablet the
   same evening both survive; where both devices ticked the _same_ dose, the
   earlier timestamp is kept, because the first tap is the one that happened.
+  The doses you **skipped** union the same way — and where one device took a
+  dose the other set aside, **taken wins**, whichever side it arrives from:
+  the two are one claim's two answers, and the answer with a swallowed dose
+  behind it is the one the log must not lose.
 
 No prompt, no "which side do you want to keep?", and the merge is
 order-independent: both devices reach the same document regardless of which
@@ -58,7 +62,8 @@ adds to what is already there instead of replacing it.
 A removal is an _absence_, not a tombstone. If you untick a dose on your phone
 and your laptop still holds the tick, the laptop's copy reappears on the next
 merge — the phone has nothing to say about the dose, so there is nothing for
-the merge to prefer. The same goes for a **deleted** medication.
+the merge to prefer. The same goes for putting a **skipped** dose back, and
+for a **deleted** medication.
 
 This is a deliberate trade. Doses are ticked far more often than unticked, a
 medication you are done with is **stopped** rather than deleted (stopping is

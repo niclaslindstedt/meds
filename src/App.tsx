@@ -215,6 +215,17 @@ export function App() {
     [store],
   );
 
+  // Setting a dose aside, and putting it back. The other answer to the same
+  // question the tap answers, so it goes through the store's sibling edit and
+  // raises no toast either: the row says what was decided, and a toast over a
+  // long press would land on the finger that made it.
+  const onSkipDose = useCallback(
+    (day: DayKey, dose: Dose, skippedAt: string | null) => {
+      store.setDoseSkipped(day, dose.key, skippedAt);
+    },
+    [store],
+  );
+
   // Starting and ending an as-needed medication's course. It is an edit to
   // the medication, not to a day: `startCourse` / `endCourse` are pure (the
   // moment is a parameter), and the result goes through the same
@@ -318,6 +329,7 @@ export function App() {
               data={store.data}
               today={today}
               onToggle={onToggleDose}
+              onSkip={onSkipDose}
               onStartTaking={onStartTaking}
               onAddMedication={() => toggle("add")}
             />
@@ -340,6 +352,7 @@ export function App() {
               today={today}
               weekStartsOn={settings.weekStartsOn}
               onToggle={onToggleDose}
+              onSkip={onSkipDose}
               onStartTaking={onStartTaking}
             />
           )}
@@ -429,6 +442,7 @@ export function App() {
         data={store.data}
         today={today}
         onToggle={(dose, takenAt) => onToggleDose(today, dose, takenAt)}
+        onSkip={(dose, skippedAt) => onSkipDose(today, dose, skippedAt)}
         onStartTaking={onStartTaking}
         onAddMedication={() => {
           setQuickLogOpen(false);

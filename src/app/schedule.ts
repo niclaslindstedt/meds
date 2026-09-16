@@ -23,12 +23,15 @@ import {
 } from "./types.ts";
 
 /** One dose a day owes: the medication, the slot, and the key the log files
- *  it under. `takenAt` is the tap that cleared it, or null while it stands. */
+ *  it under. `takenAt` is the tap that cleared it, or null while it stands;
+ *  `skippedAt` is the moment it was set aside instead, or null. Never both —
+ *  they are one claim's two answers (see `types.ts`). */
 export type Dose = {
   med: Medication;
   time: string;
   key: string;
   takenAt: string | null;
+  skippedAt: string | null;
 };
 
 /** The weekday a `DayKey` falls on, in `Date.getDay()` numbering (0 = Sunday)
@@ -90,8 +93,9 @@ export function doseFor(
   med: Medication,
   time: string,
   takenAt: string | null = null,
+  skippedAt: string | null = null,
 ): Dose {
-  return { med, time, key: doseKey(med.id, time), takenAt };
+  return { med, time, key: doseKey(med.id, time), takenAt, skippedAt };
 }
 
 /** Normalise a medication's courses on the way into the document: real day
@@ -360,7 +364,11 @@ export function asNeededDue(med: Medication, day: DayKey): string[] {
  *  stopped, or off its weekday mask — owes none of its doses, so old days
  *  never turn red when the schedule changes. Nor does a day owe an as-needed
  *  medication anything until one of its doses is logged (see `asNeededDue`),
- *  which is what keeps the days nobody needed it out of every number. */
+ *  which is what keeps the days nobody needed it out of every number.
+ *
+ *  A dose that was set aside is still *here* — it is a row on the checklist
+ *  and it says what was decided about it — it just leaves the arithmetic. The
+ *  screens render this list; the numbers count `countedDoses` of it. */
 export function dueDoses(data: AppData, day: DayKey): Dose[] {
   const log: DayLog | undefined = data.days[day];
   const doses: Dose[] = [];
@@ -369,7 +377,13 @@ export function dueDoses(data: AppData, day: DayKey): Dose[] {
     const times = med.asNeeded ? asNeededDue(med, day) : med.times;
     for (const time of times) {
       const key = doseKey(med.id, time);
-      doses.push({ med, time, key, takenAt: log?.taken[key] ?? null });
+      doses.push({
+        med,
+        time,
+        key,
+        takenAt: log?.taken[key] ?? null,
+        skippedAt: log?.skipped[key] ?? null,
+      });
     }
   }
   return doses.sort(
@@ -491,17 +505,35 @@ function freeDoses(med: Medication, log: DayLog | undefined): Dose[] {
     if (!key.startsWith(prefix)) continue;
     const time = key.slice(prefix.length);
     if (!isValidTime(time)) continue;
-    doses.push({ med, time, key, takenAt });
+    // Never skipped: these are doses that *happened*, each filed under the
+    // minute of its own tap. A dose nobody scheduled has nothing to decline.
+    doses.push({ med, time, key, takenAt, skippedAt: null });
   }
   return doses.sort((a, b) => a.time.localeCompare(b.time));
 }
 
-/** How far through a day's doses the log is. */
+/** The doses a day is actually scored on: everything it owed, minus the ones
+ *  its owner set aside.
+ *
+ *  The one place the skip is applied, so every number in the app applies it
+ *  the same way. Leaving the list rather than joining the taken half is the
+ *  whole point (see `types.ts`): a skipped dose is not credit, it is the day
+ *  no longer asking — the same treatment a masked-off weekday already gets,
+ *  one dose at a time instead of a whole day. A day whose every dose was set
+ *  aside therefore owes nothing, and a day with nothing due says nothing (see
+ *  `stats.ts`). */
+export function countedDoses(doses: Dose[]): Dose[] {
+  return doses.filter((dose) => dose.skippedAt === null);
+}
+
+/** How far through a day's doses the log is. Counted over `countedDoses`, so
+ *  `due` is what the day still asked of you after the skips came out of it. */
 export type DayProgress = {
   due: number;
   taken: number;
   /** The one-word answer the calendar paints:
-   *  - `none`    — nothing was due (no meds yet, or none active that day);
+   *  - `none`    — nothing was due (no meds yet, none active that day, or
+   *                every dose of it set aside);
    *  - `full`    — everything due was taken;
    *  - `partial` — some taken, some not;
    *  - `missed`  — doses were due and none were taken.
@@ -512,7 +544,7 @@ export type DayProgress = {
 
 /** Count a day's doses against its log. */
 export function dayProgress(data: AppData, day: DayKey): DayProgress {
-  const doses = dueDoses(data, day);
+  const doses = countedDoses(dueDoses(data, day));
   const due = doses.length;
   const taken = doses.filter((d) => d.takenAt !== null).length;
   const status =
@@ -576,9 +608,16 @@ export function quickLogDistance(time: string, nowMinutes: number): number {
   return ahead <= QUICK_LOG_GRACE_MINUTES ? ahead : behind;
 }
 
+/** Whether a dose has been answered one way or the other — taken, or set
+ *  aside. What is left is what the day is still waiting on, which is what the
+ *  quick-log sheet ranks and what its top row has to be. */
+export function isSettled(dose: Dose): boolean {
+  return dose.takenAt !== null || dose.skippedAt !== null;
+}
+
 /** A day's doses in the order the quick-log sheet lists them: what you have
- *  not taken yet first, likeliest first, and what you already logged at the
- *  bottom.
+ *  not answered yet first, likeliest first, and what you have already dealt
+ *  with — taken or set aside — at the bottom.
  *
  *  The sheet is opened with a glass in one hand to answer one question — "the
  *  one I am holding, which row is it?" — so the answer has to be near the top
@@ -591,8 +630,8 @@ export function quickLogDistance(time: string, nowMinutes: number): number {
  *  reads the clock (see `QuickLogModal.tsx`). */
 export function quickLogOrder(doses: Dose[], nowMinutes: number): Dose[] {
   return [...doses].sort((a, b) => {
-    const aTaken = a.takenAt !== null ? 1 : 0;
-    const bTaken = b.takenAt !== null ? 1 : 0;
+    const aTaken = isSettled(a) ? 1 : 0;
+    const bTaken = isSettled(b) ? 1 : 0;
     if (aTaken !== bTaken) return aTaken - bTaken;
     if (aTaken === 0) {
       const distance =

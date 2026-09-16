@@ -11,7 +11,13 @@ import {
 import { AsNeededList } from "./AsNeededList.tsx";
 import { DayLegend, DayMark, toneFor } from "./DayMark.tsx";
 import { DoseList } from "./DoseList.tsx";
-import { asNeededOn, dayProgress, dueDoses, type Dose } from "./schedule.ts";
+import {
+  asNeededOn,
+  countedDoses,
+  dayProgress,
+  dueDoses,
+  type Dose,
+} from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { useT } from "./i18n/index.ts";
 import { earliestStart } from "./stats.ts";
@@ -36,6 +42,9 @@ type Props = {
   today: DayKey;
   weekStartsOn: WeekStart;
   onToggle: (day: DayKey, dose: Dose, takenAt: string | null) => void;
+  /** Set one of the selected day's doses aside, or put it back — the same
+   *  decision Today offers, on a day picked explicitly. */
+  onSkip: (day: DayKey, dose: Dose, skippedAt: string | null) => void;
   onStartTaking: (med: Medication) => void;
 };
 
@@ -44,6 +53,7 @@ export function CalendarScreen({
   today,
   weekStartsOn,
   onToggle,
+  onSkip,
   onStartTaking,
 }: Props) {
   const t = useT();
@@ -64,6 +74,10 @@ export function CalendarScreen({
     [data, selected],
   );
   const selectedProgress = dayProgress(data, selected);
+  // The doses this day stopped asking for. They are still in the checklist
+  // below and still out of the count beside it — see `countedDoses`.
+  const selectedSkipped =
+    selectedDoses.length - countedDoses(selectedDoses).length;
   const future = selected > today;
 
   return (
@@ -117,17 +131,33 @@ export function CalendarScreen({
           <>
             {selectedDoses.length > 0 && (
               <>
+                {/* A day that owes nothing because every dose of it was set
+                    aside has no share to report — "0 of 0 taken" would be
+                    arithmetic about a question nobody asked — so it reports
+                    the decision instead. */}
                 <p className="mt-1 text-xs text-muted">
-                  {t("calendar.dayProgress", {
-                    taken: String(selectedProgress.taken),
-                    due: String(selectedProgress.due),
-                  })}
+                  {selectedProgress.due === 0
+                    ? t("today.skippedCount", {
+                        count: String(selectedSkipped),
+                      })
+                    : t("calendar.dayProgress", {
+                        taken: String(selectedProgress.taken),
+                        due: String(selectedProgress.due),
+                      }) +
+                      (selectedSkipped > 0
+                        ? ` · ${t("today.skippedCount", {
+                            count: String(selectedSkipped),
+                          })}`
+                        : "")}
                 </p>
                 <div className="mt-3">
                   <DoseList
                     doses={selectedDoses}
                     onToggle={(dose, takenAt) =>
                       onToggle(selected, dose, takenAt)
+                    }
+                    onSkip={(dose, skippedAt) =>
+                      onSkip(selected, dose, skippedAt)
                     }
                   />
                 </div>

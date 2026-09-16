@@ -64,6 +64,30 @@ export const en = {
       "Couldn't save to this device — check the browser's storage settings.",
     markNotTaken: "Mark {name} not taken",
     takenAt: "Taken {time}",
+    // Setting a dose aside: the evening you decided against, which the log
+    // used to have to record as the evening you forgot. The copy reports the
+    // decision and never has an opinion about it — the app counts, the
+    // prescriber decides — so it says what the app does with it ("not counted
+    // as missed") and nothing about whether it was a good idea.
+    skip: "Skip",
+    // Undoing it. The dose goes back on the day rather than being marked
+    // anything, which is what makes "put it back" the true verb.
+    putBack: "Put it back",
+    skipped: "Skipped",
+    // The count beside the day's progress, so the doses missing from the
+    // total are accounted for rather than quietly absent.
+    skippedCount: "{count} skipped",
+    // Every dose of the day set aside. The day owes nothing, so it cannot say
+    // "0 of 0" — but it is not an empty day either, and it says so.
+    allSkipped: "Every dose today skipped",
+    // The menu behind a right-click, announced by what the row is about.
+    doseActions: "What to do with {name}",
+    // How the gesture is found at all — once, in the smallest print under the
+    // checklist, in the words of whichever pointer is reading it.
+    skipHint:
+      "Long press a dose to skip it. A skipped dose is not counted as missed.",
+    skipHintPointer:
+      "Right-click a dose to skip it. A skipped dose is not counted as missed.",
   },
 
   // The quick-log sheet behind the top bar's `+` — today's doses as one flat
@@ -78,6 +102,10 @@ export const en = {
     // sheet answers "have I?" as well as "I have", and so a mistap is one tap
     // to undo.
     alreadyTaken: "Already taken",
+    // And what you set aside, kept in its own short section rather than under
+    // the heading above: a skipped dose is not a taken one, and the sheet is
+    // read to find out which.
+    skipped: "Skipped",
     // Nothing due: either the mask says not today, or there is nothing to
     // take yet.
     nothingDue: "Nothing scheduled today.",

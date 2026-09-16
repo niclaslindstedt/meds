@@ -10,7 +10,13 @@ import {
 
 import { AsNeededList } from "./AsNeededList.tsx";
 import { DoseRow } from "./DoseRow.tsx";
-import { asNeededOn, dueDoses, quickLogOrder, type Dose } from "./schedule.ts";
+import {
+  asNeededOn,
+  dueDoses,
+  isSettled,
+  quickLogOrder,
+  type Dose,
+} from "./schedule.ts";
 import { formatFullDay } from "./format.ts";
 import { PillIcon } from "./icons.tsx";
 import { useT } from "./i18n/index.ts";
@@ -49,6 +55,8 @@ type Props = {
   today: DayKey;
   /** Tick or untick one of today's doses — the app's one logging edit. */
   onToggle: (dose: Dose, takenAt: string | null) => void;
+  /** Set one of today's doses aside, or put it back. */
+  onSkip: (dose: Dose, skippedAt: string | null) => void;
   /** Start taking an as-needed medication, from this sheet's offers. */
   onStartTaking: (med: Medication) => void;
   /** Leave for the add form. */
@@ -63,6 +71,7 @@ export function QuickLogModal({
   data,
   today,
   onToggle,
+  onSkip,
   onStartTaking,
   onAddMedication,
   onClose,
@@ -97,6 +106,7 @@ export function QuickLogModal({
         data={data}
         today={today}
         onToggle={onToggle}
+        onSkip={onSkip}
         onStartTaking={onStartTaking}
         onAddMedication={onAddMedication}
       />
@@ -108,6 +118,7 @@ function QuickLogBody({
   data,
   today,
   onToggle,
+  onSkip,
   onStartTaking,
   onAddMedication,
 }: Omit<Props, "open" | "onClose">) {
@@ -136,6 +147,8 @@ function QuickLogBody({
   // without looking. So a dose ticked *in this sheet* turns accent-filled
   // where it stands, and it is the next opening that files it under "already
   // taken". Which is the right moment for it: that opening is a new question.
+  // A dose set aside in the sheet holds its place for exactly the same
+  // reason, and is filed under "skipped" at the next opening.
   //
   // The clock is read here rather than in `schedule.ts`, which stays
   // clock-free: what the sheet needs is the moment it was opened at.
@@ -143,9 +156,7 @@ function QuickLogBody({
     const ordered = quickLogOrder(doses, minutesNow());
     return {
       order: ordered.map((dose) => dose.key),
-      logged: new Set(
-        ordered.filter((dose) => dose.takenAt !== null).map((dose) => dose.key),
-      ),
+      settled: new Set(ordered.filter(isSettled).map((dose) => dose.key)),
     };
   });
 
@@ -161,8 +172,14 @@ function QuickLogBody({
     return [...ordered, ...doses.filter((dose) => !seen.has(dose.key))];
   }, [doses, opened]);
 
-  const pending = ranked.filter((dose) => !opened.logged.has(dose.key));
-  const already = ranked.filter((dose) => opened.logged.has(dose.key));
+  const pending = ranked.filter((dose) => !opened.settled.has(dose.key));
+  // The tail, split by which answer it was given. A dose that was already
+  // dealt with when the sheet opened stays in the tail even if it is then
+  // retracted here — it is where the thumb last saw it, and the next opening
+  // is the moment to re-file it.
+  const settled = ranked.filter((dose) => opened.settled.has(dose.key));
+  const already = settled.filter((dose) => dose.skippedAt === null);
+  const skipped = settled.filter((dose) => dose.skippedAt !== null);
   const hasMeds = Object.keys(data.medications).length > 0;
   const empty = ranked.length === 0 && asNeeded.length === 0;
 
@@ -199,7 +216,12 @@ function QuickLogBody({
               <ul className="flex flex-col gap-1.5">
                 {pending.map((dose) => (
                   <li key={dose.key}>
-                    <DoseRow dose={dose} onToggle={onToggle} showTime />
+                    <DoseRow
+                      dose={dose}
+                      onToggle={onToggle}
+                      onSkip={onSkip}
+                      showTime
+                    />
                   </li>
                 ))}
               </ul>
@@ -210,29 +232,60 @@ function QuickLogBody({
               onStartTaking={onStartTaking}
               showHint
             />
-            {already.length > 0 && (
-              <section>
-                <h3 className="px-1 text-xs font-bold tracking-wide text-muted uppercase">
-                  {t("quickLog.alreadyTaken")}
-                </h3>
-                <ul className="mt-1.5 flex flex-col gap-1.5">
-                  {already.map((dose) => (
-                    <li key={dose.key}>
-                      <DoseRow
-                        dose={dose}
-                        onToggle={onToggle}
-                        showTime
-                        subdued
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <Tail
+              title={t("quickLog.alreadyTaken")}
+              doses={already}
+              onToggle={onToggle}
+              onSkip={onSkip}
+            />
+            <Tail
+              title={t("quickLog.skipped")}
+              doses={skipped}
+              onToggle={onToggle}
+              onSkip={onSkip}
+            />
           </div>
         )}
       </div>
     </>
+  );
+}
+
+/** One of the sheet's two tails — what you already took, and what you set
+ *  aside. Same rows as the list above, drawn back: they have stopped
+ *  competing for the top of the sheet, but a mistap still has to be one tap
+ *  to undo, so they stay live controls. */
+function Tail({
+  title,
+  doses,
+  onToggle,
+  onSkip,
+}: {
+  title: string;
+  doses: Dose[];
+  onToggle: (dose: Dose, takenAt: string | null) => void;
+  onSkip: (dose: Dose, skippedAt: string | null) => void;
+}) {
+  if (doses.length === 0) return null;
+  return (
+    <section>
+      <h3 className="px-1 text-xs font-bold tracking-wide text-muted uppercase">
+        {title}
+      </h3>
+      <ul className="mt-1.5 flex flex-col gap-1.5">
+        {doses.map((dose) => (
+          <li key={dose.key}>
+            <DoseRow
+              dose={dose}
+              onToggle={onToggle}
+              onSkip={onSkip}
+              showTime
+              subdued
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
