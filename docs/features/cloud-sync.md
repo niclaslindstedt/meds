@@ -1,7 +1,7 @@
 # Cloud sync
 
 Optional, off by default, and always to **your own** account: connect Dropbox
-or Google Drive in Settings → Sync and the app keeps one JSON file there —
+in Settings → Sync and the app keeps one JSON file there —
 the same document it stores locally, byte for byte, in a folder you can open
 with the provider's own file browser.
 

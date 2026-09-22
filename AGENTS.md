@@ -97,7 +97,7 @@ same shared surface behind the sibling `notes`, `contacts` and `cycle` apps.
 
 The framework owns the UI kit and the generic mechanics: modals, form
 primitives, the theme engine, the calendar grid, the SVG chart primitives, the
-storage adapters (localStorage / Dropbox / Google Drive), the i18n runtime,
+storage adapters (localStorage / Dropbox), the i18n runtime,
 logging, the toast store, and the PWA update state machine.
 
 Since framework 3.1.0 it also owns the app _shell_ this app used to carry its

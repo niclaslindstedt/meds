@@ -68,7 +68,7 @@ wrapped around a server you cannot inspect.
 
 This one has no account and no server. Your medications and your log live in
 your browser's localStorage. If you want them on more than one device, you
-connect **your own** Dropbox or Google Drive and the app keeps a copy there —
+connect **your own** Dropbox and the app keeps a copy there —
 in a folder you can open, in a JSON file you can read. Nothing else leaves the
 device: no analytics, no telemetry, no third-party requests at runtime. Even
 the medication autocomplete is a bundled list searched locally, never a lookup
@@ -144,9 +144,7 @@ is no secret to protect), and leaving either unset simply hides that provider:
 | Variable                  | Effect                                                         |
 | ------------------------- | -------------------------------------------------------------- |
 | `VITE_DROPBOX_APP_KEY`    | Enables the Dropbox backend.                                   |
-| `VITE_GOOGLE_CLIENT_ID`   | Enables the Google Drive backend.                              |
 | `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `nird-meds`). |
-| `VITE_GDRIVE_APP_FOLDER`  | Folder name in My Drive (default `nird-meds`).                 |
 | `VITE_BASE`               | Deploy base path (default `/`).                                |
 
 See [`docs/configuration.md`](docs/configuration.md) for the details.

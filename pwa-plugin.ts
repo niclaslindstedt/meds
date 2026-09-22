@@ -88,7 +88,7 @@ export function buildManifest(base: string): string {
     name,
     short_name,
     description:
-      "A privacy-first medication tracker PWA: enter your medications and when to take them, log each dose with one tap, and read your adherence history, calendar and stats. Local-only or cloud-synced (Dropbox, Google Drive).",
+      "A privacy-first medication tracker PWA: enter your medications and when to take them, log each dose with one tap, and read your adherence history, calendar and stats. Local-only or cloud-synced (Dropbox, Dropbox).",
     id: base,
     start_url: base,
     scope: base,
