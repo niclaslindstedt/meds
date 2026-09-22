@@ -1,4 +1,4 @@
-# Nird Meds
+# Meds
 
 > A local-first medication tracking PWA built on @niclaslindstedt/oss-framework.
 > You enter your medications — a name, an optional dose, and the times of day

@@ -1,4 +1,4 @@
-# Nird Meds
+# Meds
 
 > A local-first medication tracking PWA — enter your meds and when to take them, then log each dose with one tap. No account, no server.
 
@@ -9,7 +9,7 @@
 
 ## What
 
-**Nird Meds** is a medication tracker that runs entirely in your browser, built
+**Meds** is a medication tracker that runs entirely in your browser, built
 for the fifteen seconds a day you actually give it. You enter each medication
 once — a name, an optional dose, and the times of day it is taken; the name
 autocompletes from a bundled catalog of common medications, and a recognised
@@ -144,7 +144,7 @@ is no secret to protect), and leaving either unset simply hides that provider:
 | Variable                  | Effect                                                         |
 | ------------------------- | -------------------------------------------------------------- |
 | `VITE_DROPBOX_APP_KEY`    | Enables the Dropbox backend.                                   |
-| `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `nird-meds`). |
+| `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `meds`). |
 | `VITE_BASE`               | Deploy base path (default `/`).                                |
 
 See [`docs/configuration.md`](docs/configuration.md) for the details.

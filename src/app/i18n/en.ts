@@ -10,7 +10,7 @@
 
 export const en = {
   app: {
-    name: "Nird Meds",
+    name: "Meds",
     tagline: "Your meds, on your device",
   },
 

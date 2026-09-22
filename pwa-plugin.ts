@@ -55,21 +55,21 @@ const PUBLIC_SKIP = new Set([
 
 // Per-release-channel PWA display name. The three Pages channels share one
 // origin, so a channel-specific name installs the preview/branch builds as
-// visibly separate home-screen tiles instead of three identical "Nird Meds"
+// visibly separate home-screen tiles instead of three identical "Meds"
 // icons that are impossible to tell apart once installed.
 //
 // `short_name` is what a home screen actually paints under the tile, and it
 // gets about a dozen characters before the launcher truncates it — so the
 // channel builds drop the second word rather than have three tiles that all
-// read "Nird Meds…".
+// read "Meds…".
 function channelName(base: string): { name: string; short_name: string } {
   if (base === "/preview/")
-    return { name: "Nird Meds (preview)", short_name: "Meds pre" };
+    return { name: "Meds (preview)", short_name: "Meds pre" };
   if (base === "/branch/")
-    return { name: "Nird Meds (branch)", short_name: "Meds br" };
+    return { name: "Meds (branch)", short_name: "Meds br" };
   return {
-    name: "Nird Meds",
-    short_name: "Nird Meds",
+    name: "Meds",
+    short_name: "Meds",
   };
 }
 
@@ -139,7 +139,7 @@ export function buildServiceWorker(
 ): string {
   const cacheName = `${cacheId}-precache`;
   return `// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-// GENERATED — do not edit. Emitted by pwa-plugin.ts for the Nird Meds PWA.
+// GENERATED — do not edit. Emitted by pwa-plugin.ts for the Meds PWA.
 // A minimal "prompt to update" precaching worker: it installs the build's
 // assets, parks in \`waiting\` (never auto-skipWaiting — a silent swap would
 // discard an in-progress edit), and applies on a SKIP_WAITING message from the

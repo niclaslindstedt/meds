@@ -1,5 +1,5 @@
 {
-  "name": "nird-meds",
+  "name": "meds",
   "version": "0.1.0",
   "private": true,
   "description": "A local-first medication tracking PWA built on @niclaslindstedt/oss-framework \u2014 add your medications and when to take them, log each dose with one tap, and read your history, calendar and adherence stats.",

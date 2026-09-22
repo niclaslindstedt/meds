@@ -65,7 +65,7 @@ export const DROPBOX_APP_KEY: string =
 
 // Dropbox fixes the app-folder name from the app's own configuration (an
 // "App folder"-scoped app lives under `Apps/<name>/`), so it isn't always
-// `nird-meds`. Inject the real name at build time so the displayed location
+// `meds`. Inject the real name at build time so the displayed location
 // points at the folder that actually exists; a deploy can pin another name
 // with `VITE_DROPBOX_APP_FOLDER` (on Dropbox the
 // folder is the OAuth app's own configuration anyway, so the variable is how
@@ -73,11 +73,11 @@ export const DROPBOX_APP_KEY: string =
 //
 // Lowercase and hyphenated, unlike the app's own display name: this is a path
 // segment. It is the one place the name has to survive a filesystem, a URL
-// and somebody typing it, and `nird-meds` does all three without a space in
+// and somebody typing it, and `meds` does all three without a space in
 // it.
 export const DROPBOX_APP_FOLDER: string =
   (import.meta.env.VITE_DROPBOX_APP_FOLDER as string | undefined)?.trim() ||
-  "nird-meds";
+  "meds";
 
 export const PROVIDER_NAMES: Record<SyncBackendId, string> = {
   local: "This device",
