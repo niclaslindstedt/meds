@@ -9,9 +9,9 @@ between — the app talks to Dropbox directly from the page.
 
 One JSON file — the same document the app keeps locally, byte for byte:
 
-| Backend      | Path                              |
-| ------------ | --------------------------------- |
-| Dropbox      | `Apps/meds/meds.json`        |
+| Backend | Path                  |
+| ------- | --------------------- |
+| Dropbox | `Apps/meds/meds.json` |
 
 You can open it, read it, back it up, or delete it from the provider's own
 file browser. It is the format documented in

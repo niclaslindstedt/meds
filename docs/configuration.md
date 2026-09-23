@@ -8,12 +8,12 @@ is offered at all) and the runtime settings a user can change.
 
 All optional. The app builds and runs with none of them set.
 
-| Variable                  | Default     | Effect                                                                                                                                                                                                                             |
-| ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_BASE`               | `/`         | Deploy base path. Drives the bundler base, the service-worker scope, and the PWA install identity. The Pages workflow sets `/` for the released build and `/preview/` for main.                                                    |
-| `VITE_PWA_IGNORE_PATHS`   | —           | Comma-separated absolute paths this build's service worker must disown. Only the root release sets it (`/preview/`), because a scope is a path prefix and the root worker would otherwise claim the preview channel's navigations. |
-| `VITE_DROPBOX_APP_KEY`    | —           | Dropbox OAuth app key (PKCE public client). Unset ⇒ the Dropbox backend is hidden from Settings → Sync rather than offered and then failing.                                                                                       |
-| `VITE_DROPBOX_APP_FOLDER` | `meds` | The app-folder name shown as the file's location. Dropbox fixes this from the OAuth app's own configuration, so it has to be told what the folder is actually called.                                                              |
+| Variable                  | Default | Effect                                                                                                                                                                                                                             |
+| ------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_BASE`               | `/`     | Deploy base path. Drives the bundler base, the service-worker scope, and the PWA install identity. The Pages workflow sets `/` for the released build and `/preview/` for main.                                                    |
+| `VITE_PWA_IGNORE_PATHS`   | —       | Comma-separated absolute paths this build's service worker must disown. Only the root release sets it (`/preview/`), because a scope is a path prefix and the root worker would otherwise claim the preview channel's navigations. |
+| `VITE_DROPBOX_APP_KEY`    | —       | Dropbox OAuth app key (PKCE public client). Unset ⇒ the Dropbox backend is hidden from Settings → Sync rather than offered and then failing.                                                                                       |
+| `VITE_DROPBOX_APP_FOLDER` | `meds`  | The app-folder name shown as the file's location. Dropbox fixes this from the OAuth app's own configuration, so it has to be told what the folder is actually called.                                                              |
 
 Both OAuth identifiers are **public**: the flows are PKCE with no client
 secret, so they are supplied as repository _variables_ (not secrets) and
@@ -52,14 +52,14 @@ the medications themselves and is edited from the **Meds** tab.
 
 Everything the app persists, all under one origin:
 
-| Key                                     | Holds                                                       |
-| --------------------------------------- | ----------------------------------------------------------- |
-| `meds:doc`                              | The document — the medications and every logged dose.       |
-| `meds:settings`                         | The settings above.                                         |
-| `meds:logs`                             | The in-app log buffer.                                      |
-| `meds:language`                         | The active UI language.                                     |
-| `meds:sync:backend`                     | Which backend is selected (`local` / `dropbox`).           |
-| `oss:cache:<backend>:meds`              | The framework's offline mirror of the cloud copy.           |
+| Key                        | Holds                                                 |
+| -------------------------- | ----------------------------------------------------- |
+| `meds:doc`                 | The document — the medications and every logged dose. |
+| `meds:settings`            | The settings above.                                   |
+| `meds:logs`                | The in-app log buffer.                                |
+| `meds:language`            | The active UI language.                               |
+| `meds:sync:backend`        | Which backend is selected (`local` / `dropbox`).      |
+| `oss:cache:<backend>:meds` | The framework's offline mirror of the cloud copy.     |
 
 Clearing site data removes all of it. That is the whole uninstall procedure —
 there is nothing on a server to delete.
