@@ -5,6 +5,13 @@ in Settings → Sync and the app keeps one JSON file there —
 the same document it stores locally, byte for byte, in a folder you can open
 with the provider's own file browser.
 
+**iCloud Drive** is offered too, in the App Store app and nowhere else: a
+browser cannot reach a device's iCloud, so on the website the option is not
+there at all. It has no window to grant anything in — the container belongs to
+the iCloud account the phone is already signed into, so choosing it is the
+whole of connecting. The file lands under **Files → iCloud Drive → Meds**,
+where you can open it and copy it out. See [`native-app.md`](native-app.md).
+
 The local copy is always the working copy, so losing the network never costs
 a tap. Two copies reconcile without asking: medications by their last edit,
 day logs as a union of taps — a dose ticked on the phone and another ticked

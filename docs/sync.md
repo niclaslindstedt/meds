@@ -3,15 +3,17 @@
 The app is local-first: your medications and your log live in this browser,
 and that copy is always the working copy. Sync adds a second copy in **your
 own** cloud account so another device can read it. There is no server in
-between — the app talks to Dropbox directly from the page.
+between — the app talks to Dropbox directly from the page, and in the App
+Store app it can keep the copy in your iCloud Drive instead.
 
 ## What gets stored, and where
 
 One JSON file — the same document the app keeps locally, byte for byte:
 
-| Backend | Path                  |
-| ------- | --------------------- |
-| Dropbox | `Apps/meds/meds.json` |
+| Backend      | Path                                |
+| ------------ | ----------------------------------- |
+| Dropbox      | `Apps/meds/meds.json`               |
+| iCloud Drive | `iCloud Drive/Meds/meds.json` (app) |
 
 You can open it, read it, back it up, or delete it from the provider's own
 file browser. It is the format documented in
@@ -26,9 +28,21 @@ browser's localStorage and are used for nothing but that one file.
 A provider whose client id wasn't configured at build time doesn't appear in
 the picker at all — see [configuration.md](configuration.md).
 
+**iCloud Drive** is offered in the App Store app and nowhere else: a browser
+cannot reach a device's iCloud, so on the website the option is not there at
+all. There is no consent screen — the container belongs to the iCloud account
+the phone is already signed into, so choosing it is the whole of connecting.
+The app asks its host whether a document store is on offer
+(`src/app/cloudHost.ts`) rather than whether it is native, and drives what it
+gets through the same adapter, merge and status handling as Dropbox. Signed
+out of iCloud, the app says so and offers to reconnect; a file iCloud has
+listed but not yet downloaded is reported as offline, never read as empty.
+See [`features/native-app.md`](features/native-app.md).
+
 **Disconnecting** removes the tokens from this device. Your log stays here,
 and the copy already in the cloud is left exactly where it is; delete it in
-the provider's file browser if you want it gone.
+the provider's file browser if you want it gone. (iCloud has no credentials to
+drop, so disconnecting it is simply choosing this device again.)
 
 ## How the two copies reconcile
 

@@ -68,7 +68,8 @@ wrapped around a server you cannot inspect.
 
 This one has no account and no server. Your medications and your log live in
 your browser's localStorage. If you want them on more than one device, you
-connect **your own** Dropbox and the app keeps a copy there —
+connect **your own** Dropbox (or, in the App Store app, iCloud Drive) and the
+app keeps a copy there —
 in a folder you can open, in a JSON file you can read. Nothing else leaves the
 device: no analytics, no telemetry, no third-party requests at runtime. Even
 the medication autocomplete is a bundled list searched locally, never a lookup
@@ -207,6 +208,7 @@ More in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 ## Documentation
 
 - [The desktop app](docs/features/desktop-app.md)
+- [The app on a phone](docs/features/native-app.md) — the App Store wrapper and iCloud
 - [Getting started](docs/getting-started.md)
 - [Configuration](docs/configuration.md)
 - [Architecture](docs/architecture.md)

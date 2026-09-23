@@ -27,6 +27,18 @@ make lint
 make fmt-check
 ```
 
+The native wrapper in `native/` is a separate npm project with its own
+dependency tree — `npm install` at the root does not touch it:
+
+```sh
+make native-install      # install its dependencies
+make native-bundle       # build the web app into native/assets/webroot.zip
+make native-typecheck    # what CI's `native` job runs
+```
+
+Store builds run on EAS by manual dispatch; see
+[`native/RELEASING.md`](native/RELEASING.md).
+
 ## Development workflow
 
 1. Fork the repo.

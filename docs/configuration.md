@@ -30,6 +30,20 @@ The declarations live in `src/vite-env.d.ts`; the consumers are
   app key. The app-folder name you pick there is what `VITE_DROPBOX_APP_FOLDER`
   must repeat.
 
+## The native wrapper's variables
+
+`native/` is a separate project with a build of its own; these are read there,
+never by the web app. See [`../native/.env.example`](../native/.env.example)
+and [`../native/RELEASING.md`](../native/RELEASING.md).
+
+| Variable               | Effect                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_DISPLAY_NAME`     | The store listing's name, and the name under the icon. Unset, the project's own name.                                           |
+| `APP_BUNDLE_ID`        | The iOS bundle identifier and Android package. Unset, a development id; a `production` build refuses to run without it.         |
+| `EAS_PROJECT_ID`       | The EAS project a build runs under. `eas init` prints it but cannot write it into a dynamic config, so it is passed in.         |
+| `EXPO_TOKEN`           | An Expo access token, so CI can drive EAS with no interactive login. A repository secret; treat it as a password.               |
+| `EXPO_PUBLIC_MEDS_URL` | Point the wrapper's WebView at a deployed slot instead of the copy bundled inside it. **Debugging only** — never a store build. |
+
 ## Runtime settings
 
 Everything under Settings persists to localStorage (`meds:settings`) and
@@ -52,14 +66,18 @@ the medications themselves and is edited from the **Meds** tab.
 
 Everything the app persists, all under one origin:
 
-| Key                        | Holds                                                 |
-| -------------------------- | ----------------------------------------------------- |
-| `meds:doc`                 | The document — the medications and every logged dose. |
-| `meds:settings`            | The settings above.                                   |
-| `meds:logs`                | The in-app log buffer.                                |
-| `meds:language`            | The active UI language.                               |
-| `meds:sync:backend`        | Which backend is selected (`local` / `dropbox`).      |
-| `oss:cache:<backend>:meds` | The framework's offline mirror of the cloud copy.     |
+| Key                        | Holds                                                       |
+| -------------------------- | ----------------------------------------------------------- |
+| `meds:doc`                 | The document — the medications and every logged dose.       |
+| `meds:settings`            | The settings above.                                         |
+| `meds:logs`                | The in-app log buffer.                                      |
+| `meds:language`            | The active UI language.                                     |
+| `meds:sync:backend`        | Which backend is selected (`local` / `icloud` / `dropbox`). |
+| `oss:cache:<backend>:meds` | The framework's offline mirror of the cloud copy.           |
+
+iCloud has no key of its own beyond `meds:sync:backend`: there is nothing to
+store. The container belongs to the device's iCloud account, so choosing the
+backend is the whole of connecting to it.
 
 Clearing site data removes all of it. That is the whole uninstall procedure —
 there is nothing on a server to delete.

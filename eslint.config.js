@@ -6,8 +6,24 @@ import globals from "globals";
 
 export default [
   {
-    // Build output and dependencies are out of scope for the linter.
-    ignores: ["dist/**", "node_modules/**", "coverage/**"],
+    // Build output and dependencies are out of scope for the linter — and
+    // `native/ios` / `native/android` are exactly that: `expo prebuild`
+    // regenerates them from `native/app.config.js`, so anything the linter
+    // said about them would be said about generated code.
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "coverage/**",
+      "native/node_modules/**",
+      "native/ios/**",
+      "native/android/**",
+      "native/.expo/**",
+      // The desktop shell's own trees: Rust build output, and the site copied
+      // in from `dist/` (both gitignored — see tauri/README.md).
+      "tauri/target/**",
+      "tauri/webroot/**",
+      "tauri/node_modules/**",
+    ],
   },
   js.configs.recommended,
   {
@@ -18,6 +34,9 @@ export default [
       "scripts/**/*.mjs",
       "tauri/scripts/**/*.mjs",
       ".agent/skills/**/*.mjs",
+      // The native wrapper's Node-side JavaScript: its Expo config, Metro
+      // config and bundle script. None of it ships to a device.
+      "native/**/*.{js,mjs}",
     ],
     languageOptions: {
       sourceType: "module",
@@ -29,6 +48,11 @@ export default [
     files: [
       "src/**/*.{ts,tsx}",
       "tests/**/*.{ts,tsx}",
+      // The native wrapper's app sources. Linted from here so there is one
+      // set of rules for the repo; `native/` has its own dependency tree and
+      // its own `tsc` (`npm --prefix native run typecheck`), which is what
+      // actually type-checks these against react-native and expo.
+      "native/**/*.{ts,tsx}",
       "vite.config.ts",
       "vitest.config.ts",
       "pwa-plugin.ts",
