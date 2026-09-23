@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Meds",
+  "mainBinaryName": "meds",
+  "version": "../../package.json",
+  "identifier": "dev.local.meds",
+  "build": {
+    "frontendDist": "./placeholder"
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "app", "dmg", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/256x256.png",
+      "icons/512x512.png",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../webroot": "webroot"
+    },
+    "category": "Medical",
+    "shortDescription": "a local-first medication log",
+    "longDescription": "A local-first medication log: add your medications and when to take them, log each dose with one tap, and read your history and adherence. Your log stays on your machine.",
+    "copyright": "Copyright © Niclas Lindstedt",
+    "macOS": {
+      "entitlements": "entitlements.mac.plist",
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}
