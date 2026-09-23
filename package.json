@@ -2,7 +2,7 @@
   "name": "meds",
   "version": "0.1.0",
   "private": true,
-  "description": "A local-first medication tracking PWA built on @niclaslindstedt/oss-framework \u2014 add your medications and when to take them, log each dose with one tap, and read your history, calendar and adherence stats.",
+  "description": "A local-first medication tracking PWA built on @niclaslindstedt/oss-framework — add your medications and when to take them, log each dose with one tap, and read your history, calendar and adherence stats.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "author": "Niclas Lindstedt <niclas@agilator.se>",
   "type": "module",
@@ -24,7 +24,7 @@
     "@fontsource/jetbrains-mono": "^5.2.5",
     "@fontsource/opendyslexic": "^5.2.5",
     "@fontsource/source-serif-4": "^5.2.5",
-    "@niclaslindstedt/oss-framework": "^3.2.0",
+    "@niclaslindstedt/oss-framework": "^3.5.0",
     "preact": "^10.29.8",
     "workbox-window": "^7.0.0"
   },
