@@ -69,7 +69,10 @@ same built site in a `WebView`, served from a loopback origin, plus one thing a
 browser cannot do — an **iCloud Drive** document store. **Nothing in `src/`
 knows it exists**: `src/app/cloudHost.ts` asks whether a document-store
 capability is on `window` and turns one into an ordinary `StorageAdapter`; a
-browser has none and the picker never shows iCloud. The wrapper moves bytes
+browser has none and the picker never shows iCloud. The wrapper also offers Dropbox's
+sign-in an in-app authentication session at `window.__ossAuthSession`, which
+the framework's `getAuthSessionHost` looks for; a browser has none and keeps
+its redirect. The wrapper moves bytes
 and decides nothing about medications. Its store identity comes from
 `APP_DISPLAY_NAME`, `APP_BUNDLE_ID` and `EAS_PROJECT_ID` (`native/identifiers.js`);
 a `production` build refuses to run without them. See
@@ -434,6 +437,13 @@ with `[Learn more](feature:<slug>)`.
   `native/app.config.js`): `se.agilator.meds` in a store build,
   `dev.local.meds` in a plain checkout. Reverse-DNS so no other app can claim
   it, and never committed as a literal — it follows `APP_BUNDLE_ID`.
+- **The auth-session bridge's names are the framework's**
+  (`AUTH_SESSION_HOST_PROPERTY`, `AUTH_SESSION_HOST_EVENT`), spelled again in
+  `native/src/authSessionBridge.ts`; `tests/native_auth_session_test.ts` pins
+  them. The phone app's Dropbox sign-in returns on `<scheme>://oauth` —
+  `se.agilator.meds://oauth` in a store build — and the Dropbox app must list that exact
+  URI, so changing the bundle id breaks phone sign-in until the App Console
+  follows.
 
 ## Website staleness
 
