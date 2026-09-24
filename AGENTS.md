@@ -430,6 +430,10 @@ with `[Learn more](feature:<slug>)`.
   and `src/app/cloudHost.ts` (`__medsCloudHost`, `meds:cloud-host`). A rename
   on one side is not an error — it is a backend that never appears.
   `tests/native_icloud_test.ts` pins them.
+- **The phone app's URL scheme is its bundle id** (`scheme: BUNDLE_ID` in
+  `native/app.config.js`): `se.agilator.meds` in a store build,
+  `dev.local.meds` in a plain checkout. Reverse-DNS so no other app can claim
+  it, and never committed as a literal — it follows `APP_BUNDLE_ID`.
 
 ## Website staleness
 
