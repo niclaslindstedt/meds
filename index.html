@@ -28,7 +28,10 @@
       name="description"
       content="Meds is a local-first medication tracking PWA built for speed: add your medications and when to take them, then log each dose with one tap. A calendar and history show your adherence and the gaps. Your log stays on your device, and syncs to Dropbox — encrypted with your own passphrase — only if you connect one."
     />
-    <link rel="canonical" href="https://meds.niclaslindstedt.se/" />
+    <!-- The web edition is not meant to be found: people find the app on the
+         App Store and apps.agilator.se, so search engines are asked not to
+         index this page (robots.txt still allows the fetch that reads it). -->
+    <meta name="robots" content="noindex" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -54,21 +57,6 @@
       name="twitter:image"
       content="https://meds.niclaslindstedt.se/og.png"
     />
-
-    <!-- JSON-LD -->
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Meds",
-        "applicationCategory": "HealthApplication",
-        "operatingSystem": "Any",
-        "description": "A local-first medication tracking PWA: enter your medications and when to take them, log each dose with one tap, and read your adherence history, calendar and stats. Optional end-to-end encrypted Dropbox sync.",
-        "url": "https://meds.niclaslindstedt.se/",
-        "image": "https://meds.niclaslindstedt.se/og.png",
-        "offers": { "@type": "Offer", "price": "0" }
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -3,7 +3,6 @@
 > A local-first medication tracking PWA — enter your meds and when to take them, then log each dose with one tap. No account, no server.
 
 [![ci](https://github.com/niclaslindstedt/meds/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/meds/actions/workflows/ci.yml)
-[![seo](https://github.com/niclaslindstedt/meds/actions/workflows/seo.yml/badge.svg)](https://github.com/niclaslindstedt/meds/actions/workflows/seo.yml)
 [![pages](https://github.com/niclaslindstedt/meds/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/meds/actions/workflows/pages.yml)
 [![license](https://img.shields.io/badge/license-PolyForm--Noncommercial--1.0.0-blue.svg)](LICENSE)
 
