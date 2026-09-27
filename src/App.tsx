@@ -8,6 +8,7 @@ import {
   createToastStore,
 } from "@niclaslindstedt/oss-framework/components";
 import { useSwipeNav } from "@niclaslindstedt/oss-framework/hooks";
+import { usePinLock } from "@niclaslindstedt/oss-framework/encryption";
 import { LogViewer } from "@niclaslindstedt/oss-framework/logging";
 import { UpdateToast, usePwaUpdate } from "@niclaslindstedt/oss-framework/pwa";
 import {
@@ -33,6 +34,11 @@ import { HistoryScreen } from "./app/HistoryScreen.tsx";
 import { MedsScreen } from "./app/MedsScreen.tsx";
 import { QuickLogModal } from "./app/QuickLogModal.tsx";
 import { SettingsScreen } from "./app/SettingsScreen.tsx";
+import {
+  AppLockGate,
+  PassphrasePrompt,
+  usePassphrasePrompt,
+} from "./app/SyncEncryption.tsx";
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
 import { useT } from "./app/i18n/index.ts";
@@ -59,6 +65,11 @@ import { status } from "./output.ts";
 // Module-scoped so the identity stays stable across renders (the framework's
 // `useToasts` keys its subscription on the store object).
 const toasts = createToastStore();
+
+// The app lock's verifier, on this device only, and how long the app may sit
+// in the background before it asks again.
+const PIN_KEY = "meds:pin";
+const RELOCK_AFTER_MS = 5 * 60_000;
 
 export function App() {
   const t = useT();
@@ -101,6 +112,11 @@ export function App() {
   }, [demo.on]);
   const store = useDocStore(backend);
   const sync = useSyncEngine(store, demo.on);
+  const passphrase = usePassphrasePrompt(sync.encryption, demo.on);
+  const pin = usePinLock({
+    storageKey: PIN_KEY,
+    relockAfterMs: RELOCK_AFTER_MS,
+  });
 
   // Today is where the app opens: it is the checklist the app was picked up
   // to clear. On a document with no current medications there is nothing to
@@ -263,6 +279,9 @@ export function App() {
     if (pwa.needRefresh) status(`Update ready: ${pwa.incomingVersion ?? "?"}`);
   }, [pwa.needRefresh, pwa.incomingVersion]);
 
+  // Behind the PIN, nothing of the log renders — not a screen, not a modal.
+  if (pin.locked) return <AppLockGate pin={pin} />;
+
   return (
     <div className="flex h-full flex-col bg-page text-fg">
       {/* The bar carries the two screens that are actions rather than
@@ -378,6 +397,8 @@ export function App() {
               store={store}
               sync={sync}
               demoData={demo}
+              pin={pin}
+              onAskPassphrase={passphrase.open}
               onNotice={notice}
             />
           )}
@@ -449,6 +470,17 @@ export function App() {
           if (tab !== "add") toggle("add");
         }}
         onClose={() => setQuickLogOpen(false)}
+      />
+
+      <PassphrasePrompt
+        encryption={sync.encryption}
+        providerName={sync.providerName}
+        mode={passphrase.mode}
+        onClose={passphrase.close}
+        onChanged={() => {
+          notice(t("encryption.changed"));
+          void sync.reload();
+        }}
       />
 
       <SyncDetailsModal

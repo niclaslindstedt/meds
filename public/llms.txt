@@ -3,8 +3,8 @@
 > A local-first medication tracking PWA built on @niclaslindstedt/oss-framework.
 > You enter your medications — a name, an optional dose, and the times of day
 > they are taken — and log each dose with one tap. The log is stored on-device
-> as JSON, with an optional copy synced to the user's own Dropbox or Google
-> Drive. Adherence, streaks and the calendar's day marks are derived from the
+> as JSON, with an optional copy synced to the user's own Dropbox, encrypted
+> on the device with a passphrase the user chooses. Adherence, streaks and the calendar's day marks are derived from the
 > log at read time; nothing about adherence is stored.
 
 - App: https://meds.niclaslindstedt.se/

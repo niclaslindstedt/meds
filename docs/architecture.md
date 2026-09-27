@@ -2,8 +2,8 @@
 
 A frontend-only, local-first PWA. There is no server: the app is static files
 on GitHub Pages, and every byte of user data lives in the browser (plus, if
-the user connects one, a single JSON file in their own Dropbox or Google
-Drive).
+the user connects one, a single file in their own Dropbox — the same JSON
+document, encrypted on the device first; see [sync.md](sync.md#encryption)).
 
 ## The stack
 
@@ -91,7 +91,9 @@ src/
     ├── merge.ts             meds by last edit, day logs by union of marks
     ├── migrations.ts        parse / normalise / serialize
     ├── useDocStore.ts       the document store over a DocBackend seam
-    ├── useSyncEngine.ts     debounced push / pull over the framework adapters
+    ├── useSyncEngine.ts     debounced push / pull over the framework adapters,
+    │                        held until the cloud copy's passphrase is set
+    ├── SyncEncryption.tsx   the passphrase prompt, its Settings lines, the PIN gate
     ├── useAppSettings.ts    theme, week start, dev knobs (localStorage)
     ├── App.tsx              the shell: tabs, toasts, PWA update, sync modal
     ├── BottomNav.tsx        the four destinations + initialTab

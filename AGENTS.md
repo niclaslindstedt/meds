@@ -215,7 +215,16 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   document.
 - `src/app/useSyncEngine.ts` — the sync engine over the framework's storage
   adapters (debounced push, conflict / auth / throttle handling). Suspended
-  wholesale while demo data has taken over storage.
+  wholesale while demo data has taken over storage. A cloud copy is
+  **always encrypted**: the adapter comes from the framework's
+  `useRequiredEncryption`, which is `null` until the passphrase is held, so
+  nothing is ever pushed in plaintext. Never sync through the raw `inner`
+  adapter.
+- `src/app/SyncEncryption.tsx` — the app's words for the framework's
+  passphrase dialog, the encryption lines in Settings → Sync, the PIN gate
+  (`UnlockGate`) and the app-lock control. The passphrase is remembered on the
+  device per backend; the PIN verifier never leaves the device. A PIN is a
+  soft lock and its copy must keep saying so.
 - `src/app/dev/` — the demo document (`VITE_SEED=demo`, and the developer
   "Demo data" switch): one person's medicines and three months of taps
   (`demoData.ts`, pure, a function of the moment it opens, every date an

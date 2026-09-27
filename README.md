@@ -68,8 +68,8 @@ wrapped around a server you cannot inspect.
 
 This one has no account and no server. Your medications and your log live in
 your browser's localStorage. If you want them on more than one device, you
-connect **your own** Dropbox and the app keeps a copy there —
-in a folder you can open, in a JSON file you can read. Nothing else leaves the
+connect **your own** Dropbox and the app keeps a copy there — encrypted on
+the device with a passphrase only you know, so Dropbox holds ciphertext. Nothing else leaves the
 device: no analytics, no telemetry, no third-party requests at runtime. Even
 the medication autocomplete is a bundled list searched locally, never a lookup
 service — what you type into a medication field is exactly the byte that must
@@ -137,7 +137,7 @@ grid, which takes the swipe for itself and pages the month:
 | Button | What it does                                                                                                                                                                                                                                                                                                               |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **+**  | Log a dose, from any screen: a sheet of today's doses with the likeliest first and what you already took greyed at the bottom. It is also where an as-needed medication is reached for — logged, or started for as long as you need it. Its footer leads to the add form when a new medication is what you actually meant. |
-| **⚙**  | Settings: theme, week start, time format, cloud sync, backup / restore / delete, and the build's version.                                                                                                                                                                                                                  |
+| **⚙**  | Settings: theme, week start, time format, cloud sync and its encryption passphrase, the PIN app lock, backup / restore / delete, and the build's version.                                                                                                                                                                  |
 
 ## Configuration
 

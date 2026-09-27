@@ -9,14 +9,17 @@ health information (see [`features/native-app.md`](features/native-app.md)).
 
 ## What gets stored, and where
 
-One JSON file — the same document the app keeps locally, byte for byte:
+One file — the document the app keeps locally, **encrypted on this device
+before it is sent** (see [Encryption](#encryption) below):
 
 | Backend | Path                  |
 | ------- | --------------------- |
 | Dropbox | `Apps/meds/meds.json` |
 
-You can open it, read it, back it up, or delete it from the provider's own
-file browser. It is the format documented in
+You can see it, back it up, or delete it from the provider's own file
+browser, but not read it: it is an `oss.encrypted.v1` envelope (AES-256-GCM,
+PBKDF2-SHA256 at 600,000 iterations), and only your passphrase opens it.
+Decrypted, it is the format documented in
 [architecture.md](architecture.md#the-shape-of-the-data).
 
 ## Connecting
@@ -36,9 +39,38 @@ pre-release phone build had — reads as **this device**, and is forgotten
 (`readBackend` in `src/app/useSyncEngine.ts`). The log was always on the
 device, so nothing is lost and nothing needs moving.
 
-**Disconnecting** removes the tokens from this device. Your log stays here,
+**Disconnecting** removes the tokens and the remembered passphrase from this
+device. Your log stays here,
 and the copy already in the cloud is left exactly where it is; delete it in
 the provider's file browser if you want it gone.
+
+## Encryption
+
+A copy that leaves this device is always encrypted, and there is no switch to
+turn that off — it is a requirement of every backend that is not this device,
+not a setting (`useRequiredEncryption` from the framework, wired in
+`src/app/useSyncEngine.ts`). Until a passphrase is held, the sync engine has no
+adapter to talk to, so nothing is pulled or pushed at all.
+
+- **First connect.** The app looks at what the backend holds. Nothing yet (or
+  an old plaintext copy) → it asks you to **choose a passphrase**, twice. An
+  old plaintext copy is re-written as ciphertext on the first read after that.
+- **Another device.** The backend already holds an envelope → it asks you to
+  **enter the passphrase** you chose; a wrong one is refused and nothing
+  syncs.
+- **Remembered here.** The passphrase is remembered on this device (in
+  localStorage, beside the log itself, which is already plaintext here), so a
+  device asks once, not on every open. What it protects is the copy the
+  provider holds: Dropbox only ever sees ciphertext.
+- **Changing it.** Settings → Sync → **Change the passphrase** re-encrypts the
+  cloud copy. Your other devices find their passphrase no longer opens it,
+  forget it, and ask for the new one.
+- **Forgetting it.** Nobody can recover a forgotten passphrase — not the app,
+  not Dropbox. The log on each device is unaffected; disconnect, delete the
+  cloud file, and connect again with a new passphrase.
+
+The on-device copy is not encrypted by this. If the phone itself needs a lock,
+that is the [app lock](features/encryption.md#app-lock).
 
 ## How the two copies reconcile
 
@@ -88,7 +120,7 @@ the other one opens.
   and nothing is asked of you.
 
 Pushes are held while the app is offline, while a backend session has lapsed,
-and until the first pull has established the backend's revision — pushing on
+while no passphrase is held, and until the first pull has established the backend's revision — pushing on
 an unknown revision is what produces phantom conflicts. Your edit is safe in
 localStorage the whole time.
 
@@ -120,7 +152,7 @@ first.
 
 ## What is _not_ sent
 
-Nothing but that one file, to that one account. No analytics, no error
+Nothing but that one encrypted file, to that one account. No analytics, no error
 reporting, no telemetry, no third-party requests at runtime — the fonts are
 bundled and served from the app's own origin, and the medication autocomplete
 is a bundled list searched locally, never a lookup request. If you never
