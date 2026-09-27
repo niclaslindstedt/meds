@@ -1,9 +1,10 @@
 # Cloud sync
 
 Optional, off by default, and always to **your own** account: connect Dropbox
-in Settings → Sync and the app keeps one JSON file there —
-the same document it stores locally, byte for byte, in a folder you can open
-with the provider's own file browser.
+in Settings → Sync and the app keeps one file there — the document it stores
+locally, **encrypted on this device with a passphrase you choose** before it
+leaves. Dropbox holds ciphertext it cannot read; see
+[`encryption.md`](encryption.md).
 
 The phone app offers the same two places and no others: the device, and your
 own Dropbox. Your log is health information, so it never goes to iCloud. See
@@ -21,5 +22,5 @@ The full protocol, the status glyphs, and the reconnection flow are
 documented in [`../sync.md`](../sync.md); the build-time OAuth configuration
 in [`../configuration.md`](../configuration.md).
 
-Nothing but that one file is ever sent, to nobody but that one account. No
+Nothing but that one encrypted file is ever sent, to nobody but that one account. No
 backend connected means no network requests at all after the page loads.
