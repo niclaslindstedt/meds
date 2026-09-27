@@ -47,22 +47,7 @@ For submission, fill in the placeholders in `eas.json` →
 | `appleTeamId`               | developer.apple.com → Membership details → **Team ID** (10 characters). Added beside `ascAppId`.                                                                                                                                                           |
 | `play-service-account.json` | Play Console → Setup → API access → a service account key. Gitignored; upload it to EAS with `eas credentials` rather than committing it.                                                                                                                  |
 
-### 4. iOS capabilities
-
-The app declares one iCloud container, `iCloud.se.agilator.meds`.
-Before the first store build, in the Apple Developer portal:
-
-1. **Certificates, Identifiers & Profiles → Identifiers → iCloud Containers**
-   — create the container with exactly that identifier.
-2. **Identifiers → the app's App ID → iCloud** — enable the capability and
-   tick that container.
-
-An entitlement the App ID does not carry fails code signing, and — worse — a
-container that signs but was never created resolves to nil at runtime: the app
-builds, installs, launches, and reports iCloud as unavailable with nothing in
-the log to say why.
-
-### 5. Dropbox
+### 4. Dropbox
 
 The phone app signs in to Dropbox through an in-app authentication session
 that returns on **`se.agilator.meds://oauth`** — the bundle id is the URL scheme (see
@@ -113,10 +98,8 @@ build without it launches to a blank screen.
 - [ ] `EXPO_PUBLIC_MEDS_URL` is **unset** — a build that streams the website
       is the exact shape App Store guideline 4.2 rejects.
 - [ ] The version in the root `package.json` is the one you mean to ship.
-- [ ] On a real device signed into iCloud: **Settings → Cloud sync → iCloud
-      Drive**, log a dose, and see `meds.json` appear under **Files → iCloud
-      Drive → Meds**. Then sign out of iCloud and confirm the app says so
-      rather than losing the log.
+- [ ] **Settings → Sync** offers exactly two places: this device and Dropbox.
+      The log is health information and has no other destination.
 - [ ] Settings → Sync → Dropbox opens Dropbox in a sheet over the app (not in
       Safari), and approving closes the sheet and connects. Closing the sheet
       instead leaves nothing connected and shows no error.

@@ -27,12 +27,6 @@ import type {
   SyncLocation,
 } from "@niclaslindstedt/oss-framework/sync";
 
-import {
-  createCloudHostAdapter,
-  getCloudHost,
-  useCloudHost,
-  type CloudHost,
-} from "./cloudHost.ts";
 import { logStore } from "./log.ts";
 import { mergeDocs } from "./merge.ts";
 import { parseDoc, serializeDoc } from "./migrations.ts";
@@ -52,23 +46,22 @@ import type { DocStore } from "./useDocStore.ts";
 // both keep their taps without anyone being asked to choose. The cost is
 // that an *un-ticked* dose comes back if the other device still holds it —
 // see `docs/sync.md`.
-//
-// iCloud is the second cloud backend and the one with no OAuth at all: it is a
-// folder the operating system keeps in step, offered by whichever host the
-// app happens to be running in (`cloudHost.ts`). Nothing here asks whether
-// that host exists because the app is native — it asks whether a document
-// store was offered, which is why the picker's options are a reading rather
-// than a constant.
 
 const syncLog = logStore.createLogger("sync");
 
-export type SyncBackendId = "local" | "icloud" | "dropbox";
+export type SyncBackendId = "local" | "dropbox";
 
-const BACKEND_KEY = "meds:sync:backend";
+export const BACKEND_KEY = "meds:sync:backend";
 const DROPBOX_TOKENS_KEY = "meds:sync:dropbox";
 // Google Drive is gone as a backend. The key stays named so a token a device
 // may still hold is cleared rather than left sitting in storage.
 const RETIRED_GDRIVE_TOKEN_KEY = "meds:sync:gdrive";
+// iCloud is gone as a backend too, and for good: App Store guideline
+// 5.1.3(ii) says an app may not store personal health information in iCloud.
+// No release ever offered it, but a pre-release build could have stored the
+// choice, so it is named here to be read as this device — never as a backend
+// with nothing behind it — and its on-device copy of the cloud file is cleared.
+const RETIRED_ICLOUD_BACKEND = "icloud";
 
 /** How long after the last edit a push is sent. Long enough to coalesce a
  *  burst of taps on the Today screen into one request. */
@@ -100,29 +93,30 @@ export const DROPBOX_APP_FOLDER: string =
 
 export const PROVIDER_NAMES: Record<SyncBackendId, string> = {
   local: "This device",
-  icloud: "iCloud Drive",
   dropbox: "Dropbox",
 };
 
-/** Which backends this build can offer without asking anything of its host —
- *  a cloud provider with no client id configured is hidden from the picker
- *  entirely. iCloud is not here: whether it can be offered is a question
- *  about the host, answered per render by `useCloudHost` (see `available`). */
+/** Which backends this build can offer — a cloud provider with no client id
+ *  configured is hidden from the picker entirely. */
 export const AVAILABLE_BACKENDS: SyncBackendId[] = [
   "local",
   ...(DROPBOX_APP_KEY ? (["dropbox"] as const) : []),
 ];
 
-/** The document's folder on a host-offered store, as the reader would find it
- *  in the Files app: the app's own iCloud folder, named after the app. */
-const ICLOUD_FOLDER = "iCloud Drive/Meds";
-
 type DropboxTokens = { accessToken: string; refreshToken: string | null };
 
-function readBackend(): SyncBackendId {
+/** The stored backend choice. Anything but Dropbox reads as this device —
+ *  including the retired iCloud choice, which is also rewritten so it is
+ *  never read again. */
+export function readBackend(): SyncBackendId {
   try {
     const raw = localStorage.getItem(BACKEND_KEY);
-    return raw === "dropbox" || raw === "icloud" ? raw : "local";
+    if (raw === RETIRED_ICLOUD_BACKEND) {
+      localStorage.setItem(BACKEND_KEY, "local");
+      localStorage.removeItem(localCacheKey(RETIRED_ICLOUD_BACKEND, "meds"));
+      return "local";
+    }
+    return raw === "dropbox" ? "dropbox" : "local";
   } catch {
     return "local";
   }
@@ -149,7 +143,6 @@ function backendPath(backend: SyncBackendId): string {
   if (backend === "dropbox") {
     return `Apps/${DROPBOX_APP_FOLDER}/${CLOUD_FILE_NAME}`;
   }
-  if (backend === "icloud") return `${ICLOUD_FOLDER}/${CLOUD_FILE_NAME}`;
   return "On this device only";
 }
 
@@ -165,9 +158,7 @@ export type SyncEngine = {
   /** The backend is unreachable and we're on the on-device copy. */
   offline: boolean;
   location: SyncLocation;
-  /** Which backends the picker may offer right now. A reading rather than a
-   *  constant because iCloud depends on the host the app is running in — see
-   *  `cloudHost.ts`. */
+  /** Which backends the picker may offer. */
   available: SyncBackendId[];
   /** Start the connect flow for a cloud provider, or drop back to local-only. */
   connect: (backend: SyncBackendId) => Promise<void>;
@@ -194,12 +185,6 @@ export function useSyncEngine(
   const [dropboxTokens, setDropboxTokens] = useState<DropboxTokens | null>(
     readDropboxTokens,
   );
-
-  // The document store this app's host offers, if any. Null on the website,
-  // null on a platform with no iCloud, and null until the host has answered —
-  // so the picker gains the option when there is something behind it and not
-  // a moment before.
-  const cloudHost: CloudHost | null = useCloudHost();
 
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [statusDetail, setStatusDetail] = useState<string | null>(null);
@@ -241,21 +226,8 @@ export function useSyncEngine(
         key: localCacheKey("dropbox", "meds"),
       });
     }
-    if (backend === "icloud" && cloudHost) {
-      // No credentials and no OAuth: the container belongs to the device's
-      // iCloud account, so "connecting" is choosing it and nothing else.
-      const cloud = createCloudHostAdapter(cloudHost, {
-        label: PROVIDER_NAMES.icloud,
-        fileName: CLOUD_FILE_NAME,
-        saveDebounceMs: SAVE_DEBOUNCE_MS,
-      });
-      return withLocalCache(cloud, {
-        storage: localStorage,
-        key: localCacheKey("icloud", "meds"),
-      });
-    }
     return null;
-  }, [backend, cloudHost, dropboxTokens]);
+  }, [backend, dropboxTokens]);
 
   const connected = adapter !== null;
 
@@ -430,17 +402,6 @@ export function useSyncEngine(
         setBackendState("local");
         return;
       }
-      if (next === "icloud") {
-        // Nothing to authorise and nothing to store but the choice. A host
-        // that has gone away between the picker being drawn and the press
-        // landing is the one failure worth naming, because the alternative is
-        // a backend that silently never syncs.
-        if (!getCloudHost()) throw new Error("iCloud is not available here");
-        localStorage.setItem(BACKEND_KEY, "icloud");
-        setBackendState("icloud");
-        syncLog.info("icloud: connected");
-        return;
-      }
       if (!DROPBOX_APP_KEY) throw new Error("Dropbox is not configured");
       // In the phone app the redirect would land in the system browser, not
       // in the app, so a host that offers an authentication session is asked
@@ -537,13 +498,7 @@ export function useSyncEngine(
     dirty,
     offline,
     location: { path: backendPath(backend) },
-    // The stored choice is always offered even when its host has gone — a
-    // segmented control whose value is not one of its options draws as
-    // nothing selected, which would read as "your log is nowhere".
-    available:
-      cloudHost || backend === "icloud"
-        ? ["local", "icloud", ...AVAILABLE_BACKENDS.slice(1)]
-        : AVAILABLE_BACKENDS,
+    available: AVAILABLE_BACKENDS,
     connect,
     disconnect,
     saveNow,

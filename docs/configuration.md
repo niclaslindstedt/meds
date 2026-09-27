@@ -74,18 +74,14 @@ the medications themselves and is edited from the **Meds** tab.
 
 Everything the app persists, all under one origin:
 
-| Key                        | Holds                                                       |
-| -------------------------- | ----------------------------------------------------------- |
-| `meds:doc`                 | The document — the medications and every logged dose.       |
-| `meds:settings`            | The settings above.                                         |
-| `meds:logs`                | The in-app log buffer.                                      |
-| `meds:language`            | The active UI language.                                     |
-| `meds:sync:backend`        | Which backend is selected (`local` / `icloud` / `dropbox`). |
-| `oss:cache:<backend>:meds` | The framework's offline mirror of the cloud copy.           |
-
-iCloud has no key of its own beyond `meds:sync:backend`: there is nothing to
-store. The container belongs to the device's iCloud account, so choosing the
-backend is the whole of connecting to it.
+| Key                        | Holds                                                 |
+| -------------------------- | ----------------------------------------------------- |
+| `meds:doc`                 | The document — the medications and every logged dose. |
+| `meds:settings`            | The settings above.                                   |
+| `meds:logs`                | The in-app log buffer.                                |
+| `meds:language`            | The active UI language.                               |
+| `meds:sync:backend`        | Which backend is selected (`local` / `dropbox`).      |
+| `oss:cache:<backend>:meds` | The framework's offline mirror of the cloud copy.     |
 
 Clearing site data removes all of it. That is the whole uninstall procedure —
 there is nothing on a server to delete.

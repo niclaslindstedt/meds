@@ -174,6 +174,22 @@ describe("the review notes are true of the build", () => {
     expect(NOTES).toMatch(/no in-app\s+purchases/i);
   });
 
+  it("is right that health data never goes to iCloud", () => {
+    // Guideline 5.1.3(ii): no personal health information in iCloud. The
+    // build carries no container, no entitlement and no native module that
+    // could reach one — comments stripped, as above.
+    const config = read("native", "app.config.js")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    expect(config).not.toMatch(/icloud|ubiquit/i);
+    expect(read("native", "identifiers.js")).not.toMatch(/icloud/i);
+    expect(existsSync(join(root, "native", "modules"))).toBe(false);
+  });
+
+  itAuthored("says so", () => {
+    expect(NOTES).toMatch(/never goes to icloud/i);
+  });
+
   it("names the privacy page the listing points at", () => {
     // A tool repo's policy is generated from one row in agilatorab/apps — see
     // `RULES.brand.privacyUrl` — so there is nothing in this tree to read.

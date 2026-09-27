@@ -2,8 +2,9 @@
 
 Meds is a PWA first: open it in a browser, add it to the home screen, and it
 is an app. `native/` is the other way in — the same web app, wrapped thinly
-enough to ship through the **App Store** and **Google Play**, and in exchange
-for that wrapper it gains one thing the browser cannot give it: **iCloud**.
+enough to ship through the **App Store** and **Google Play**. In exchange for
+that wrapper it gains what the browser cannot give it: it runs entirely from
+inside its own download, and Dropbox signs in without leaving the app.
 
 ## What the wrapper is
 
@@ -22,35 +23,20 @@ history.
 
 There is **no native UI**. Everything you see is the web app, unchanged.
 
-## iCloud
+## Where your log is kept
 
-**Settings → Sync** offers **iCloud Drive** beside Dropbox, and only in the
-app — a browser has no way to reach a device's iCloud, so on the website the
-option is simply not there.
+On the phone, exactly where it is kept on the website: **on the device**, and
+— only if you connect it — in **your own Dropbox**. Nowhere else.
 
-Choosing it is all there is to it. There is no account to connect and no
-window to grant anything in: the container belongs to the iCloud account the
-phone is already signed into. From then on the document — one file,
-`meds.json` — is kept in the app's own iCloud folder, and every device signed
-into the same account merges the same way two Dropbox devices do (see
-[`../sync.md`](../sync.md)).
+There is **no iCloud**, and that is a decision rather than a gap. A medication
+log is personal health information, and App Store guideline 5.1.3(ii) says an
+app may not store personal health information in iCloud. So the phone app
+offers the same two places the website does, and the wrapper adds no storage
+of its own.
 
-The file lives under **Files → iCloud Drive → Meds**, where you can open it,
-copy it out, or delete it. That is deliberate: this is your medication log,
-and a copy you cannot see is a copy you do not control.
-
-Two things it will tell you rather than guess about:
-
-- **iCloud is signed out.** The app says so and offers to reconnect instead of
-  failing quietly; signing in happens in iOS Settings, and the app re-checks
-  every time you come back to it.
-- **The file is in iCloud but has not arrived yet.** Another device wrote it a
-  moment ago and the bytes are still coming down. The app waits, and if they
-  do not arrive it keeps working from the copy on this device and says it is
-  offline — it never treats a file it could not read as an empty one.
-
-Android has no iCloud, so there the app is the web app served from inside the
-download, with Dropbox as before.
+No App Store release ever offered iCloud, so there is nothing to move. A
+pre-release build that had it selected simply reads as **this device** — the
+copy on the phone was always the working copy — and the choice is forgotten.
 
 ## Dropbox
 
@@ -65,9 +51,10 @@ comes back is a one-time code the app trades for access to its own folder.
 Two rules, and they are what keep the app and the website the same product:
 
 - **Nothing in `src/` knows the wrapper exists.** The web app does not check
-  whether it is native. It looks for a document-store _capability_ on
-  `window` (`src/app/cloudHost.ts`) and offers the backend when one answers.
-- **The wrapper decides nothing about medications.** It moves bytes. When a
+  whether it is native. It looks for an authentication-session _capability_
+  on `window` (the framework's `getAuthSessionHost`) and signs in through it
+  when one is there.
+- **The wrapper decides nothing about medications.** When a
   dose is due, what counts as taken, and how two copies reconcile are the web
   app's, in `schedule.ts`, `stats.ts` and `merge.ts`.
 

@@ -66,15 +66,14 @@ make native-prebuild   # inspect what expo prebuild generates
 ```
 
 It is a thin Expo / React Native shell for the App Store and Google Play: the
-same built site in a `WebView`, served from a loopback origin, plus one thing a
-browser cannot do — an **iCloud Drive** document store. **Nothing in `src/`
-knows it exists**: `src/app/cloudHost.ts` asks whether a document-store
-capability is on `window` and turns one into an ordinary `StorageAdapter`; a
-browser has none and the picker never shows iCloud. The wrapper also offers Dropbox's
-sign-in an in-app authentication session at `window.__ossAuthSession`, which
-the framework's `getAuthSessionHost` looks for; a browser has none and keeps
-its redirect. The wrapper moves bytes
-and decides nothing about medications. Its store identity comes from
+same built site in a `WebView`, served from a loopback origin. **Nothing in
+`src/` knows it exists**: the wrapper offers Dropbox's sign-in an in-app
+authentication session at `window.__ossAuthSession`, which the framework's
+`getAuthSessionHost` looks for; a browser has none and keeps its redirect.
+**It adds no storage of its own** — the log is health information, and App
+Store guideline 5.1.3(ii) rules out iCloud for it, so the phone app offers the
+device and the user's own Dropbox, exactly as the website does. The wrapper
+decides nothing about medications. Its store identity comes from
 `APP_DISPLAY_NAME`, `APP_BUNDLE_ID` and `EAS_PROJECT_ID` (`native/identifiers.js`);
 a `production` build refuses to run without them. See
 [`native/README.md`](native/README.md) and
@@ -347,7 +346,7 @@ dates without fake timers.
 | A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                     |
 | A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demoData_test.ts`                                                                        |
 | A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                  |
-| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `src/app/cloudHost.ts`), never a check for "native"              |
+| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `getAuthSessionHost`), never a check for "native"                |
 | Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                |
 | A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                                                                |
 
@@ -392,7 +391,7 @@ with `[Learn more](feature:<slug>)`.
 | The `Medication` / `DayLog` shape | `docs/architecture.md`'s data shape, `docs/features/medications.md`, and a `migrations.ts` step                |
 | The catalog or its ranking        | `docs/features/medications.md` (the autocomplete section) and the provenance note in `data/medications.ts`     |
 | The sync engine or the merge      | `docs/sync.md`                                                                                                 |
-| The native wrapper or iCloud      | `native/README.md`, `native/RELEASING.md`, `docs/features/native-app.md`, `docs/sync.md`                       |
+| The native wrapper                | `native/README.md`, `native/RELEASING.md`, `docs/features/native-app.md`, `docs/sync.md`                       |
 | A `VITE_*` variable               | `docs/configuration.md`, `src/vite-env.d.ts`, the README's Configuration table, and the workflows that pass it |
 | A screen's behaviour              | The matching `docs/features/*.md` and the README's Usage table                                                 |
 | The navigation (nav or top bar)   | `docs/architecture.md`'s tree and the README's Usage tables                                                    |
@@ -427,14 +426,11 @@ with `[Learn more](feature:<slug>)`.
   `tauri/src-tauri/icons/*` all come from `scripts/generate-icons.mjs` — edit
   it and rerun `make icons`, so the home-screen tile, the store icon and the
   dock icon are one mark.
-- **The iCloud container is `iCloud.se.agilator.meds`,** committed in
-  `native/identifiers.js` and in `native/modules/icloud-store/` (index.ts and
-  its Swift twin), never derived from the bundle id. Changing it after
-  release strands every synced copy in the old container.
-- **The bridge's names are a contract** between `native/src/icloudBridge.ts`
-  and `src/app/cloudHost.ts` (`__medsCloudHost`, `meds:cloud-host`). A rename
-  on one side is not an error — it is a backend that never appears.
-  `tests/native_icloud_test.ts` pins them.
+- **No iCloud, anywhere.** The log is personal health information, which App
+  Store guideline 5.1.3(ii) keeps out of iCloud. Do not add an iCloud
+  backend, container or entitlement; a stored `icloud` backend choice from a
+  pre-release build reads as the device (`readBackend`, pinned by
+  `tests/syncBackend_test.ts`).
 - **The phone app's URL scheme is its bundle id** (`scheme: BUNDLE_ID` in
   `native/app.config.js`): `se.agilator.meds` in a store build,
   `dev.local.meds` in a plain checkout. Reverse-DNS so no other app can claim

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 // Splicing text into a script the wrapper injects.
 //
-// Import-free on purpose: the bridges that use it are exercised from the root
-// test suite, which has no `expo` installed (see `icloudWire.ts`).
+// Import-free on purpose: the bridge that uses it is exercised from the root
+// test suite, which has no `expo` installed (see `native/tsconfig.json`).
 
 /**
  * A JavaScript string literal holding `text`, safe to splice into a script.
