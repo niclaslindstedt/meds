@@ -4,6 +4,13 @@
 // the document at read time — nothing is accumulated, so a corrected day
 // re-derives every figure.
 //
+// "Adherence" is the ABC taxonomy's *implementation*: how far the doses
+// actually taken correspond to the ones the schedule asked for, summarised as
+// the proportion of prescribed doses taken [ref:vrijens-2012]. The two rules
+// below, and the skip, are this app's own choices about *which* doses and
+// days that proportion is taken over — the taxonomy counts every prescribed
+// dose, and would score a skipped one as a lapse.
+//
 // Two rules keep the numbers honest, and every function below applies them:
 //
 //   - **Today never counts against you.** An unfinished today is a day in

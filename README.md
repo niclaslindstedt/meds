@@ -137,7 +137,7 @@ grid, which takes the swipe for itself and pages the month:
 | Button | What it does                                                                                                                                                                                                                                                                                                               |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **+**  | Log a dose, from any screen: a sheet of today's doses with the likeliest first and what you already took greyed at the bottom. It is also where an as-needed medication is reached for — logged, or started for as long as you need it. Its footer leads to the add form when a new medication is what you actually meant. |
-| **⚙**  | Settings: theme, week start, time format, cloud sync and its encryption passphrase, the PIN app lock, backup / restore / delete, and the build's version.                                                                                                                                                                  |
+| **⚙**  | Settings: theme, week start, time format, cloud sync and its encryption passphrase, the PIN app lock, backup / restore / delete, the build's version, and **About and sources** — the disclaimer and the published sources behind the adherence figure and the medication suggestions.                                     |
 
 ## Configuration
 
@@ -218,6 +218,7 @@ More in [`docs/troubleshooting.md`](docs/troubleshooting.md).
 - [Configuration](docs/configuration.md)
 - [Architecture](docs/architecture.md)
 - [The schedule and the stats](docs/schedule.md) — what is due, what counts, and when
+- [Sources](docs/features/sources.md) — the published definitions and data behind the figures
 - [Sync](docs/sync.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [`AGENTS.md`](AGENTS.md) — conventions for humans and coding agents

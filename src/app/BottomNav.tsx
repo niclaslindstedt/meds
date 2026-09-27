@@ -39,7 +39,7 @@ import { activeMedications, type AppData } from "./types.ts";
 
 /** Every screen the shell can show. */
 export type Tab =
-  "today" | "calendar" | "history" | "meds" | "add" | "settings";
+  "today" | "calendar" | "history" | "meds" | "add" | "settings" | "about";
 
 /** The screens that are *destinations* — the ones the bottom bar carries and
  *  a swipe moves between. Add and Settings are reached from the top bar
@@ -68,7 +68,7 @@ export type ScreenEnter = "forward" | "back" | "none";
  * same move as two swipes and should not look like a different one.
  *
  * `none` for everything else, and that is a claim rather than a fallback:
- * Add and Settings are not on the bar (see `TopBar.tsx`), they have no
+ * Add, Settings and About are not on the bar (see `TopBar.tsx`), they have no
  * neighbours, and sliding them in from a side would invent a position for
  * them the rest of the app then has to keep pretending is there. They cross
  * fade instead — a change of screen without a direction, which is exactly
