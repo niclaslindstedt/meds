@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-// The demo document. It exists to demonstrate every state the screens can
-// show, so the test pins exactly that: the states are all present, the
-// document is valid by the same pipeline real bytes go through, and the
-// build is deterministic — a screenshot session and this suite must see the
-// same story.
+// The demo document. It is the live demo and what the store screenshots are
+// taken of, so the test pins what those frames stand on: a valid document
+// (through the same pipeline real bytes go through), deterministic for a
+// moment, never a tap after the moment it opens — and, for every day of a
+// year as "now", the calm, well-kept record each screen is staged on. Every
+// figure is read through the app's own derivation, never restated.
 
 import { describe, expect, it } from "vitest";
 
-import { addDays } from "@niclaslindstedt/oss-framework/calendar";
+import { addDays, dayKeyOf } from "@niclaslindstedt/oss-framework/calendar";
 
 import { buildDemoData } from "../src/app/dev/demoData.ts";
 import { normalizeDoc, serializeDoc } from "../src/app/migrations.ts";
@@ -17,15 +18,22 @@ import {
   dueDoses,
   weekdayOf,
 } from "../src/app/schedule.ts";
-import { adherenceLastDays, missedDoses, streaks } from "../src/app/stats.ts";
+import {
+  adherenceLastDays,
+  earliestStart,
+  missedDoses,
+  streaks,
+} from "../src/app/stats.ts";
 
-const TODAY = "2024-06-15";
+/** The status bar's moment: 9:41 on a Saturday (the screenshots' clock). */
+const NOW = new Date(2026, 8, 26, 9, 41);
+const TODAY = dayKeyOf(NOW);
 
 describe("buildDemoData", () => {
-  const data = buildDemoData(TODAY);
+  const data = buildDemoData(NOW);
 
-  it("is deterministic", () => {
-    expect(serializeDoc(buildDemoData(TODAY))).toBe(serializeDoc(data));
+  it("is deterministic for a moment", () => {
+    expect(serializeDoc(buildDemoData(new Date(NOW)))).toBe(serializeDoc(data));
   });
 
   it("survives the real parse pipeline unchanged", () => {
@@ -34,148 +42,128 @@ describe("buildDemoData", () => {
     );
   });
 
-  it("carries six current medications, one late-starting, one masked and two as needed", () => {
+  it("never logs a tap after the moment the demo opens", () => {
+    for (const log of Object.values(data.days)) {
+      for (const stamp of [
+        ...Object.values(log.taken),
+        ...Object.values(log.skipped),
+      ]) {
+        expect(new Date(stamp).getTime()).toBeLessThanOrEqual(NOW.getTime());
+      }
+    }
+  });
+
+  it("stores taps as local wall-clock minutes, never on the slot itself", () => {
+    // The morning tablets on the frame's Saturday: after the lie-in.
+    const morning = new Date(data.days[TODAY]!.taken["demo-lisinopril@07:30"]!);
+    expect(morning.getHours()).toBe(8);
+    for (const log of Object.values(data.days)) {
+      for (const [key, stamp] of Object.entries(log.taken)) {
+        const slot = key.split("@")[1]!;
+        const d = new Date(stamp);
+        const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        if (!key.startsWith("demo-ibuprofen@")) expect(hhmm).not.toBe(slot);
+      }
+    }
+  });
+
+  it("carries six scheduled medications and two taken as needed", () => {
     const meds = Object.values(data.medications);
-    expect(meds).toHaveLength(6);
+    expect(meds.filter((m) => !m.asNeeded)).toHaveLength(6);
     expect(meds.every((m) => m.endDate === null)).toBe(true);
-    const starts = new Set(meds.map((m) => m.startDate));
-    expect(starts.size).toBe(2);
     expect(meds.filter((m) => m.weekdays !== null)).toHaveLength(1);
-    // One with no times of its own and one with three — the two shapes the
-    // "As needed" panel has to render.
     const asNeeded = meds.filter((m) => m.asNeeded);
-    expect(asNeeded).toHaveLength(2);
-    expect(asNeeded.filter((m) => m.times.length === 0)).toHaveLength(1);
+    expect(asNeeded.map((m) => m.times.length).sort()).toEqual([0, 3]);
+    // Every medication's history is inside the document: nothing is due on
+    // a day before the log begins.
+    expect(earliestStart(data)).toBe(addDays(TODAY, -90));
   });
 
-  it("costs the numbers nothing on the days nobody needed the as-needed meds", () => {
-    // Three months of history, and the painkiller is logged on a handful of
-    // days — but it is never *due*, so no day owes it and no day is scored
-    // against it.
-    const painkiller = Object.values(data.medications).find(
-      (m) => m.asNeeded && m.times.length === 0,
-    )!;
-    for (let i = 0; i <= 90; i++) {
-      const day = addDays(TODAY, -i);
-      expect(dueDoses(data, day).some((d) => d.med.id === painkiller.id)).toBe(
-        false,
-      );
+  it("stages today at 9:41: the morning ticked, the evening open", () => {
+    const doses = dueDoses(data, TODAY);
+    for (const dose of doses) {
+      expect(dose.takenAt !== null).toBe(dose.time < "12:00");
     }
-    // And it is always on offer, which is how a dose of it gets logged.
-    expect(
-      asNeededOn(data, TODAY).some((e) => e.med.id === painkiller.id),
-    ).toBe(true);
-  });
-
-  it("spends a daily maximum exactly on one day, and leaves today inside it", () => {
-    const painkiller = Object.values(data.medications).find(
-      (m) => m.asNeeded && m.times.length === 0,
-    )!;
-    expect(painkiller.maxPerDay).toBe(4);
-    const allowanceOn = (day: string) =>
-      asNeededOn(data, day).find((e) => e.med.id === painkiller.id)!.allowance;
-    // The bad afternoon: four doses, the whole number spent — the state the
-    // "As needed" panel changes shape for.
-    expect(allowanceOn(addDays(TODAY, -22))).toEqual({
-      max: 4,
+    // Saturday: no B12, so six doses and four of them taken.
+    expect(dayProgress(data, TODAY)).toEqual({
+      due: 6,
       taken: 4,
-      left: 0,
+      status: "partial",
     });
-    // And today, one in and three to go, which is the ordinary reading.
-    expect(allowanceOn(TODAY)).toEqual({ max: 4, taken: 1, left: 3 });
   });
 
-  it("spends the longest stretch on that same day", () => {
-    const runOn = (day: string) =>
-      asNeededOn(data, day).find(
-        (e) => e.med.times.length === 0 && e.med.asNeeded,
-      )!.run;
-    // Three days running, which is the whole stretch noted for it — so one
-    // day of the demo shows both ceilings spent at once.
-    expect(runOn(addDays(TODAY, -22))).toEqual({
-      maxDays: 3,
-      days: 3,
-      left: 0,
-    });
-    // Today is the first day of its own stretch: the day before it is empty.
-    expect(runOn(TODAY)).toEqual({ maxDays: 3, days: 1, left: 2 });
-  });
-
-  it("runs the course as a block of scored days surrounded by silent ones", () => {
-    const course = Object.values(data.medications).find(
-      (m) => m.asNeeded && m.times.length > 0,
+  it("stages the as-needed sheet: ibuprofen at none of its three today", () => {
+    const ibuprofen = asNeededOn(data, TODAY).find(
+      (e) => e.med.id === "demo-ibuprofen",
     )!;
-    const scored = (day: string) =>
-      dueDoses(data, day).filter((d) => d.med.id === course.id).length;
-    // Five days running owe it something...
-    for (let back = 16; back >= 12; back--) {
-      expect(scored(addDays(TODAY, -back))).toBeGreaterThan(0);
+    expect(ibuprofen.allowance).toEqual({ max: 3, taken: 0, left: 3 });
+    // And the cold medicine is not running, so it offers "Start taking it".
+    const course = asNeededOn(data, TODAY).find(
+      (e) => e.med.id === "demo-guaifenesin",
+    )!;
+    expect(course.course).toBeNull();
+  });
+
+  it("runs the cold as five scored days that start at lunchtime", () => {
+    const owed = (back: number) =>
+      dueDoses(data, addDays(TODAY, -back))
+        .filter((d) => d.med.id === "demo-guaifenesin")
+        .map((d) => d.time);
+    expect(owed(21)).toEqual([]);
+    expect(owed(20)).toEqual(["14:00", "20:00"]);
+    for (let back = 19; back >= 16; back--) {
+      expect(owed(back)).toEqual(["08:00", "14:00", "20:00"]);
     }
-    // ...and the days either side of the course owe it nothing at all.
-    expect(scored(addDays(TODAY, -17))).toBe(0);
-    expect(scored(addDays(TODAY, -11))).toBe(0);
-    // One evening dropped in the middle of it, and nothing else.
-    const missed = missedDoses(data, TODAY, 20).filter(
-      (m) => m.dose.med.id === course.id,
-    );
-    expect(missed.map((m) => m.dose.time)).toEqual(["18:00"]);
+    expect(owed(15)).toEqual([]);
   });
 
-  it("logs nothing for the masked med on the days it is not due", () => {
-    const masked = Object.values(data.medications).find(
-      (m) => m.weekdays !== null,
-    )!;
-    // 2024-06-15 is a Saturday, so the seven days back from it cover the
-    // whole week — Sunday, Tuesday, Thursday and Saturday owe this med
-    // nothing, and no tap of it may exist on those days either.
-    for (let i = 0; i < 7; i++) {
-      const day = addDays(TODAY, -i);
-      const due = dueDoses(data, day).filter((d) => d.med.id === masked.id);
-      expect(due.length > 0).toBe(masked.weekdays!.includes(weekdayOf(day)));
-      const logged = Object.keys(data.days[day]?.taken ?? {}).filter((key) =>
-        key.startsWith(`${masked.id}@`),
+  it("sets the night away aside: the day reads full, and no miss is named", () => {
+    const away = addDays(TODAY, -13);
+    expect(Object.keys(data.days[away]!.skipped)).toHaveLength(2);
+    expect(dayProgress(data, away).status).toBe("full");
+  });
+
+  it("logs the B12 only on its own weekdays", () => {
+    for (const log of Object.values(data.days)) {
+      if (log.taken["demo-b12@08:00"] === undefined) continue;
+      expect([1, 3, 5]).toContain(weekdayOf(log.date));
+    }
+  });
+
+  it("holds every frame's premise for every day of a year", () => {
+    for (let i = 0; i < 366; i++) {
+      const now = new Date(2026, 0, 1 + i, 9, 41);
+      const today = dayKeyOf(now);
+      const doc = buildDemoData(now);
+
+      // Today: live, the morning ticked, the evening still open.
+      const progress = dayProgress(doc, today);
+      expect(progress.status).toBe("partial");
+      expect(progress.taken).toBeGreaterThanOrEqual(4);
+
+      // The calendar: yesterday full, and no day of the history red.
+      expect(dayProgress(doc, addDays(today, -1)).status).toBe("full");
+      for (let back = 1; back <= 90; back++) {
+        expect(dayProgress(doc, addDays(today, -back)).status).not.toBe(
+          "missed",
+        );
+      }
+
+      // History: a clean week, a strong month, a streak, one honest miss.
+      expect(adherenceLastDays(doc, today, 7).share).toBe(1);
+      expect(adherenceLastDays(doc, today, 30).share!).toBeGreaterThanOrEqual(
+        0.95,
       );
-      if (due.length === 0) expect(logged).toEqual([]);
+      expect(streaks(doc, today).current).toBe(7);
+      const missed = missedDoses(doc, today, 14);
+      expect(missed).toHaveLength(1);
+      expect(missed[0]!.dose.med.id).toBe("demo-omega3");
+
+      // The as-needed sheet: nothing logged today, so its first tap is 1 of 3.
+      const ibuprofen = asNeededOn(doc, today).find(
+        (e) => e.med.id === "demo-ibuprofen",
+      )!;
+      expect(ibuprofen.allowance!.taken).toBe(0);
     }
-  });
-
-  it("leaves today part-done, the state the Today screen is built for", () => {
-    expect(dayProgress(data, TODAY).status).toBe("partial");
-  });
-
-  it("shows a dose set aside, and a day set aside whole", () => {
-    // Nine days back: one evening dose declined. The day still reads full —
-    // it owed everything else and got it — and the missed list never names
-    // the dose.
-    const evening = addDays(TODAY, -9);
-    expect(data.days[evening]?.skipped["demo-metformin@20:00"]).toBeDefined();
-    expect(data.days[evening]?.taken["demo-metformin@20:00"]).toBeUndefined();
-    expect(dayProgress(data, evening).status).toBe("full");
-    expect(missedDoses(data, TODAY, 14).some((m) => m.day === evening)).toBe(
-      false,
-    );
-
-    // Five days back: the whole checklist declined. The day owes nothing, so
-    // it is silent — blank on the calendar rather than red — and it is still
-    // a day the document carries.
-    const whole = addDays(TODAY, -5);
-    expect(dueDoses(data, whole).length).toBeGreaterThan(0);
-    expect(dayProgress(data, whole)).toEqual({
-      due: 0,
-      taken: 0,
-      status: "none",
-    });
-  });
-
-  it("contains the gap week and scattered misses", () => {
-    // The gap week plus the scattered misses give the History screen real
-    // gaps to show...
-    expect(missedDoses(data, TODAY, 60).length).toBeGreaterThan(5);
-    // ...while overall adherence stays the mostly-good story the tiles tell.
-    const month = adherenceLastDays(data, TODAY, 30);
-    expect(month.share).not.toBeNull();
-    expect(month.share!).toBeGreaterThan(0.5);
-    // The gap week caps how long any streak can be.
-    expect(streaks(data, TODAY).longest).toBeGreaterThan(0);
   });
 });

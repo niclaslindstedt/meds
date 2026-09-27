@@ -114,7 +114,7 @@ src/
     ├── pwa.ts               the per-base precache cache id
     ├── icons.tsx            the app mark and the domain glyphs
     ├── i18n/                createI18n over en.ts (every UI string)
-    └── dev/                 the demo-data takeover (own chunk)
+    └── dev/                 the demo document (VITE_SEED=demo, and the Settings switch; own chunk)
 ```
 
 ## Navigation

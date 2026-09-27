@@ -45,6 +45,7 @@ Settings exists for this reason and must not be quietly dropped.
 
 ```sh
 make install       # npm install (needs GitHub Packages auth — see below)
+make demo          # dev server on the in-memory demo document (VITE_SEED=demo)
 make build         # production build (vite build)
 make test          # full test suite (vitest)
 make lint          # eslint + tsc --noEmit
@@ -216,9 +217,10 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
 - `src/app/useSyncEngine.ts` — the sync engine over the framework's storage
   adapters (debounced push, conflict / auth / throttle handling). Suspended
   wholesale while demo data has taken over storage.
-- `src/app/dev/` — the developer "Demo data" switch: three months of invented
-  history (`demoData.ts`, pure, seeded PRNG, every date an offset from
-  `today`), the in-memory `DocBackend` that serves it (`demoBackend.ts`), and
+- `src/app/dev/` — the demo document (`VITE_SEED=demo`, and the developer
+  "Demo data" switch): one person's medicines and three months of taps
+  (`demoData.ts`, pure, a function of the moment it opens, every date an
+  offset from it), the in-memory `DocBackend` that serves it (`demoBackend.ts`), and
   the never-persisted flag both `App` and Settings read (`useDemoData.ts`).
   Behind `import()`, so a production user never downloads it.
 - `src/app/TodayScreen.tsx`, `CalendarScreen.tsx`, `HistoryScreen.tsx`,
@@ -343,7 +345,7 @@ dates without fake timers.
 | A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                        |
 | A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                                                            |
 | A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                     |
-| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `today`, never fixed dates), with tests in `tests/demoData_test.ts`                                                                      |
+| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demoData_test.ts`                                                                        |
 | A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                  |
 | The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `src/app/cloudHost.ts`), never a check for "native"              |
 | Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                |

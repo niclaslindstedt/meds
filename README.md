@@ -102,6 +102,10 @@ works fully offline.
 npm run dev
 ```
 
+To open it on a demo instead — one person's medicines and three months of
+doses, held in memory and never written to the browser — run `make demo`
+(`VITE_SEED=demo`).
+
 Open the printed URL. The app boots on the add form: type a medication's name
 (it autocompletes), tap a dose chip if one fits, adjust the time if it isn't a
 morning med, leave **Every day** on unless you skip some, and press **Save
@@ -142,11 +146,12 @@ The app needs no configuration to run. Two build-time variables switch cloud
 sync on; both are public OAuth client identifiers (the flows are PKCE, so there
 is no secret to protect), and leaving either unset simply hides that provider:
 
-| Variable                  | Effect                                                    |
-| ------------------------- | --------------------------------------------------------- |
-| `VITE_DROPBOX_APP_KEY`    | Enables the Dropbox backend.                              |
-| `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `meds`). |
-| `VITE_BASE`               | Deploy base path (default `/`).                           |
+| Variable                  | Effect                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `VITE_DROPBOX_APP_KEY`    | Enables the Dropbox backend.                                                                                 |
+| `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `meds`).                                                    |
+| `VITE_BASE`               | Deploy base path (default `/`).                                                                              |
+| `VITE_SEED`               | `demo` boots onto the in-memory demo document (`make demo`, the store screenshots). Never set for a release. |
 
 The workflows read them from repository secrets of the same names. See
 [`docs/configuration.md`](docs/configuration.md) for the details.

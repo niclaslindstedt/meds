@@ -97,7 +97,10 @@ an unknown revision is what produces phantom conflicts. Your edit is safe in
 localStorage the whole time.
 
 Sync is suspended entirely — no pull, no push — while the developer **Demo
-data** switch is on, because the log on screen then is an invented one. The
+data** switch is on (or the build was made with `VITE_SEED=demo`), because the
+log on screen then is an invented one. The storage picker refuses to connect
+or disconnect a backend meanwhile, since either would change the reader's real
+backend from a session that is not theirs. The
 credentials and the copy already in the cloud are untouched, and turning the
 switch off (or reloading) resumes from your real document.
 

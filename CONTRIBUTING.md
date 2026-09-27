@@ -21,6 +21,7 @@ npm install
 ## Build, test, lint
 
 ```sh
+make demo         # the dev server on the demo document (VITE_SEED=demo)
 make build
 make test
 make lint

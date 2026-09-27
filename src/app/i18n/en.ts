@@ -396,7 +396,7 @@ export const en = {
       "Shows the demo document, the log capture switch, the app log, and the raw document size.",
     demoData: "Demo data",
     demoDataHint:
-      "Swap your log for three invented medications and three months of history — full days, part days and a gap week. It lives in memory only: nothing is saved, nothing is synced, and reloading the page brings your own log back.",
+      "Swap your log for one person's invented medicines and three months of doses — a morning tablet, an allergy tablet in season, a few supplements, ibuprofen now and then, and one cold. It lives in memory only: nothing is saved, nothing is synced, and reloading the page brings your own log back.",
     demoDataOn: "Showing demo data — reload to get yours back",
     demoDataOff: "Back to your own log",
     captureLogs: "Capture console output",
