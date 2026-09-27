@@ -192,7 +192,7 @@ export const RULES: StoreRules = {
   brand: {
     projectName: "Meds",
     publisher: "Agilator AB",
-    marketingUrl: "https://meds.niclaslindstedt.se/",
+    marketingUrl: "https://apps.agilator.se/meds/",
     // Generated from one row in agilatorab/apps — see that repository's
     // AGENTS.md. A policy that claims less than the app does is a compliance
     // problem rather than a typo, so the row changes in the same release the
@@ -212,10 +212,10 @@ export const RULES: StoreRules = {
   },
 
   apple: {
-    // A medication log. MEDICAL is where somebody looking for a pill
-    // reminder looks; HEALTH_AND_FITNESS second, where the store files the
-    // broader tracking apps it will be compared with.
-    categories: ["MEDICAL", "HEALTH_AND_FITNESS"],
+    // A medication log, filed under HEALTH_AND_FITNESS alone. MEDICAL is
+    // deliberately absent: it invites review to weigh the app as a medical
+    // device, which a log of the reader's own doses is not.
+    categories: ["HEALTH_AND_FITNESS"],
 
     advisory: {
       // A medication log. Every row but one is NONE and is not a judgement
