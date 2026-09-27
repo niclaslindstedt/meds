@@ -23,8 +23,8 @@ import {
 } from "@niclaslindstedt/oss-framework/storage";
 import {
   WrongPasswordError,
-  useRequiredEncryption,
-  type RequiredEncryption,
+  useEncryption,
+  type Encryption,
 } from "@niclaslindstedt/oss-framework/encryption";
 import type {
   ConnectionProbeResult,
@@ -59,11 +59,11 @@ export type SyncBackendId = "local" | "dropbox";
 
 export const BACKEND_KEY = "meds:sync:backend";
 const DROPBOX_TOKENS_KEY = "meds:sync:dropbox";
-// The passphrase a copy outside this device is encrypted with, remembered on
-// this device per backend (see `useRequiredEncryption`). Beside a working
+// Where this device keeps the encryption of a copy outside it, per backend
+// (see `useEncryption`): the passphrase is remembered here. Beside a working
 // copy that is itself plaintext in the same storage, remembering it exposes
 // nothing new; what it protects is the copy the provider holds.
-const PASSPHRASE_KEY = "meds:sync:passphrase";
+const ENCRYPTION_KEY = "meds:sync:encryption";
 // Google Drive is gone as a backend. The key stays named so a token a device
 // may still hold is cleared rather than left sitting in storage.
 const RETIRED_GDRIVE_TOKEN_KEY = "meds:sync:gdrive";
@@ -184,7 +184,7 @@ export type SyncEngine = {
   checkConnection: () => Promise<ConnectionProbeResult>;
   /** The encryption every copy outside this device requires. Sync is held
    *  until it is `ready`. */
-  encryption: RequiredEncryption;
+  encryption: Encryption;
 };
 
 export function useSyncEngine(
@@ -247,10 +247,11 @@ export function useSyncEngine(
   // A copy outside this device is only ever an envelope. `adapter` stays null
   // until the passphrase is held, which is what holds every pull and push
   // below — there is no path for the log to leave in plaintext.
-  const encryption = useRequiredEncryption({
-    inner,
-    required: backend !== "local",
-    storageKey: `${PASSPHRASE_KEY}:${backend}`,
+  const encryption = useEncryption({
+    adapter: inner,
+    policy: "required",
+    remember: "device",
+    storageKey: `${ENCRYPTION_KEY}:${backend}`,
     logger: encryptionLog,
   });
   const adapter = encryption.adapter;

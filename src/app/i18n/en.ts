@@ -412,7 +412,7 @@ export const en = {
   // passphrase copy is the part a user must not skim: nobody can recover it,
   // and the provider never sees anything but ciphertext.
   encryption: {
-    title: "Encryption",
+    headline: "Encrypted before it leaves this device",
     required:
       "Everything is encrypted on this device before it goes to {name}, which only ever holds ciphertext.",
     on: "Encrypted. The passphrase is remembered on this device.",
@@ -422,7 +422,6 @@ export const en = {
     unreachable: "Couldn't reach {name} to check its encryption.",
     retry: "Try again",
     set: "Set the passphrase",
-    enter: "Enter the passphrase",
     change: "Change the passphrase",
     changed: "Passphrase changed",
     createTitle: "Choose a passphrase",
