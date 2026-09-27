@@ -92,7 +92,7 @@ darkens the screen behind it, so the sheet reads as a layer above the app
 rather than as one more panel on it. The rows are the
 same rows this screen renders and every tap is the same write — one way to
 mark a dose taken, two arrangements of it. The order is fixed when the sheet
-opens, so nothing moves under your thumb; ticking a dose fills it in place,
+opens, so nothing moves under your thumb; checking off a dose fills it in place,
 and it is the next opening that files it under "already taken".
 
 Two deliberate absences:

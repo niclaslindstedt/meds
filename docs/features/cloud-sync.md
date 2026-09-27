@@ -12,8 +12,8 @@ own Dropbox. Your log is health information, so it never goes to iCloud. See
 
 The local copy is always the working copy, so losing the network never costs
 a tap. Two copies reconcile without asking: medications by their last edit,
-day logs as a union of taps — a dose ticked on the phone and another ticked
-on the tablet both survive. The one honest limitation: removals are absences,
+day logs as a union of taps — a dose checked off on the phone and another
+checked off on the tablet both survive. The one honest limitation: removals are absences,
 not tombstones, so an unticked dose (or a deleted medication) can come back
 from a device that still holds it. Stopping a medication — the normal way to
 be done with one — is an edit, and syncs cleanly.
