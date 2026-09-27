@@ -32,9 +32,9 @@ function m(name: string, ...strengths: string[]): CatalogEntry {
 
 export const MEDICATIONS: CatalogEntry[] = [
   // Analgesics and antipyretics
-  m("Alvedon", "500 mg", "665 mg", "1 g"),
-  m("Panodil", "500 mg", "665 mg", "1 g"),
-  m("Paracetamol", "500 mg", "665 mg", "1 g"),
+  m("Alvedon", "500 mg", "1 g"),
+  m("Panodil", "500 mg", "1 g"),
+  m("Paracetamol", "500 mg", "1 g"),
   m("Ipren", "200 mg", "400 mg"),
   m("Ibuprofen", "200 mg", "400 mg", "600 mg"),
   m("Ibumetin", "200 mg", "400 mg", "600 mg"),

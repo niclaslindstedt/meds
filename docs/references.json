@@ -94,10 +94,6 @@
           "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19581115000027"
         },
         {
-          "text": "Alvedon 665 mg tablett med modifierad frisättning",
-          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=20030307000193"
-        },
-        {
           "text": "Alvedon forte 1 g filmdragerad tablett",
           "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19880617000116"
         },
@@ -123,7 +119,7 @@
         "en": "The Swedish Medical Products Agency's public record of approved medicines, where the names and strengths the medication form suggests come from. The suggestions only help you type; a medicine not on the list works the same."
       },
       "topics": ["meds"],
-      "note": "The service is a script-driven page; the first three quotes are from the page's embedded help text and the product lines are the server-rendered page titles of each product page. Checked 2026-09-27 against the product records (api/lmfrest/medprod): Alvedon 500 mg, Alvedon forte 1 g, Trombyl 75 mg and 160 mg, Eliquis 2,5 mg and 5 mg are 'Godkänd' and 'Säljs'. Two discrepancies with the catalog: the 1 g tablet is sold as 'Alvedon forte', not plain 'Alvedon'; and Alvedon 665 mg is 'Tillfälligt återkallad' / 'Säljs inte', which conflicts with the catalog's 'currently-dispensed medications only' rule (the Panodil and Paracetamol 665 mg entries likely share this status and were not checked). The catalog writes '2.5 mg' where Läkemedelsverket writes '2,5 mg'.",
+      "note": "The service is a script-driven page; the first three quotes are from the page's embedded help text and the product lines are the server-rendered page titles of each product page. Checked 2026-09-27 against the product records (api/lmfrest/medprod): Alvedon 500 mg, Alvedon forte 1 g, Trombyl 75 mg and 160 mg, Eliquis 2,5 mg and 5 mg are 'Godkänd' and 'Säljs'. The 665 mg modified-release paracetamol tablet (Alvedon 665 mg, id 20030307000193) is 'Tillfälligt återkallad' / 'Säljs inte', so that strength was removed from the Alvedon, Panodil and Paracetamol entries under the catalog's 'currently-dispensed medications only' rule. One remaining difference: the 1 g tablet is sold as 'Alvedon forte', not plain 'Alvedon'. The catalog writes '2.5 mg' where Läkemedelsverket writes '2,5 mg'.",
       "usedBy": ["src/app/data/medications.ts"]
     },
     "lakemedelsverket-2026-npl": {
