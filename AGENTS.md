@@ -39,7 +39,10 @@ and the privacy copy promise; it outranks convenience.
 told it and does arithmetic over that. Copy must not imply medical authority:
 no dose checking, no interaction warnings, no "you should" — the catalog's
 strengths are a typing aid, not a recommendation, and the disclaimer in
-Settings exists for this reason and must not be quietly dropped.
+Settings (and again on About, beside the sources) exists for this reason and
+must not be quietly dropped. The few things it does take from elsewhere — what
+"adherence" measures, the names and strengths in the catalog — cite their
+source (see "What the app takes from elsewhere cites its source" below).
 
 ## Build and test commands
 
@@ -261,6 +264,13 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   `linearScale`), not from its finished chart components.
 - `src/app/TopBar.tsx` — the top bar: the wordmark, the sync glyph, the `+`
   that opens the quick-log sheet, and the settings cog.
+- `src/app/references.ts` — the references registry bound to this app (see
+  "What the app takes from elsewhere cites its source"): the framework's
+  `references` types with the tabs as topics, the summary language, and
+  `useReferences`, which loads `docs/references.json` in its own chunk.
+- `src/app/AboutScreen.tsx` — behind Settings → About and sources: the
+  disclaimer, and every entry of the registry on the framework's
+  `ReferenceCard`, grouped by tab. Read-only.
 - `src/app/i18n/en.ts` — every user-facing string.
 - `src/output.ts` — the §19.4 central output module (semantic log helpers
   over the in-app log store).
@@ -340,12 +350,46 @@ medication log the stale day would be yesterday's unfinished checklist
 wearing today's date). Keep it that way: it is what lets the tests pin real
 dates without fake timers.
 
+### What the app takes from elsewhere cites its source
+
+A logbook makes few claims, but it makes some: the History screen's
+percentage is the ABC taxonomy's _implementation_ — the proportion of
+prescribed doses taken — and "stopping is not deleting" is its
+_discontinuation_; the catalog's names and strengths are Läkemedelsverket's.
+Each is cited beside the code that makes it, and a new one — a second figure,
+a regenerated catalog — cites its source in the same change.
+
+**The references registry.** `docs/references.json` is the one list of every
+source, keyed by a stable id — the shape OSS_SPEC.md §24 prescribes, which
+`oss-spec validate` checks too: authors or organization, title, where it was
+published, the DOI / URL / ISBN, the language, the kind of evidence
+(`EVIDENCE` in the framework's `references` module: `guideline`,
+`consensus`, `systematic-review`, `meta-analysis`, `randomized-trial`,
+`cohort`, `clinical-study`, `review`, `method`, `dataset`, or
+`health-service`), the verbatim quotes taken from it, what the app uses it
+for (`supports`, for a contributor), `usedBy` — the files that cite it — and
+the two fields the About screen reads: `summary`, the same for a user, and
+`topics`, the tabs (`history`, `meds`) it is listed under. Code cites an
+entry with a `[ref:<id>]` tag in the comment beside the definition or data
+(a claim in a catalog string gets its tag in a comment above the key).
+`tests/references_test.ts` runs the framework's `auditReferences` over
+`src/`, and fails on a tag with no entry, an entry nothing cites, a `usedBy`
+that doesn't match the tags, an incomplete entry, or one without its
+`summary` and a `topics` tab. Never invent a reference, a DOI or a quote.
+
+What the app decides for itself is not a claim and carries no tag — but its
+comment says it is a choice. The two stats rules and the skip are the
+example: they decide _which_ doses the published proportion is taken over,
+and `stats.ts` says so beside the tag rather than let them read as the
+taxonomy's.
+
 ## Where new code goes
 
 | Change                            | Goes in                                                                                                                                                                          |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A new fact about a medication     | Probably nowhere — see above. If it survives that: `src/app/types.ts` (model) + `schedule.ts` (if it changes what a day owes) + `MedForm.tsx` (control) + a `migrations.ts` step |
-| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts`                                                                                                                          |
+| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts` — and a `[ref:<id>]` tag beside it if it is a published measure                                                          |
+| A new source                      | An entry in `docs/references.json` (with `summary` and `topics`) and its `[ref:<id>]` tag beside the code — About lists it by itself                                             |
 | A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                                                    |
 | A change to the Medication shape  | `types.ts` + `migrations.ts` (bump `DOC_VERSION`, append a step — never edit one) + every `Medication` literal in `tests/` and `dev/`                                            |
 | A change to the DayLog shape      | The same, plus `merge.ts` (a new mark map merges too) and every `DayLog` literal in `tests/` and `dev/`                                                                          |
@@ -365,7 +409,7 @@ dates without fake timers.
 Tests live in `tests/` with a `_test` suffix (OSS_SPEC §20.2) and run under
 Vitest in the `node` environment — they cover the pure domain modules
 (`schedule`, `stats`, `catalog`, `merge`, `migrations`), which is where the
-app's real logic is. No DOM, no testing-library, no mocked clock.
+app's real logic is, plus `references`, which holds the registry to the tags. No DOM, no testing-library, no mocked clock.
 
 Run one file with `npx vitest run tests/schedule_test.ts`.
 
@@ -395,18 +439,20 @@ with `[Learn more](feature:<slug>)`.
 
 ## Documentation sync points
 
-| If you change…                    | Update…                                                                                                        |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `schedule.ts` or `stats.ts`       | `docs/schedule.md`, `docs/features/history.md`, and the README's Examples block if the output shape moved      |
-| The `Medication` / `DayLog` shape | `docs/architecture.md`'s data shape, `docs/features/medications.md`, and a `migrations.ts` step                |
-| The catalog or its ranking        | `docs/features/medications.md` (the autocomplete section) and the provenance note in `data/medications.ts`     |
-| The sync engine or the merge      | `docs/sync.md`                                                                                                 |
-| The native wrapper                | `native/README.md`, `native/RELEASING.md`, `docs/features/native-app.md`, `docs/sync.md`                       |
-| A `VITE_*` variable               | `docs/configuration.md`, `src/vite-env.d.ts`, the README's Configuration table, and the workflows that pass it |
-| A screen's behaviour              | The matching `docs/features/*.md` and the README's Usage table                                                 |
-| The navigation (nav or top bar)   | `docs/architecture.md`'s tree and the README's Usage tables                                                    |
-| Module layout                     | The "Where new code goes" table above and `docs/architecture.md`                                               |
-| A make target or script           | `CONTRIBUTING.md`, the README's Quick start, and this file's command list                                      |
+| If you change…                       | Update…                                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `schedule.ts` or `stats.ts`          | `docs/schedule.md`, `docs/features/history.md`, and the README's Examples block if the output shape moved      |
+| The `Medication` / `DayLog` shape    | `docs/architecture.md`'s data shape, `docs/features/medications.md`, and a `migrations.ts` step                |
+| The catalog or its ranking           | `docs/features/medications.md` (the autocomplete section) and the provenance note in `data/medications.ts`     |
+| A `[ref:<id>]` tag anywhere          | `docs/references.json` — the entry, its quotes, its `usedBy`, and its `summary` / `topics` for About           |
+| `references.ts` or `AboutScreen.tsx` | `docs/architecture.md` ("Where the figures come from"), `docs/features/sources.md`                             |
+| The sync engine or the merge         | `docs/sync.md`                                                                                                 |
+| The native wrapper                   | `native/README.md`, `native/RELEASING.md`, `docs/features/native-app.md`, `docs/sync.md`                       |
+| A `VITE_*` variable                  | `docs/configuration.md`, `src/vite-env.d.ts`, the README's Configuration table, and the workflows that pass it |
+| A screen's behaviour                 | The matching `docs/features/*.md` and the README's Usage table                                                 |
+| The navigation (nav or top bar)      | `docs/architecture.md`'s tree and the README's Usage tables                                                    |
+| Module layout                        | The "Where new code goes" table above and `docs/architecture.md`                                               |
+| A make target or script              | `CONTRIBUTING.md`, the README's Quick start, and this file's command list                                      |
 
 ## Parity and cross-cutting rules
 
@@ -464,8 +510,8 @@ structure, not the wording — it will not catch a stale sentence.
 
 ## Maintenance skills
 
-Skills live under `.agent/skills/` (OSS_SPEC §21). Each has a `SKILL.md` with
-its discovery process, its source→output mapping, and a `.last-updated` marker.
+Skills live under `.agents/skills/` (OSS_SPEC §21); `.claude/skills` is a
+symlink to that tree. Each has a `SKILL.md` with its discovery process, its source→output mapping, and a `.last-updated` marker.
 
 | Skill             | Runs when                                                     |
 | ----------------- | ------------------------------------------------------------- |

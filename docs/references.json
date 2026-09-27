@@ -1,0 +1,161 @@
+{
+  "$comment": "OSS_SPEC.md §24 references registry. Every entry is cited by a [ref:<id>] tag in src/ and listed on Settings → About. tests/references_test.ts holds the two in step.",
+  "references": {
+    "vrijens-2012": {
+      "evidence": "consensus",
+      "authors": [
+        "Vrijens B",
+        "De Geest S",
+        "Hughes DA",
+        "Kardas P",
+        "Demonceau J",
+        "Ruppar T",
+        "Dobbels F",
+        "Fargher E",
+        "Morrison V",
+        "Lewek P",
+        "Matyjaszczyk M",
+        "Mshelia C",
+        "Clyne W",
+        "Aronson JK",
+        "Urquhart J"
+      ],
+      "title": "A new taxonomy for describing and defining adherence to medications",
+      "container": "British Journal of Clinical Pharmacology",
+      "year": 2012,
+      "volume": "73",
+      "issue": "5",
+      "pages": "691–705",
+      "doi": "10.1111/j.1365-2125.2012.04167.x",
+      "language": "en",
+      "quotes": [
+        {
+          "text": "The process by which patients take their medications as prescribed, composed of initiation, implementation and discontinuation.",
+          "at": "table 2 (p. 697), 'Adherence to medications'"
+        },
+        {
+          "text": "Initiation occurs when the patient takes the first dose of a prescribed medication.",
+          "at": "table 2 (p. 697)"
+        },
+        {
+          "text": "Implementation is the extent to which a patient’s actual dosing corresponds to the prescribed dosing regimen, from initiation until the last dose.",
+          "at": "table 2 (p. 697)"
+        },
+        {
+          "text": "Discontinuation occurs when the patient stops taking the prescribed medication, for whatever reason(s).",
+          "at": "table 2 (p. 697)"
+        },
+        {
+          "text": "Persistence is the length of time between initiation and the last dose, which immediately precedes discontinuation.",
+          "at": "table 2 (p. 697)"
+        },
+        {
+          "text": "Discontinuation marks the end of therapy, when the next dose to be taken is omitted and no more doses are taken thereafter.",
+          "at": "p. 696, 'Adherence to medications'"
+        },
+        {
+          "text": "The quantification of implementation requires the comparison of two time-series: the prescribed drug dosing regimen and the patient’s drug dosing history.",
+          "at": "p. 698, 'Quantification of adherence to medications'"
+        },
+        {
+          "text": "The most frequent summary statistics for quantifying, within a patient, the implementation of a dosing regimen, over a defined interval of time, are: 1 the proportion of prescribed drug taken; 2 the proportion of days with the correct number of doses taken;",
+          "at": "p. 698, 'Quantification of adherence to medications'"
+        }
+      ],
+      "supports": "What the History screen's adherence figure measures: implementation, as doses taken over doses due across a window of finished days (adherence, medAdherence, dailyShares in stats.ts over dueDoses in schedule.ts). Discontinuation and persistence are why stopping a medication ends its schedule (endDate, endCourse) instead of deleting it, so the history it earned keeps scoring against the schedule that existed then.",
+      "summary": {
+        "en": "The standard meaning of taking a medicine as prescribed. The History percentage is the share of the doses your schedule asked for that you marked as taken; stopping a medicine ends its schedule, not its history."
+      },
+      "topics": ["history", "meds"],
+      "note": "Published version (with journal pagination) read from the University of Liège repository copy, https://orbi.uliege.be/bitstream/2268/305261/1/Vrijens__2012_GDO_BJCP.pdf; the PMC record is PMC3403197. The taxonomy came from a systematic literature review followed by discussion with international experts (the ABC Project). Crossref lists the fourth author as 'Przemyslaw Kardas' with given and family names swapped; the paper prints 'Kardas Przemyslaw'. Table 2's implementation definition ends 'until the last dose'; the body text on p. 696 ends 'until the last dose is taken'. The app's rule that a dose deliberately set aside leaves both numerator and denominator (countedDoses) is the app's own choice, not the taxonomy's: the paper counts any dose the prescribed regimen asked for, and lists a skipped dose as a deviation in implementation.",
+      "usedBy": ["src/app/schedule.ts", "src/app/stats.ts"]
+    },
+    "lakemedelsverket-2026-lakemedelsfakta": {
+      "evidence": "dataset",
+      "organization": "Läkemedelsverket",
+      "title": "Sök läkemedelsfakta",
+      "container": "lakemedelsverket.se",
+      "year": 2026,
+      "url": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta",
+      "language": "sv",
+      "accessed": "2026-09-27",
+      "quotes": [
+        {
+          "text": "Sök läkemedelsfakta är en söktjänst som innehåller information om alla godkända och registrerade läkemedel och substanser för människor och djur i Sverige."
+        },
+        {
+          "text": "Alla läkemedel som finns i handeln måste vara godkända eller registrerade av Läkemedelsverket. I Läkemedelsfakta finns information om alla godkända och registrerade läkemedel, tillfälligt återkallade läkemedel samt alla läkemedel som har avregistrerats efter 1 juli 2004."
+        },
+        {
+          "text": "Ett läkemedel kan förekomma i flera olika styrkor, till exempel 500 mg eller 5 %."
+        },
+        {
+          "text": "Alvedon 500 mg filmdragerad tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19581115000027"
+        },
+        {
+          "text": "Alvedon 665 mg tablett med modifierad frisättning",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=20030307000193"
+        },
+        {
+          "text": "Alvedon forte 1 g filmdragerad tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19880617000116"
+        },
+        {
+          "text": "Trombyl 75 mg tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19910906000043"
+        },
+        {
+          "text": "Trombyl 160 mg tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=19891208000279"
+        },
+        {
+          "text": "Eliquis 2,5 mg filmdragerad tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=20100501000012"
+        },
+        {
+          "text": "Eliquis 5 mg filmdragerad tablett",
+          "at": "https://www.lakemedelsverket.se/sv/sok-lakemedelsfakta/lakemedel?id=20111026000050"
+        }
+      ],
+      "supports": "The public record the bundled catalog's names and strengths come from (src/app/data/medications.ts): each entry is a name as printed on the box with strengths Läkemedelsverket lists for it.",
+      "summary": {
+        "en": "The Swedish Medical Products Agency's public record of approved medicines, where the names and strengths the medication form suggests come from. The suggestions only help you type; a medicine not on the list works the same."
+      },
+      "topics": ["meds"],
+      "note": "The service is a script-driven page; the first three quotes are from the page's embedded help text and the product lines are the server-rendered page titles of each product page. Checked 2026-09-27 against the product records (api/lmfrest/medprod): Alvedon 500 mg, Alvedon forte 1 g, Trombyl 75 mg and 160 mg, Eliquis 2,5 mg and 5 mg are 'Godkänd' and 'Säljs'. Two discrepancies with the catalog: the 1 g tablet is sold as 'Alvedon forte', not plain 'Alvedon'; and Alvedon 665 mg is 'Tillfälligt återkallad' / 'Säljs inte', which conflicts with the catalog's 'currently-dispensed medications only' rule (the Panodil and Paracetamol 665 mg entries likely share this status and were not checked). The catalog writes '2.5 mg' where Läkemedelsverket writes '2,5 mg'.",
+      "usedBy": ["src/app/data/medications.ts"]
+    },
+    "lakemedelsverket-2026-npl": {
+      "evidence": "dataset",
+      "organization": "Läkemedelsverket",
+      "title": "Nationellt produktregister för läkemedel, NPL",
+      "container": "lakemedelsverket.se",
+      "year": 2026,
+      "url": "https://www.lakemedelsverket.se/sv/e-tjanster-och-hjalpmedel/substans-och-produktregister/npl",
+      "language": "sv",
+      "accessed": "2026-09-27",
+      "quotes": [
+        {
+          "text": "Nationellt produktregister för läkemedel, NPL, är ett register med information om samtliga läkemedel som är godkända eller registrerade i Sverige."
+        },
+        {
+          "text": "Läkemedelsverket förvaltar NPL och ser till att informationen i registret är korrekt. Den utgör den grundläggande informationskällan för läkemedelsprodukter som används i Sverige."
+        },
+        {
+          "text": "NPL är öppet för alla besökare från Sverige och det krävs ingen registrering för att ladda hem eller använda det."
+        },
+        {
+          "text": "Delar av produktinformationen i NPL är sökbar i Läkemedelsfakta."
+        }
+      ],
+      "supports": "The open national register the catalog would be regenerated from (the header of src/app/data/medications.ts names Läkemedelsverket's LiiV/NPL data), downloaded into the bundle rather than queried, since the app makes no lookup calls.",
+      "summary": {
+        "en": "The national register of every medicine approved in Sweden, the open data a fuller list of suggestions would be built from."
+      },
+      "topics": ["meds"],
+      "note": "Page last changed 2026-06-21; the current export is NPL 4.5 (released 2025-02-21). The export host npl.mpa.se could not be reached from the research environment, so no product was checked against the export itself.",
+      "usedBy": ["src/app/data/medications.ts"]
+    }
+  }
+}

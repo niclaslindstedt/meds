@@ -110,6 +110,8 @@ src/
     ├── HistoryScreen.tsx    tiles, the gap chart, per-med bars, missed list
     ├── HistoryChart.tsx     the chart, from the framework's primitives
     ├── SettingsScreen.tsx   one scrolling page of Sections
+    ├── AboutScreen.tsx      behind Settings: the disclaimer and every source
+    ├── references.ts        docs/references.json bound to this app (own chunk)
     ├── backup.ts            export / restore (same merge as sync)
     ├── look.ts              theme choice → framework appearance
     ├── log.ts               the in-app log buffer
@@ -133,11 +135,43 @@ so logging a dose you just took costs neither a navigation nor the month you
 had open on the Calendar. Adding a medication is a step further in — the
 sheet's footer, or the Meds tab's button — because it happens a few times a
 year where logging happens a few times a day. Settings is still a screen, and
-pressing its button again returns to where you were.
+pressing its button again returns to where you were. **About**, at the foot
+of Settings, is one step further in and has a way back to it.
 
 `initialTab` picks the first screen from the booted document: **Today** when
 there are current medications, the **Add** form when there are none — the one
 screen that is useful before a schedule exists.
+
+## Where the figures come from
+
+The app is a logbook, not a clinician, so it makes few claims — but the two
+it makes are real. The History screen's adherence is a published measure:
+the ABC taxonomy's _implementation_, the proportion of prescribed doses
+taken, and stopping a medication is its _discontinuation_, which ends the
+schedule and not the history. And the medication form's suggestions are
+names and strengths from Läkemedelsverket's product records. Both are cited
+where the code makes them, with a `[ref:<id>]` tag into
+`docs/references.json` — the registry of every source (OSS_SPEC.md §24):
+authors or agency, title, DOI or URL, the kind of evidence, the verbatim
+quotes the definition or data was taken from, what the app uses each for, and
+which files cite it. `tests/references_test.ts` holds the tags and the
+registry to each other both ways, and `oss-spec validate` checks the same
+rules.
+
+What the app decides for itself is said to be a decision, beside the code:
+today never counting against you, a day with nothing due saying nothing, and
+a skipped dose leaving the figure rather than counting as a lapse are this
+app's rules about _which_ doses the published measure is taken over, not
+the taxonomy's.
+
+The registry is also what the user reads. The framework's `references`
+module is its typed face — the shape, the evidence ranking, how an entry is
+cited, the audit the test runs, and the card each entry is shown on — and
+`src/app/references.ts` binds it to this app: the tabs as topics, the
+summary language, and a loader that keeps the file in its own chunk. The
+About screen, behind **Settings → About and sources**, lists every entry
+from it, grouped by the tab it serves, with the quotes one tap down and a
+link that is only followed when tapped. Nothing is copied by hand.
 
 ## The service worker
 

@@ -11,9 +11,11 @@
 // does not carry it. FASS itself has no public API and its content is not
 // openly licensed, which is why this is a curated seed list rather than an
 // extract: names and strengths are facts, and this file states them in its
-// own words. A fuller list can be regenerated from Läkemedelsverket's open
-// LiiV/NPL product data and dropped in here — the shape is deliberately
-// trivial to generate into.
+// own words. The names and strengths are the ones Läkemedelsverket's public
+// product search lists [ref:lakemedelsverket-2026-lakemedelsfakta]. A fuller
+// list can be regenerated from its open national product register, NPL
+// [ref:lakemedelsverket-2026-npl], and dropped in here — the shape is
+// deliberately trivial to generate into.
 //
 // Curation rule: common, currently-dispensed medications only, one entry per
 // name as printed on the box (a brand and its generic are two entries when

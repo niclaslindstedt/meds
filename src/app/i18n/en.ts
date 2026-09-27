@@ -408,6 +408,35 @@ export const en = {
       "A logbook, not medical advice — changes to what you take belong with your prescriber.",
   },
 
+  // About, behind Settings: the disclaimer again, and every published source
+  // the app's figures and bundled data rest on (`docs/references.json`).
+  about: {
+    title: "About",
+    open: "About and sources",
+    openHint: "What the adherence figure and the suggestions rest on",
+    sources: "Sources",
+    sourcesIntro:
+      "The definitions and registers behind the app's figures and suggestions, the strongest evidence first — each with the words the app took from it.",
+    loading: "Loading the sources…",
+    quotes: "What the app took from it",
+    accessed: "Read {date}",
+    openSource: "Open the source",
+    isbn: "ISBN {isbn}",
+    evidence: {
+      guideline: "Guideline",
+      consensus: "Consensus statement",
+      "systematic-review": "Systematic review",
+      "meta-analysis": "Meta-analysis",
+      "randomized-trial": "Randomised trial",
+      cohort: "Cohort study",
+      "clinical-study": "Clinical study",
+      review: "Review",
+      method: "Method",
+      dataset: "Reference data",
+      "health-service": "Health service advice",
+    },
+  },
+
   // What stands between the log and a copy that leaves this device. The
   // passphrase copy is the part a user must not skim: nobody can recover it,
   // and the provider never sees anything but ciphertext.

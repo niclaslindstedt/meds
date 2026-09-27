@@ -306,8 +306,11 @@ export function startCourse(
   };
 }
 
-/** Stop taking it. The course ends *yesterday*, for the same reason stopping
- *  a medication does (see `MedsScreen`): its remaining doses leave today's
+/** Stop taking it — the taxonomy's *discontinuation*, which ends the
+ *  schedule rather than the history: the doses before it still measure how
+ *  the course was taken [ref:vrijens-2012]. The course ends *yesterday*, for
+ *  the same reason stopping a medication does (see `MedsScreen`): its
+ *  remaining doses leave today's
  *  checklist the moment you say you are done, and an unfinished today must
  *  not turn into a missed day at midnight. The cost is that doses logged
  *  earlier today stop being scored — which errs forgiving, the direction

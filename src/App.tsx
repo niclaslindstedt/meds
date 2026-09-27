@@ -21,6 +21,7 @@ import {
 } from "@niclaslindstedt/oss-framework/sync";
 import { useApplyTheme } from "@niclaslindstedt/oss-framework/theme";
 
+import { AboutScreen } from "./app/AboutScreen.tsx";
 import { AddScreen } from "./app/AddScreen.tsx";
 import {
   BottomNav,
@@ -150,7 +151,7 @@ export function App() {
     [tab],
   );
   const toggle = useCallback(
-    (next: "add" | "settings") => {
+    (next: "add" | "settings" | "about") => {
       const target = tab === next ? home : next;
       setEnter(screenEnter(tab, target));
       setTab(target);
@@ -161,8 +162,8 @@ export function App() {
   // A swipe moves one tab along the bar, and stops at its ends: the bar is a
   // row with a first and a last, and wrapping from Meds back to Today would
   // be the one motion on screen that does not match a thing you can see.
-  // From Add or Settings — which are not on the bar — it goes back to the tab
-  // they were opened from, since that is the only left-to-right neighbour
+  // From Add, Settings or About — which are not on the bar — it goes back to
+  // the tab they were opened from, since that is the only left-to-right neighbour
   // either of them has.
   const main = useRef<HTMLElement>(null);
   const swipe = useCallback(
@@ -403,8 +404,10 @@ export function App() {
               demoData={demo}
               pin={pin}
               onNotice={notice}
+              onOpenAbout={() => toggle("about")}
             />
           )}
+          {tab === "about" && <AboutScreen onBack={() => show("settings")} />}
         </div>
       </main>
 
