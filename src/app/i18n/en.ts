@@ -295,7 +295,7 @@ export const en = {
       missed: "Missed",
     },
     noMeds:
-      "Days colour in once you have medications to take: filled when every dose landed, hollow while a day is part done.",
+      "Days color in once you have medications to take: filled when every dose landed, hollow while a day is part done.",
     // The selected day's card under the grid — where a forgotten evening is
     // logged after the fact.
     dayEmpty: "Nothing was scheduled this day.",
