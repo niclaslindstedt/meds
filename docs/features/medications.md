@@ -125,7 +125,9 @@ levothyroxine, lisinopril — no brand names, and nothing on the controlled-
 substance schedules) with strengths as a US label writes them ("50 mcg");
 everywhere else gets the **Swedish** market's names (Alvedon, Levaxin,
 Trombyl). The form's examples follow along — "e.g. Levothyroxine" or "e.g.
-Levaxin". Only the device's own catalog is downloaded.
+Levaxin". A phone set to a language with no region (plain "English") names
+no country, so it keeps the Swedish catalog rather than being read as
+American. Only the device's own catalog is downloaded.
 
 The catalog is strictly a typing aid:
 

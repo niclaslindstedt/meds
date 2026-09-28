@@ -12,6 +12,7 @@
 // not type, which in this domain is worse than suggesting nothing.
 
 import type { CatalogEntry } from "./data/medications.ts";
+import { regionOf } from "./regional.ts";
 
 export type { CatalogEntry };
 
@@ -20,21 +21,24 @@ export type { CatalogEntry };
 export type CatalogRegion = "se" | "us";
 
 /**
- * The catalog for a device, from its preferred locales (`navigator.languages`)
- * — the first one decides, as it does for every other format the device
- * sets. A United States locale gets the US catalog; everything else keeps the
- * Swedish one. A bare language is read with its likely region, so a plain
- * "en" is American and a plain "sv" is Swedish; an unparseable tag is ignored.
+ * The catalog for a device, from its preferred locales (`navigator.languages`,
+ * most-preferred first). A United States region gets the US catalog;
+ * everything else keeps the Swedish one.
+ *
+ * The first tag that names a region decides, the same walk the week start
+ * takes (`weekStartFor` in `regional.ts`): the region is what says which
+ * pharmacy shelf the device stands in front of. A tag with no region ("en",
+ * "sv") says nothing about it and is passed over — a bare "en" is not read as
+ * American — and a device that names no region keeps the Swedish catalog.
  */
 export function catalogRegion(locales: readonly string[]): CatalogRegion {
-  const first = locales[0];
-  if (!first) return "se";
-  try {
-    const region = new Intl.Locale(first).maximize().region;
+  for (const tag of locales) {
+    if (typeof tag !== "string" || !tag.trim()) continue;
+    const region = regionOf(tag);
+    if (!region) continue;
     return region === "US" ? "us" : "se";
-  } catch {
-    return "se";
   }
+  return "se";
 }
 
 /** How many suggestions the form shows. Enough to catch a misremembered

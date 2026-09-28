@@ -18,6 +18,7 @@ import {
   searchCatalog,
   type CatalogEntry,
 } from "./catalog.ts";
+import { deviceLanguages } from "./regional.ts";
 import {
   MAX_PER_DAY_LIMIT,
   MAX_RUN_LIMIT,
@@ -94,13 +95,7 @@ const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
 /** The catalog this device gets, from the locales it prefers. Read once: a
  *  device's region is not something that changes under an open form. */
-const REGION = catalogRegion(
-  typeof navigator === "undefined"
-    ? []
-    : navigator.languages?.length
-      ? navigator.languages
-      : [navigator.language],
-);
+const REGION = catalogRegion(deviceLanguages());
 
 type Props = {
   /** The medication being edited, or null for the Add form. */

@@ -75,8 +75,15 @@ describe("catalogRegion", () => {
   it("gives a United States device the US catalog", () => {
     expect(catalogRegion(["en-US"])).toBe("us");
     expect(catalogRegion(["es-US", "en-US"])).toBe("us");
-    // A bare "en" is American English.
-    expect(catalogRegion(["en"])).toBe("us");
+  });
+
+  it('does not read a bare "en" as American', () => {
+    // A language with no region says nothing about the pharmacy shelf.
+    expect(catalogRegion(["en"])).toBe("se");
+    expect(catalogRegion(["en", "sv"])).toBe("se");
+    // It is passed over, so the first tag that names a region decides.
+    expect(catalogRegion(["en", "en-US"])).toBe("us");
+    expect(catalogRegion(["en", "en-GB"])).toBe("se");
   });
 
   it("keeps the Swedish catalog everywhere else", () => {

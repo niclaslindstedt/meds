@@ -202,7 +202,9 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
 - `src/app/catalog.ts` — search over the bundled medication catalog: prefix
   before substring, å/ä/ö significant, nothing fuzzy. Pure; the data is a
   parameter. Also `catalogRegion`, which picks the catalog from the device's
-  preferred locales: a US locale gets the US one, everything else the Swedish.
+  preferred locales: the first tag naming a region decides (a bare `en` names
+  none, so it is not read as American), US gets the US one, everything else
+  the Swedish.
 - `src/app/data/medications.ts` — the catalog itself: common Swedish-market
   medication names with their usual strengths, curated by hand (FASS has no
   public API and is not openly licensed; a fuller list can be generated from
