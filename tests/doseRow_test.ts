@@ -6,7 +6,7 @@
 // click; that click must not *also* land as the tap, however long the finger
 // stayed down. Before framework 3.12.0 the swallow lasted 400 ms from the
 // moment the press fired, so a hold of about a second lifted into a tap and a
-// just-skipped dose read as taken (D28).
+// just-skipped dose read as taken.
 //
 // The DOM half of this app is otherwise untested (the domain modules carry the
 // logic); this file is here because the bug lived in the gesture, not in the
