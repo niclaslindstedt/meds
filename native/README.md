@@ -47,17 +47,18 @@ app's, in `src/app/schedule.ts`, `stats.ts` and `merge.ts`.
 
 ## Layout
 
-| Path                       | What it is                                                                                                                         |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `App.tsx`                  | The whole app: a WebView, a spinner, and a failure screen.                                                                         |
-| `src/local-server.ts`      | Unpacks `assets/webroot.zip` and serves it on a **fixed** loopback port.                                                           |
-| `src/injected.ts`          | The theme reporter injected into the page, the status-bar style chosen from its report, and the service-worker teardown.           |
-| `src/authSessionBridge.ts` | **Pure.** The injected sign-in provider (`window.__ossAuthSession`) and its plumbing. Tested from the root.                        |
-| `src/authSession.ts`       | Opens one sign-in in an authentication session (`expo-web-browser`) and hands back where it ended.                                 |
-| `src/saveFileBridge.ts`    | **Pure.** The framework's `save-file` contract: the `window.__ossShell` descriptor, the message, the answer. Tested from the root. |
-| `src/saveFile.ts`          | Binds that answer to the phone: the bytes to a cache file (`expo-file-system`), the file to the share sheet (`expo-sharing`).      |
-| `src/scriptText.ts`        | **Import-free.** Splicing text safely into an injected script.                                                                     |
-| `scripts/bundle-web.mjs`   | Builds the web app — named `APP_DISPLAY_NAME` inside, as under the icon — and packs `dist/` into `assets/webroot.zip`.             |
+| Path                        | What it is                                                                                                                                                                       |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `App.tsx`                   | The whole app: a WebView, a spinner, and a failure screen.                                                                                                                       |
+| `src/local-server.ts`       | Unpacks `assets/webroot.zip` and serves it on a **fixed** loopback port.                                                                                                         |
+| `src/injected.ts`           | The theme reporter injected into the page, the status-bar style chosen from its report, and the service-worker teardown.                                                         |
+| `src/authSessionBridge.ts`  | **Pure.** The injected sign-in provider (`window.__ossAuthSession`) and its plumbing. Tested from the root.                                                                      |
+| `src/authSession.ts`        | Opens one sign-in in an authentication session (`expo-web-browser`) and hands back where it ended.                                                                               |
+| `src/saveFileBridge.ts`     | **Pure.** The framework's `save-file` contract: the `window.__ossShell` descriptor, the message, the answer. Tested from the root.                                               |
+| `src/saveFile.ts`           | Binds that answer to the phone: the bytes to a cache file (`expo-file-system`), the file to the share sheet (`expo-sharing`).                                                    |
+| `src/scriptText.ts`         | **Import-free.** Splicing text safely into an injected script.                                                                                                                   |
+| `scripts/bundle-web.mjs`    | Builds the web app as the shell edition — no service worker, no update prompt, named `APP_DISPLAY_NAME` inside, as under the icon — and packs `dist/` into `assets/webroot.zip`. |
+| `scripts/webroot-guard.mjs` | What the webroot must never carry — a `sw.js`, a link back to the source — checked before the zip is written. Tested from the root.                                              |
 
 `ios/` and `android/` are **prebuild output**: regenerated from `app.config.js`
 by `expo prebuild --clean`, gitignored, and the source of truth for nothing.
@@ -170,10 +171,13 @@ own `saveFile`.
 - **`localhost`, not `127.0.0.1`.** App Transport Security blocks the literal
   address from `WKWebView` even with exception domains declared. The failure
   mode is a silent blank page on iOS.
-- **The service worker is unregistered** (`src/injected.ts`). The origin is
-  stable across app updates, so a worker registered by an older build would
-  keep answering from its precache after a store update had already unpacked
-  the new one.
+- **No service worker.** The bundle is the shell edition
+  (`VITE_SHELL_BUILD=on`): no `sw.js` and no update prompt, because a new
+  version arrives through the App Store, and `webroot-guard.mjs` refuses a
+  webroot that holds one. A worker an older build registered is still
+  unregistered (`src/injected.ts`): the origin is stable across app updates, so
+  it would keep answering from its precache after a store update had already
+  unpacked the new one.
 
 ## Releasing
 

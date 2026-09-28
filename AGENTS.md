@@ -95,8 +95,10 @@ listener that lets Dropbox sign in (`tauri/shell/src/oauth.rs`,
 it** — no injected global, no Tauri command. `tauri/shell/` holds every
 decision and needs no GUI toolkit; `tauri/src-tauri/` holds every effect. One
 seam reaches back into this tree, `VITE_SHELL_BUILD`, set by the shell's site
-build, which switches off the service-worker half of `appPwa` and — through
-`__SHELL_BUILD__` — the in-app update prompt. A desktop build updates by being replaced.
+build and by the phone wrapper's, which switches off the service-worker half
+of `appPwa` and — through `__SHELL_BUILD__` — the in-app update prompt. A
+desktop or phone build updates by being replaced, and both bundle scripts
+refuse a webroot that holds a `sw.js`.
 Both store builds (this shell's and the phone wrapper's) also set
 `VITE_EMBEDDED_BUILD`, which leaves the Open Graph / Twitter Card tags and the
 Pages `CNAME` out: **a store app carries no link back to the source** — no
