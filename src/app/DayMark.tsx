@@ -65,21 +65,23 @@ const TONE: Record<Exclude<DayTone, "none">, ToneStyle> = {
 /**
  * Which tone a day's progress wears.
  *
- * The one judgement call is `missed` vs merely unfinished, and it belongs to
- * the caller's clock, not to the counts: an empty *today* is a day in
- * progress, an empty yesterday is a gap. So the mapping takes the day and
- * today and gives today (and every future day) the hollow "still open" mark
- * whenever anything remains — the calendar never marks a day missed while it
- * can still be mended by bedtime.
+ * The judgement calls belong to the caller's clock, not to the counts. A
+ * future day has no state yet: nothing about it has happened, so it is empty
+ * calendar whatever it will owe — a ring on every day ahead would read as a
+ * month of half-done days. An empty *today* is a day in progress, an empty
+ * yesterday is a gap: today wears the hollow "still open" mark whenever
+ * anything remains, so the calendar never marks a day missed while it can
+ * still be mended by bedtime.
  */
 export function toneFor(
   day: DayKey,
   today: DayKey,
   progress: DayProgress,
 ): DayTone {
+  if (day > today) return "none";
   if (progress.status === "none") return "none";
   if (progress.status === "full") return "full";
-  if (day >= today) return "partial";
+  if (day === today) return "partial";
   return progress.status === "missed" ? "missed" : "partial";
 }
 

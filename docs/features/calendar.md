@@ -3,9 +3,9 @@
 A month at a glance, and the door to mending it.
 
 Every day is painted behind its number in the app's one visual grammar —
-**filled** when every due dose landed, **hollow** while a day is still open
-(today, and any part-done future the schedule reaches), and a quiet
-**warning tint** on finished days that owed doses and got none. A month of
+**filled** when every due dose landed, **hollow** while today is still open,
+and a quiet **warning tint** on finished days that owed doses and got none.
+Days still ahead are left plain — nothing about them has happened yet. A month of
 mostly-filled dots with two red gaps _is_ the adherence story, told without a
 number. The legend under the grid is generated from the same table the cells
 read, so the two cannot drift apart.
