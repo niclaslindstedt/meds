@@ -64,8 +64,9 @@ const DROPBOX_TOKENS_KEY = "meds:sync:dropbox";
 // copy that is itself plaintext in the same storage, remembering it exposes
 // nothing new; what it protects is the copy the provider holds.
 const ENCRYPTION_KEY = "meds:sync:encryption";
-// Google Drive is gone as a backend. The key stays named so a token a device
-// may still hold is cleared rather than left sitting in storage.
+// A backend that has since been removed kept its token under this key. The
+// key stays named so a token a device may still hold is cleared rather than
+// left sitting in storage.
 const RETIRED_GDRIVE_TOKEN_KEY = "meds:sync:gdrive";
 // iCloud is gone as a backend too, and for good: App Store guideline
 // 5.1.3(ii) says an app may not store personal health information in iCloud.
