@@ -4,6 +4,8 @@ import { useCallback } from "react";
 import { useLocalStorageState } from "@niclaslindstedt/oss-framework/hooks";
 import type { WeekStart } from "@niclaslindstedt/oss-framework/calendar";
 
+import { deviceLanguages, weekStartFor } from "./regional.ts";
+
 // The app's own (non-theme) settings: which of the two themes is active, how
 // the calendar is laid out, and the developer knobs. The framework
 // deliberately leaves this in the app; it only owns the appearance
@@ -28,7 +30,8 @@ export type ClockChoice = "system" | "24" | "12";
 export type AppSettings = {
   theme: ThemeChoice;
   /** First day of the week in the calendar grid (`Date.getDay()` numbering:
-   *  0 = Sunday, 1 = Monday). */
+   *  0 = Sunday, 1 = Monday). A fresh install takes the device's region's
+   *  (see `regional.ts`). */
   weekStartsOn: WeekStart;
   /** 12- or 24-hour times, or whatever the device says. Display only: slots
    *  are stored zero-padded 24-hour whatever this says (see `schedule.ts`). */
@@ -40,26 +43,50 @@ export type AppSettings = {
   captureLogs: boolean;
 };
 
-export const DEFAULT_SETTINGS: AppSettings = {
-  // Follow the device out of the box: a med log is opened first thing in the
-  // morning and last thing at night, and the OS already knows whether that
-  // means dark.
-  theme: "system",
-  weekStartsOn: 1,
-  clock: "system",
-  devMode: false,
-  captureLogs: false,
-};
+/**
+ * The settings a fresh install starts with, given the week start the device's
+ * region asks for (Sunday in the United States, Monday in Sweden — see
+ * `regional.ts`). Everything else is the same everywhere.
+ */
+export function defaultSettings(weekStartsOn: WeekStart): AppSettings {
+  return {
+    // Follow the device out of the box: a med log is opened first thing in
+    // the morning and last thing at night, and the OS already knows whether
+    // that means dark.
+    theme: "system",
+    weekStartsOn,
+    clock: "system",
+    devMode: false,
+    captureLogs: false,
+  };
+}
+
+/** This device's defaults. Read once at load: they only apply until the first
+ *  write, and every launch after that reads the stored settings instead. */
+export const DEFAULT_SETTINGS: AppSettings = defaultSettings(
+  weekStartFor(deviceLanguages()),
+);
 
 const STORAGE_KEY = "meds:settings";
 
-function parseSettings(raw: string): AppSettings {
+/**
+ * Read a stored settings blob over `defaults`.
+ *
+ * A stored value always wins over the device's defaults — that is what makes
+ * the regional week start safe to introduce: anyone who has opened the app
+ * keeps the week start they had. Only a key the blob does not carry at all
+ * falls back.
+ */
+export function parseSettings(
+  raw: string,
+  defaults: AppSettings = DEFAULT_SETTINGS,
+): AppSettings {
   const parsed = JSON.parse(raw) as unknown;
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return DEFAULT_SETTINGS;
+    return defaults;
   }
   const stored = parsed as Record<string, unknown>;
-  const merged = { ...DEFAULT_SETTINGS, ...stored } as AppSettings;
+  const merged = { ...defaults, ...stored } as AppSettings;
   const week = Math.round(Number(merged.weekStartsOn));
   return {
     ...merged,
@@ -69,7 +96,9 @@ function parseSettings(raw: string): AppSettings {
       merged.theme === "light" || merged.theme === "dark"
         ? merged.theme
         : "system",
-    weekStartsOn: (week >= 0 && week <= 6 ? week : 1) as WeekStart,
+    weekStartsOn: (week >= 0 && week <= 6
+      ? week
+      : defaults.weekStartsOn) as WeekStart,
     clock:
       merged.clock === "24" || merged.clock === "12" ? merged.clock : "system",
     devMode: merged.devMode === true,
@@ -84,7 +113,7 @@ export function useAppSettings() {
   const [settings, setSettings] = useLocalStorageState<AppSettings>(
     STORAGE_KEY,
     DEFAULT_SETTINGS,
-    { parse: parseSettings },
+    { parse: (raw) => parseSettings(raw) },
   );
 
   const update = useCallback(

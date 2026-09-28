@@ -96,6 +96,7 @@ src/
     │                        held until the cloud copy's passphrase is set
     ├── SyncEncryption.tsx   the app's words for the framework's encryption kit
     ├── useAppSettings.ts    theme, week start, dev knobs (localStorage)
+    ├── regional.ts          a fresh install's week start, from the device's region
     ├── App.tsx              the shell: tabs, toasts, PWA update, sync modal
     ├── BottomNav.tsx        the four destinations + initialTab
     ├── TopBar.tsx           wordmark, sync glyph, + (quick log), ⚙ (settings)
