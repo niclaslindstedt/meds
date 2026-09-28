@@ -420,7 +420,12 @@ taxonomy's.
 Tests live in `tests/` with a `_test` suffix (OSS_SPEC §20.2) and run under
 Vitest in the `node` environment — they cover the pure domain modules
 (`schedule`, `stats`, `catalog`, `merge`, `migrations`), which is where the
-app's real logic is, plus `references`, which holds the registry to the tags. No DOM, no testing-library, no mocked clock.
+app's real logic is, plus `references`, which holds the registry to the tags. No mocked clock.
+The DOM stays out of it too, with one exception: `tests/doseRow_test.ts`
+renders the dose row under jsdom (`// @vitest-environment jsdom`, through
+`@testing-library/preact`) because the long press that skips a dose is a
+gesture, and the bug it pins — a held press lifting into a tap — lived there,
+not in the arithmetic.
 
 Run one file with `npx vitest run tests/schedule_test.ts`.
 
