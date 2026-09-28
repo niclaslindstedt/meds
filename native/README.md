@@ -1,9 +1,9 @@
 # The native wrapper
 
 A **thin** Expo / React Native shell around the medication log, so it can ship to
-the App Store and Google Play — and so it can do the two things a PWA cannot:
-run entirely from inside its own download, and sign in to Dropbox through the
-system's own authentication sheet.
+the App Store and Google Play — and so it can do the things a PWA cannot:
+run entirely from inside its own download, sign in to Dropbox through the
+system's own authentication sheet, and hand a backup to the share sheet.
 
 Thin is the design, not an aspiration. The wrapper:
 
@@ -19,12 +19,15 @@ Thin is the design, not an aspiration. The wrapper:
   WebView's history;
 - opens Dropbox's sign-in in an **authentication session** when the page asks
   for one (`src/authSessionBridge.ts` → `src/authSession.ts` →
-  `expo-web-browser`) — see [Signing in to Dropbox](#signing-in-to-dropbox).
+  `expo-web-browser`) — see [Signing in to Dropbox](#signing-in-to-dropbox);
+- hands an export to the **share sheet** when the page sends one
+  (`src/saveFileBridge.ts` → `src/saveFile.ts` → `expo-file-system` and
+  `expo-sharing`) — see [Exports](#exports).
 
 That is the entire list, and it is deliberately not empty: **App Store
 guideline 4.2 rejects a build that is only a viewer for a website**, so the
-wrapper has to do things the browser cannot. The self-contained bundle and the
-in-app sign-in are those things. Adding another is allowed; adding one that
+wrapper has to do things the browser cannot. The self-contained bundle, the
+in-app sign-in and the share sheet are those things. Adding another is allowed; adding one that
 makes `src/` aware of this wrapper is not.
 
 **The wrapper adds no storage of its own.** A medication log is personal
@@ -44,15 +47,17 @@ app's, in `src/app/schedule.ts`, `stats.ts` and `merge.ts`.
 
 ## Layout
 
-| Path                       | What it is                                                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `App.tsx`                  | The whole app: a WebView, a spinner, and a failure screen.                                                               |
-| `src/local-server.ts`      | Unpacks `assets/webroot.zip` and serves it on a **fixed** loopback port.                                                 |
-| `src/injected.ts`          | The theme reporter injected into the page, the status-bar style chosen from its report, and the service-worker teardown. |
-| `src/authSessionBridge.ts` | **Pure.** The injected sign-in provider (`window.__ossAuthSession`) and its plumbing. Tested from the root.              |
-| `src/authSession.ts`       | Opens one sign-in in an authentication session (`expo-web-browser`) and hands back where it ended.                       |
-| `src/scriptText.ts`        | **Import-free.** Splicing text safely into an injected script.                                                           |
-| `scripts/bundle-web.mjs`   | Builds the web app — named `APP_DISPLAY_NAME` inside, as under the icon — and packs `dist/` into `assets/webroot.zip`.   |
+| Path                       | What it is                                                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `App.tsx`                  | The whole app: a WebView, a spinner, and a failure screen.                                                                         |
+| `src/local-server.ts`      | Unpacks `assets/webroot.zip` and serves it on a **fixed** loopback port.                                                           |
+| `src/injected.ts`          | The theme reporter injected into the page, the status-bar style chosen from its report, and the service-worker teardown.           |
+| `src/authSessionBridge.ts` | **Pure.** The injected sign-in provider (`window.__ossAuthSession`) and its plumbing. Tested from the root.                        |
+| `src/authSession.ts`       | Opens one sign-in in an authentication session (`expo-web-browser`) and hands back where it ended.                                 |
+| `src/saveFileBridge.ts`    | **Pure.** The framework's `save-file` contract: the `window.__ossShell` descriptor, the message, the answer. Tested from the root. |
+| `src/saveFile.ts`          | Binds that answer to the phone: the bytes to a cache file (`expo-file-system`), the file to the share sheet (`expo-sharing`).      |
+| `src/scriptText.ts`        | **Import-free.** Splicing text safely into an injected script.                                                                     |
+| `scripts/bundle-web.mjs`   | Builds the web app — named `APP_DISPLAY_NAME` inside, as under the icon — and packs `dist/` into `assets/webroot.zip`.             |
 
 `ios/` and `android/` are **prebuild output**: regenerated from `app.config.js`
 by `expo prebuild --clean`, gitignored, and the source of truth for nothing.
@@ -134,6 +139,27 @@ and the desktop app's. Without it Dropbox shows "Invalid redirect_uri" in the
 sheet.
 
 Other off-origin links are unchanged: they still leave for the system browser.
+
+## Exports
+
+A browser export is a download: an anchor clicked at a `blob:` URL. Inside a
+WebView that click goes nowhere, so the page exports through the framework's
+`saveFile` instead (Settings → **Export a backup**), and the wrapper takes the
+other half of that contract (the framework's `docs/native-shell.md`):
+
+```
+before load   window.__ossShell = { version: 1, capabilities: ["save-file"] }
+page          saveFile() → postMessage { type: "oss-framework/save-file", id, filename, mimeType, base64 }
+App.tsx       → src/saveFile.ts → cache/exports/<id>/<filename> → Sharing.shareAsync
+page          ← "oss-framework/save-file-result" { id, ok }
+```
+
+The file lands in the cache directory, one export at a time — the next export
+clears the last, and the OS may purge it sooner — and it goes to nothing but
+the share sheet; it is never logged. `blob:` and `data:` navigations are
+refused rather than sent to the system browser, which could not open them.
+`tests/native_save_file_test.ts` runs the round trip against the framework's
+own `saveFile`.
 
 ## Things that will bite you
 

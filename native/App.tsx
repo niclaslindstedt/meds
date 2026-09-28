@@ -3,17 +3,19 @@
 //
 // This is a deliberately thin wrapper. It starts a loopback server, points a
 // WebView at it, keeps the native chrome in step with the page's theme, sends
-// off-origin links to the system browser, and opens a provider's sign-in in
-// an authentication session when the page asks for one. There is no native UI at
+// off-origin links to the system browser, opens a provider's sign-in in
+// an authentication session when the page asks for one, and hands an export
+// to the share sheet. There is no native UI at
 // all beyond a spinner and a failure screen — everything a reader sees is the
 // web app, unchanged.
 //
 // The wrapper has to add something the browser cannot do: App Store guideline
 // 4.2 rejects a build that is only a viewer for a website. What it adds is that
 // it serves the medication log FROM INSIDE THE DOWNLOAD — no network at all,
-// ever, for the app itself — and that Dropbox signs in through the system's
-// authentication sheet. Both are offered from the OUTSIDE — the page is served
-// unchanged and looks for a capability rather than for this wrapper.
+// ever, for the app itself — that Dropbox signs in through the system's
+// authentication sheet, and that a backup leaves through the share sheet. All
+// are offered from the OUTSIDE — the page is served unchanged and looks for a
+// capability rather than for this wrapper.
 //
 // It adds no storage of its own, deliberately: a medication log is personal
 // health information, and it stays on the device or goes to the reader's own
@@ -57,6 +59,12 @@ import {
   isAuthSessionRequest,
 } from "./src/authSessionBridge";
 import { answerAuthSession, authRedirectUri } from "./src/authSession";
+import {
+  SAVE_FILE_DESCRIPTOR,
+  isInPageBytesUrl,
+  isSaveFileRequest,
+} from "./src/saveFileBridge";
+import { answerSaveFile } from "./src/saveFile";
 
 // Hold the native splash until the WebView actually paints. Called at module
 // scope so the auto-hide never wins the race; a rejection only means the
@@ -179,6 +187,15 @@ export default function App() {
         void signIn(parsed.id, parsed.url);
         return;
       }
+      // An export: the page's `saveFile` found the `save-file` capability
+      // (advertised before load, below) and sent the bytes here instead of
+      // clicking a download the WebView cannot follow.
+      if (isSaveFileRequest(parsed)) {
+        void answerSaveFile(parsed, (script) =>
+          webViewRef.current?.injectJavaScript(script),
+        );
+        return;
+      }
       if (!isThemeReport(parsed)) return;
 
       // The native chrome follows the page's theme so the status bar and the
@@ -215,9 +232,15 @@ export default function App() {
   // authentication session instead (see `src/authSessionBridge.ts`), since a
   // consent page in Safari redirects back to Safari, not to the app. This
   // stays the fallback for a page that finds no session provider.
+  //
+  // A `blob:` or `data:` URL is refused outright: it is bytes that exist only
+  // inside this WebView (a download anchor's target), the system browser
+  // cannot open it, and exports reach the share sheet through `saveFile`
+  // instead.
   const onShouldStartLoadWithRequest = useCallback(
     (request: WebViewNavigation) => {
       if (!origin) return false;
+      if (isInPageBytesUrl(request.url)) return false;
       if (request.url.startsWith(origin)) return true;
       if (request.url.startsWith("about:")) return true;
       void Linking.openURL(request.url);
@@ -272,7 +295,10 @@ export default function App() {
             incognito={false}
             allowsBackForwardNavigationGestures
             setSupportMultipleWindows={false}
-            injectedJavaScriptBeforeContentLoaded={BEFORE_LOAD_SCRIPT}
+            // Before the page's scripts: the service-worker teardown, and the
+            // `window.__ossShell` descriptor that tells the page's `saveFile`
+            // this shell takes exports (the framework's `save-file`).
+            injectedJavaScriptBeforeContentLoaded={`${BEFORE_LOAD_SCRIPT}\n${SAVE_FILE_DESCRIPTOR}`}
             // Two scripts, one prop: the theme reporter the chrome follows,
             // and the auth-session provider its Dropbox sign-in looks for.
             // Both run once the page has loaded, and both are guarded against

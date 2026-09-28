@@ -11,7 +11,9 @@
 // Nothing else crosses this way. The wrapper does not copy the document out of
 // `localStorage` and has no use for it: the log stays in the page, and the only
 // cloud it can reach is the reader's own Dropbox, which the page's own sync
-// engine talks to directly.
+// engine talks to directly. The one time the log's bytes do reach native is a
+// backup the reader asked for, and then only to be handed to the share sheet
+// (`saveFileBridge.ts`).
 //
 // It also unregisters the service worker (see `SW_TEARDOWN`).
 //

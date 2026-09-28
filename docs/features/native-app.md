@@ -19,7 +19,9 @@ store, not when the website deploys.
 Around that, the wrapper keeps the native chrome in step: the status bar and
 the safe-area bands take the page's own theme. Links out of the app open in
 the system browser. On Android the hardware back button drives the WebView's
-history.
+history. **Export a backup** in Settings opens the phone's share sheet on the
+file, where you can save it to Files or send it, since a WebView has no
+downloads folder to put it in.
 
 There is **no native UI**. Everything you see is the web app, unchanged.
 
@@ -53,7 +55,8 @@ Two rules, and they are what keep the app and the website the same product:
 - **Nothing in `src/` knows the wrapper exists.** The web app does not check
   whether it is native. It looks for an authentication-session _capability_
   on `window` (the framework's `getAuthSessionHost`) and signs in through it
-  when one is there.
+  when one is there. Exports work the same way: the framework's `saveFile`
+  downloads, unless the wrapper has said on `window` that it takes files.
 - **The wrapper decides nothing about medications.** When a
   dose is due, what counts as taken, and how two copies reconcile are the web
   app's, in `schedule.ts`, `stats.ts` and `merge.ts`.

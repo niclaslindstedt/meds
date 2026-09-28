@@ -72,6 +72,10 @@ same built site in a `WebView`, served from a loopback origin. **Nothing in
 `src/` knows it exists**: the wrapper offers Dropbox's sign-in an in-app
 authentication session at `window.__ossAuthSession`, which the framework's
 `getAuthSessionHost` looks for; a browser has none and keeps its redirect.
+An export works the same way: it goes through the framework's `saveFile`, and
+the wrapper advertises the `save-file` capability on `window.__ossShell`
+(`native/src/saveFileBridge.ts`), so the backup reaches the share sheet
+there and downloads everywhere else.
 **It adds no storage of its own** — the log is health information, and App
 Store guideline 5.1.3(ii) rules out iCloud for it, so the phone app offers the
 device and the user's own Dropbox, exactly as the website does. The wrapper

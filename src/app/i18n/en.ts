@@ -385,7 +385,8 @@ export const en = {
     reload: "Reload from cloud",
     data: "Your data",
     export: "Export a backup",
-    exportHint: "Downloads your medications and log as a JSON file.",
+    exportHint: "Saves your medications and log as a JSON file.",
+    exportFailed: "The backup could not be saved.",
     import: "Restore from a backup",
     importHint:
       "Merges the file into what is already here — nothing on this device is dropped.",

@@ -4,10 +4,16 @@
 // with any text editor and put back with the same code path a cloud pull
 // uses.
 //
-// The framework owns the browser download plumbing (`downloadText`); this
-// module owns the file name and the validation on the way back in.
+// The framework owns the saving (`saveFile`): a download in a browser, the
+// share sheet inside the phone app, which advertises that it can take a file
+// (see the framework's docs/native-shell.md). This module owns the file name
+// and the validation on the way back in.
 
-import { MIME_JSON, downloadText } from "@niclaslindstedt/oss-framework/files";
+import {
+  MIME_JSON,
+  saveFile,
+  type SaveFileOutcome,
+} from "@niclaslindstedt/oss-framework/files";
 import { dayKeyOf } from "@niclaslindstedt/oss-framework/calendar";
 
 import { normalizeDoc, serializeDoc } from "./migrations.ts";
@@ -18,12 +24,21 @@ export function backupFileName(today = dayKeyOf(new Date())): string {
   return `meds-backup-${today}.json`;
 }
 
-/** Save the whole document to a file the user picks a home for. */
-export function downloadBackup(data: AppData): void {
-  // Pretty-printed rather than the compact storage form: a backup is a file a
-  // person may well open, and the extra bytes are irrelevant at this size.
-  const pretty = JSON.stringify(JSON.parse(serializeDoc(data)), null, 2);
-  downloadText(backupFileName(), pretty, MIME_JSON);
+/** The backup's contents. Pretty-printed rather than the compact storage
+ *  form: a backup is a file a person may well open, and the extra bytes are
+ *  irrelevant at this size. */
+export function backupText(data: AppData): string {
+  return JSON.stringify(JSON.parse(serializeDoc(data)), null, 2);
+}
+
+/** Save the whole document to a file the user picks a home for. Rejects when
+ *  the phone app reports it could not hand the file to the share sheet. */
+export function saveBackup(data: AppData): Promise<SaveFileOutcome> {
+  return saveFile({
+    text: backupText(data),
+    filename: backupFileName(),
+    mimeType: MIME_JSON,
+  });
 }
 
 /**
