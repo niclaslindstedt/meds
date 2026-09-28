@@ -400,7 +400,7 @@ taxonomy's.
 | A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                        |
 | A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                                                            |
 | A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                     |
-| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demoData_test.ts`                                                                        |
+| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demo_test.ts`                                                                            |
 | A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                  |
 | The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `getAuthSessionHost`), never a check for "native"                |
 | Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                |
