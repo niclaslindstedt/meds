@@ -117,17 +117,19 @@ function dibEntry(size, rgba) {
   return Buffer.concat([header, pixels, Buffer.alloc(maskStride * size)]);
 }
 
-function encodePng(width, height, rgba) {
-  const raw = Buffer.alloc((width * 4 + 1) * height);
+// `channels` is 4 for RGBA (colour type 6) or 3 for opaque RGB (type 2).
+function encodePng(width, height, pixels, channels = 4) {
+  const stride = width * channels;
+  const raw = Buffer.alloc((stride + 1) * height);
   for (let y = 0; y < height; y++) {
-    raw[y * (width * 4 + 1)] = 0; // filter: none
-    rgba.copy(raw, y * (width * 4 + 1) + 1, y * width * 4, (y + 1) * width * 4);
+    raw[y * (stride + 1)] = 0; // filter: none
+    pixels.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // colour type: RGBA
+  ihdr[9] = channels === 3 ? 2 : 6; // colour type: RGB or RGBA
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk("IHDR", ihdr),
@@ -254,6 +256,21 @@ function renderIcon(size, options) {
   return encodePng(size, size, renderIconRgba(size, options));
 }
 
+/** The same mark as a PNG with no alpha channel at all (colour type 2), for
+ *  the store icon: App Store Connect refuses an app icon that carries alpha,
+ *  even one where every pixel is opaque. Only meaningful with `radius: 0`,
+ *  where the tile covers every pixel. */
+function renderOpaqueIcon(size, options) {
+  const rgba = renderIconRgba(size, options);
+  const rgb = Buffer.alloc(size * size * 3);
+  for (let i = 0, j = 0; i < rgba.length; i += 4, j += 3) {
+    rgb[j] = rgba[i];
+    rgb[j + 1] = rgba[i + 1];
+    rgb[j + 2] = rgba[i + 2];
+  }
+  return encodePng(size, size, rgb, 3);
+}
+
 // The 1200×630 Open Graph card: the mark on the left, a month of day cells on
 // the right — a run of filled "every dose taken" days broken by two gaps, a
 // ringed today, and a faint tail of days still to come. The app's whole idea
@@ -366,7 +383,8 @@ writeFileSync(
 // app on a home screen and the PWA on a home screen are one product rather
 // than two that resemble each other. Written here rather than kept as a
 // separate set of files precisely so they cannot drift.
-//   icon          — iOS wants a square, fully opaque icon and applies its own
+//   icon          — iOS wants a square, fully opaque icon (no alpha channel at
+//                   all, or App Store Connect refuses it) and applies its own
 //                   mask, so the tile is not pre-rounded.
 //   adaptive-icon — Android masks the foreground to whatever shape the
 //                   launcher uses, so the mark is inset to the safe zone and
@@ -376,7 +394,10 @@ writeFileSync(
 //                   corners.
 const nativeAssets = join(root, "native", "assets");
 mkdirSync(nativeAssets, { recursive: true });
-writeFileSync(join(nativeAssets, "icon.png"), renderIcon(1024, { radius: 0 }));
+writeFileSync(
+  join(nativeAssets, "icon.png"),
+  renderOpaqueIcon(1024, { radius: 0 }),
+);
 writeFileSync(
   join(nativeAssets, "adaptive-icon.png"),
   renderIcon(1024, { pad: 0.18, radius: 0 }),
