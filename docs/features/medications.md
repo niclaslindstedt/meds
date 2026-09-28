@@ -115,9 +115,17 @@ skip it" (see [`../schedule.md`](../schedule.md)).
 The **New medication** button on the Meds tab opens the form, as does the
 quick-log sheet's footer; an empty install opens on the form directly. The
 name autocompletes from a **bundled catalog** of common
-medications — Swedish market names with their usual strengths — and a
-recognised name offers those strengths as one-tap chips under the dose
-field, so the common case is a name, a chip, and Save.
+medications with their usual strengths, and a recognised name offers those
+strengths as one-tap chips under the dose field, so the common case is a
+name, a chip, and Save.
+
+Which catalog follows the device's region, like its other formats: a phone
+set to the **United States** gets common US generic names (acetaminophen,
+levothyroxine, lisinopril — no brand names, and nothing on the controlled-
+substance schedules) with strengths as a US label writes them ("50 mcg");
+everywhere else gets the **Swedish** market's names (Alvedon, Levaxin,
+Trombyl). The form's examples follow along — "e.g. Levothyroxine" or "e.g.
+Levaxin". Only the device's own catalog is downloaded.
 
 The catalog is strictly a typing aid:
 

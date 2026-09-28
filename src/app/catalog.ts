@@ -15,6 +15,28 @@ import type { CatalogEntry } from "./data/medications.ts";
 
 export type { CatalogEntry };
 
+/** Which catalog a device gets: the Swedish market's names (`se`, the
+ *  catalog the app was built on), or common US generics (`us`). */
+export type CatalogRegion = "se" | "us";
+
+/**
+ * The catalog for a device, from its preferred locales (`navigator.languages`)
+ * — the first one decides, as it does for every other format the device
+ * sets. A United States locale gets the US catalog; everything else keeps the
+ * Swedish one. A bare language is read with its likely region, so a plain
+ * "en" is American and a plain "sv" is Swedish; an unparseable tag is ignored.
+ */
+export function catalogRegion(locales: readonly string[]): CatalogRegion {
+  const first = locales[0];
+  if (!first) return "se";
+  try {
+    const region = new Intl.Locale(first).maximize().region;
+    return region === "US" ? "us" : "se";
+  } catch {
+    return "se";
+  }
+}
+
 /** How many suggestions the form shows. Enough to catch a misremembered
  *  spelling, few enough that the list never covers the dose field below. */
 export const MAX_SUGGESTIONS = 6;

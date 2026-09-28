@@ -152,6 +152,48 @@
       "topics": ["meds"],
       "note": "Page last changed 2026-06-21; the current export is NPL 4.5 (released 2025-02-21). The export host npl.mpa.se could not be reached from the research environment, so no product was checked against the export itself.",
       "usedBy": ["src/app/data/medications.ts"]
+    },
+    "nlm-2025-rxnorm": {
+      "evidence": "dataset",
+      "organization": "U.S. National Library of Medicine",
+      "title": "RxNorm",
+      "container": "nlm.nih.gov",
+      "year": 2025,
+      "url": "https://www.nlm.nih.gov/research/umls/rxnorm/overview.html",
+      "language": "en",
+      "accessed": "2026-09-28",
+      "quotes": [
+        {
+          "text": "RxNorm provides normalized names for clinical drugs and links its names to many of the drug vocabularies commonly used in pharmacy management and drug interaction software, including those of First Databank, Micromedex, Multum, and Gold Standard Drug Database.",
+          "at": "https://www.nlm.nih.gov/research/umls/rxnorm/index.html"
+        },
+        {
+          "text": "RxNorm contains the names of prescription and many over-the-counter drugs available in the United States."
+        },
+        {
+          "text": "lisinopril 10 MG Oral Tablet",
+          "at": "https://rxnav.nlm.nih.gov/REST/drugs.json?name=lisinopril"
+        },
+        {
+          "text": "levothyroxine sodium 0.05 MG Oral Tablet",
+          "at": "https://rxnav.nlm.nih.gov/REST/drugs.json?name=levothyroxine"
+        },
+        {
+          "text": "acetaminophen 500 MG Oral Tablet",
+          "at": "https://rxnav.nlm.nih.gov/REST/drugs.json?name=acetaminophen"
+        },
+        {
+          "text": "metformin hydrochloride 500 MG Oral Tablet",
+          "at": "https://rxnav.nlm.nih.gov/REST/drugs.json?name=metformin"
+        }
+      ],
+      "supports": "The record the US catalog's names and strengths come from (src/app/data/medications-us.ts): each entry is a generic name with strengths RxNorm lists as clinical drugs of that ingredient, restated the way a US label writes them.",
+      "summary": {
+        "en": "The U.S. National Library of Medicine's standard names for the medicines sold in the United States, where the names and strengths the medication form suggests on an American phone come from. The suggestions only help you type; a medicine not on the list works the same."
+      },
+      "topics": ["meds"],
+      "note": "The overview page was last reviewed 2025-11-19. Checked 2026-09-28 through the RxNav API (drugs.json, clinical drugs): every strength in the catalog matches an RxNorm clinical drug of the same ingredient, allowing for RxNorm's units (50 mcg is 0.05 MG; 1% is 10 MG/ML; 90 mcg a puff is 0.09 MG/ACTUAT) and its ingredient names (divalproex is 'divalproex sodium', alendronate 'alendronic acid', B12 'vitamin B12'). The catalog leaves out brand names and every medicine on the DEA's controlled-substance schedules; that is the app's curation choice, not RxNorm's.",
+      "usedBy": ["src/app/data/medications-us.ts"]
     }
   }
 }

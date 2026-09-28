@@ -11,8 +11,9 @@ sources** lists where:
   and keeps its history.
 - **The suggestions** in the medication form — names and their usual
   strengths — come from the Swedish Medical Products Agency's public records
-  of approved medicines. They only help you type: a medicine that is not on
-  the list works exactly the same.
+  of approved medicines, or, on a phone set to the United States, from the
+  U.S. National Library of Medicine's RxNorm names. They only help you type: a
+  medicine that is not on the list works exactly the same.
 
 Each source is listed under the tab it serves, the strongest evidence first,
 and each one says:

@@ -14,6 +14,7 @@ import {
 
 import {
   catalogEntryFor,
+  catalogRegion,
   searchCatalog,
   type CatalogEntry,
 } from "./catalog.ts";
@@ -71,7 +72,8 @@ import { newMedicationId, type Medication, type RunUnit } from "./types.ts";
 // still costs zero taps.
 //
 // The name field autocompletes against the bundled medication catalog (see
-// `data/medications.ts`), and a recognised name offers its common strengths
+// `data/medications.ts`, or `data/medications-us.ts` on an American device —
+// `catalogRegion`), and a recognised name offers its common strengths
 // as one-tap chips under the dose field — the two fields the form has, both
 // answerable without the keyboard for a catalogued med. Strictly an aid:
 // nothing is validated against the catalog, an unlisted name is typed by
@@ -89,6 +91,16 @@ const DEFAULT_TIME = "08:00";
  *  switched off: all of them lit, so the tap that follows is the day you
  *  skip. Normalised back to null on save — all seven *is* every day. */
 const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+
+/** The catalog this device gets, from the locales it prefers. Read once: a
+ *  device's region is not something that changes under an open form. */
+const REGION = catalogRegion(
+  typeof navigator === "undefined"
+    ? []
+    : navigator.languages?.length
+      ? navigator.languages
+      : [navigator.language],
+);
 
 type Props = {
   /** The medication being edited, or null for the Add form. */
@@ -146,7 +158,12 @@ export function MedForm({
   const [catalog, setCatalog] = useState<CatalogEntry[] | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void import("./data/medications.ts").then((module) => {
+    // Two chunks, so a device downloads only its own catalog.
+    const load =
+      REGION === "us"
+        ? import("./data/medications-us.ts")
+        : import("./data/medications.ts");
+    void load.then((module) => {
       if (!cancelled) setCatalog(module.MEDICATIONS);
     });
     return () => {
@@ -238,7 +255,7 @@ export function MedForm({
           <input
             type="text"
             value={name}
-            placeholder={t("meds.form.namePlaceholder")}
+            placeholder={t(`meds.form.namePlaceholder.${REGION}`)}
             aria-invalid={nameMissing || undefined}
             autoComplete="off"
             enterKeyHint="done"
@@ -302,7 +319,7 @@ export function MedForm({
           <input
             type="text"
             value={dose}
-            placeholder={t("meds.form.dosePlaceholder")}
+            placeholder={t(`meds.form.dosePlaceholder.${REGION}`)}
             autoComplete="off"
             enterKeyHint="done"
             onInput={(e) => setDose((e.target as HTMLInputElement).value)}

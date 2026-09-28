@@ -218,14 +218,22 @@ export const en = {
       addTitle: "New medication",
       editTitle: "Edit medication",
       name: "Name",
-      namePlaceholder: "e.g. Levaxin",
+      // The examples follow the catalog the device gets (`catalogRegion`): a
+      // name and a unit from its own pharmacy shelf.
+      namePlaceholder: {
+        se: "e.g. Levaxin",
+        us: "e.g. Levothyroxine",
+      },
       // The autocomplete list under the name field, and the strength chips
       // under the dose field — both fed by the bundled catalog, and both
       // aids rather than validation: an unlisted name saves the same.
       suggestions: "Suggestions",
       commonDoses: "Common doses",
       dose: "Dose",
-      dosePlaceholder: "e.g. 50 µg — optional",
+      dosePlaceholder: {
+        se: "e.g. 50 µg — optional",
+        us: "e.g. 50 mcg — optional",
+      },
       times: "When to take it",
       timesHint:
         "One dose per time of day. Add a slot for each dose — morning and evening is two slots.",

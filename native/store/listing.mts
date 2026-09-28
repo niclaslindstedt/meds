@@ -237,9 +237,10 @@ export const RULES: StoreRules = {
       // question asks what the APP provides, not what the reader types in —
       // and most of what is on screen is the reader's own (their medications,
       // their times, their ticks), which on its own would be NONE. But the
-      // app also ships a catalog (`src/app/data/medications.ts`): common
-      // Swedish medication names with the strengths they are dispensed in,
-      // offered as autocomplete and dose chips. That is factual medical
+      // app also ships a catalog (`src/app/data/medications.ts`, and
+      // `medications-us.ts` for a US device): common medication names with
+      // the strengths they are dispensed in, offered as autocomplete and dose
+      // chips. That is factual medical
       // information the app supplies, even if only as a typing aid. It gives
       // no dosing advice, no interactions and no instructions, so it is mild
       // and not frequent; claiming NONE would be the easier answer and the

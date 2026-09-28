@@ -87,7 +87,8 @@ src/
     ├── schedule.ts          what a day owes (pure, clock-free)
     ├── stats.ts             adherence, streaks, gaps (pure, clock-free)
     ├── catalog.ts           autocomplete search over the bundled catalog
-    ├── data/medications.ts  the catalog data (own chunk, lazy-loaded)
+    ├── data/medications.ts  the Swedish catalog data (own chunk, lazy-loaded)
+    ├── data/medications-us.ts  the US catalog data (own chunk, for a US locale)
     ├── merge.ts             meds by last edit, day logs by union of marks
     ├── migrations.ts        parse / normalise / serialize
     ├── useDocStore.ts       the document store over a DocBackend seam
@@ -149,7 +150,8 @@ it makes are real. The History screen's adherence is a published measure:
 the ABC taxonomy's _implementation_, the proportion of prescribed doses
 taken, and stopping a medication is its _discontinuation_, which ends the
 schedule and not the history. And the medication form's suggestions are
-names and strengths from Läkemedelsverket's product records. Both are cited
+names and strengths from Läkemedelsverket's product records — or, on a US
+device, from the National Library of Medicine's RxNorm. All are cited
 where the code makes them, with a `[ref:<id>]` tag into
 `docs/references.json` — the registry of every source (OSS_SPEC.md §24):
 authors or agency, title, DOI or URL, the kind of evidence, the verbatim

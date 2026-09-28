@@ -207,12 +207,15 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
   applies them. Also pure and clock-free.
 - `src/app/catalog.ts` — search over the bundled medication catalog: prefix
   before substring, å/ä/ö significant, nothing fuzzy. Pure; the data is a
-  parameter.
+  parameter. Also `catalogRegion`, which picks the catalog from the device's
+  preferred locales: a US locale gets the US one, everything else the Swedish.
 - `src/app/data/medications.ts` — the catalog itself: common Swedish-market
   medication names with their usual strengths, curated by hand (FASS has no
   public API and is not openly licensed; a fuller list can be generated from
   Läkemedelsverket's open LiiV/NPL data into this same trivial shape). Rides
-  in its own chunk behind `import()`.
+  in its own chunk behind `import()`. `src/app/data/medications-us.ts` is the
+  same shape for a US device: common generic names from RxNorm, no brands, and
+  nothing on the controlled-substance schedules.
 - `src/app/merge.ts` — the document merge both cloud sync and backup restore
   run through: medications by last edit, day logs by union of marks (a tap
   wins a dose one side took and the other set aside).
@@ -362,7 +365,8 @@ dates without fake timers.
 A logbook makes few claims, but it makes some: the History screen's
 percentage is the ABC taxonomy's _implementation_ — the proportion of
 prescribed doses taken — and "stopping is not deleting" is its
-_discontinuation_; the catalog's names and strengths are Läkemedelsverket's.
+_discontinuation_; the catalog's names and strengths are Läkemedelsverket's (and RxNorm's, for
+the US catalog).
 Each is cited beside the code that makes it, and a new one — a second figure,
 a regenerated catalog — cites its source in the same change.
 
