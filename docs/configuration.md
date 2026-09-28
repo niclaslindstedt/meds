@@ -14,6 +14,7 @@ All optional. The app builds and runs with none of them set.
 | `VITE_PWA_IGNORE_PATHS`   | —       | Comma-separated absolute paths this build's service worker must disown. Only the root release sets it (`/preview/`), because a scope is a path prefix and the root worker would otherwise claim the preview channel's navigations.                                                                                                                              |
 | `VITE_DROPBOX_APP_KEY`    | —       | Dropbox OAuth app key (PKCE public client). Unset ⇒ the Dropbox backend is hidden from Settings → Sync rather than offered and then failing.                                                                                                                                                                                                                    |
 | `VITE_DROPBOX_APP_FOLDER` | `meds`  | The app-folder name shown as the file's location. Dropbox fixes this from the OAuth app's own configuration, so it has to be told what the folder is actually called.                                                                                                                                                                                           |
+| `VITE_APP_NAME`           | `Meds`  | The name the app calls itself in its top bar. Only the phone build sets it — `native/scripts/bundle-web.mjs` passes the listing name from `APP_DISPLAY_NAME`, so the name inside the app is the one under its icon. The website and the desktop app keep the project's name.                                                                                    |
 | `VITE_SEED`               | —       | `demo` boots the app onto the demo document — one person's medicines and three months of doses, built for the moment it opens and held in memory — before the first render, with sync paused and backend changes refused (see `src/app/dev/`). `make demo` and the store screenshots set it; a release never does, and the check folds away in any other build. |
 
 Both OAuth identifiers are **public**: the flows are PKCE with no client
@@ -24,7 +25,8 @@ build setting as a secret and has no repository variables; they are injected at
 build time, and the built site carries them in plain sight.
 
 The declarations live in `src/vite-env.d.ts`; the consumers are
-`vite.config.ts` and `src/app/useSyncEngine.ts`.
+`vite.config.ts`, `src/app/useSyncEngine.ts` and (for the name)
+`src/app/i18n/en.ts`.
 
 ### Setting them up
 
@@ -44,13 +46,13 @@ The declarations live in `src/vite-env.d.ts`; the consumers are
 never by the web app. See [`../native/.env.example`](../native/.env.example)
 and [`../native/RELEASING.md`](../native/RELEASING.md).
 
-| Variable               | Effect                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `APP_DISPLAY_NAME`     | The store listing's name, and the name under the icon. Unset, the project's own name.                                           |
-| `APP_BUNDLE_ID`        | The iOS bundle identifier and Android package. Unset, a development id; a `production` build refuses to run without it.         |
-| `EAS_PROJECT_ID`       | The EAS project a build runs under. `eas init` prints it but cannot write it into a dynamic config, so it is passed in.         |
-| `EXPO_TOKEN`           | An Expo access token, so CI can drive EAS with no interactive login. A repository secret; treat it as a password.               |
-| `EXPO_PUBLIC_MEDS_URL` | Point the wrapper's WebView at a deployed slot instead of the copy bundled inside it. **Debugging only** — never a store build. |
+| Variable               | Effect                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_DISPLAY_NAME`     | The store listing's name: the name under the icon, and (as `VITE_APP_NAME`) the name in the app's top bar. Unset, the project's own name. |
+| `APP_BUNDLE_ID`        | The iOS bundle identifier and Android package. Unset, a development id; a `production` build refuses to run without it.                   |
+| `EAS_PROJECT_ID`       | The EAS project a build runs under. `eas init` prints it but cannot write it into a dynamic config, so it is passed in.                   |
+| `EXPO_TOKEN`           | An Expo access token, so CI can drive EAS with no interactive login. A repository secret; treat it as a password.                         |
+| `EXPO_PUBLIC_MEDS_URL` | Point the wrapper's WebView at a deployed slot instead of the copy bundled inside it. **Debugging only** — never a store build.           |
 
 ## Runtime settings
 

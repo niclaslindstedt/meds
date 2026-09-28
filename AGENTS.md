@@ -77,7 +77,10 @@ Store guideline 5.1.3(ii) rules out iCloud for it, so the phone app offers the
 device and the user's own Dropbox, exactly as the website does. The wrapper
 decides nothing about medications. Its store identity comes from
 `APP_DISPLAY_NAME`, `APP_BUNDLE_ID` and `EAS_PROJECT_ID` (`native/identifiers.js`);
-a `production` build refuses to run without them. See
+a `production` build refuses to run without them. The listing name reaches the
+page too: `native/scripts/bundle-web.mjs` hands it to the web build as
+`VITE_APP_NAME`, which is `app.name` — so the app calls itself inside what its
+icon is called outside. See
 [`native/README.md`](native/README.md) and
 [`docs/features/native-app.md`](docs/features/native-app.md).
 

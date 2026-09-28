@@ -8,9 +8,13 @@
 // The web build is a plain `npm run build` at the repo root — base `/`, which
 // is exactly what a localhost origin wants — and NOTHING in `src/` is changed
 // for the app. If the wrapper ever needs the web app to behave differently,
-// that is a sign it has stopped being thin. The one flag it sets,
-// VITE_EMBEDDED_BUILD, leaves the web edition's link-preview tags and its
-// GitHub Pages `CNAME` out of the build (see `vite.config.ts`).
+// that is a sign it has stopped being thin. It sets two variables:
+// VITE_EMBEDDED_BUILD, which leaves the web edition's link-preview tags and its
+// GitHub Pages `CNAME` out of the build (see `vite.config.ts`), and
+// VITE_APP_NAME, the name the app calls itself inside — the listing name from
+// APP_DISPLAY_NAME, resolved by `../identifiers.js` exactly as `expo.name` is,
+// so the wordmark and the name under the icon cannot disagree. Unset (a plain
+// checkout), both are the project's own name.
 //
 // Usage:
 //   node scripts/bundle-web.mjs                 # build the site, then zip it
@@ -34,6 +38,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,6 +51,10 @@ const OUT_ZIP = join(APP_DIR, "assets", "webroot.zip");
 const WINDOWS = process.platform === "win32";
 const NPM = WINDOWS ? "npm.cmd" : "npm";
 
+// The listing name, from the one module that reads it (APP_DISPLAY_NAME, or
+// the project's own name when unset).
+const { DISPLAY_NAME } = createRequire(import.meta.url)("../identifiers.js");
+
 const skipBuild = process.argv.includes("--skip-build");
 const profileArg = process.argv.indexOf("--profile");
 const profile =
@@ -54,13 +63,19 @@ const profile =
   "preview";
 
 if (!skipBuild) {
-  console.log(`• building the web app (npm run build) — profile ${profile}…`);
+  console.log(
+    `• building the web app (npm run build) — "${DISPLAY_NAME}", profile ${profile}…`,
+  );
   execFileSync(NPM, ["run", "build"], {
     cwd: REPO_DIR,
     stdio: "inherit",
     // npm on Windows is a batch shim, which Node cannot execute directly.
     shell: WINDOWS,
-    env: { ...process.env, VITE_EMBEDDED_BUILD: "on" },
+    env: {
+      ...process.env,
+      VITE_EMBEDDED_BUILD: "on",
+      VITE_APP_NAME: DISPLAY_NAME,
+    },
   });
 }
 

@@ -28,6 +28,9 @@ interface ImportMetaEnv {
   // "demo" boots the app onto the in-memory demo document, and nothing else:
   // `make demo` and the store screenshots. See `src/app/dev/useDemoData.ts`.
   readonly VITE_SEED?: string;
+  // The name the app calls itself (`app.name`). Set only by the phone build,
+  // from APP_DISPLAY_NAME (native/scripts/bundle-web.mjs); unset, "Meds".
+  readonly VITE_APP_NAME?: string;
 }
 
 interface ImportMeta {

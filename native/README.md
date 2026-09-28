@@ -52,7 +52,7 @@ app's, in `src/app/schedule.ts`, `stats.ts` and `merge.ts`.
 | `src/authSessionBridge.ts` | **Pure.** The injected sign-in provider (`window.__ossAuthSession`) and its plumbing. Tested from the root.              |
 | `src/authSession.ts`       | Opens one sign-in in an authentication session (`expo-web-browser`) and hands back where it ended.                       |
 | `src/scriptText.ts`        | **Import-free.** Splicing text safely into an injected script.                                                           |
-| `scripts/bundle-web.mjs`   | Builds the web app and packs `dist/` into `assets/webroot.zip`.                                                          |
+| `scripts/bundle-web.mjs`   | Builds the web app — named `APP_DISPLAY_NAME` inside, as under the icon — and packs `dist/` into `assets/webroot.zip`.   |
 
 `ios/` and `android/` are **prebuild output**: regenerated from `app.config.js`
 by `expo prebuild --clean`, gitignored, and the source of truth for nothing.

@@ -149,6 +149,7 @@ is no secret to protect), and leaving either unset simply hides that provider:
 | `VITE_DROPBOX_APP_KEY`    | Enables the Dropbox backend.                                                                                 |
 | `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `meds`).                                                    |
 | `VITE_BASE`               | Deploy base path (default `/`).                                                                              |
+| `VITE_APP_NAME`           | The name in the top bar (default `Meds`); the phone build sets the listing name.                             |
 | `VITE_SEED`               | `demo` boots onto the in-memory demo document (`make demo`, the store screenshots). Never set for a release. |
 
 The workflows read them from repository secrets of the same names. See

@@ -10,7 +10,11 @@
 
 export const en = {
   app: {
-    name: "Meds",
+    // The name the app calls itself — the top bar's wordmark. The phone build
+    // carries its store listing's name here, handed over as VITE_APP_NAME by
+    // native/scripts/bundle-web.mjs (from APP_DISPLAY_NAME), so the name inside
+    // the app is the one under its icon. Every other build is the project's.
+    name: import.meta.env.VITE_APP_NAME?.trim() || "Meds",
     tagline: "Your meds, on your device",
   },
 
