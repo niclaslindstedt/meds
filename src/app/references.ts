@@ -2,7 +2,7 @@
 // The references: every published source the app's figures and bundled data
 // rest on, as the app reads them.
 //
-// The registry itself is `docs/references.json` (OSS_SPEC.md §24): one entry
+// The registry itself is `docs/references.json`: one entry
 // per source, keyed by the id the code cites as `[ref:<id>]` beside the
 // definition or data it supports. This app makes few claims — it is a
 // logbook, not a clinician — but the ones it makes are real: the History

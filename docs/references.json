@@ -1,5 +1,5 @@
 {
-  "$comment": "OSS_SPEC.md §24 references registry. Every entry is cited by a [ref:<id>] tag in src/ and listed on Settings → About. tests/references_test.ts holds the two in step.",
+  "$comment": "The references registry. Every entry is cited by a [ref:<id>] tag in src/ and listed on Settings → About. tests/references_test.ts holds the two in step.",
   "references": {
     "vrijens-2012": {
       "evidence": "consensus",

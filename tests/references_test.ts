@@ -4,9 +4,7 @@
 // figure is a published measure and the catalog is published data, and each
 // cites its source with a `[ref:<id>]` tag beside it. The registry carries the
 // full record: who, where, the DOI or URL, the words taken from it, and how
-// strong the evidence is. OSS_SPEC.md §24 asks for the same, and
-// `oss-spec validate` checks it too; this test is the one a contributor sees
-// first.
+// strong the evidence is. This test is the one a contributor sees first.
 //
 // The rules are the framework's `auditReferences`: every tag in `src/` names
 // an entry; every entry is cited somewhere; each entry's `usedBy` lists

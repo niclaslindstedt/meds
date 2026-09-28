@@ -18,7 +18,7 @@ import { useT } from "./i18n/index.ts";
 import { TOPICS, useReferences } from "./references.ts";
 
 // About, behind Settings: what the app is, and every published source its
-// figures and bundled data rest on (OSS_SPEC.md §24.4). The list is the
+// figures and bundled data rest on. The list is the
 // references registry itself, read through `references.ts` — never a copy
 // kept by hand — grouped by the tab each source serves and ranked strongest
 // evidence first.

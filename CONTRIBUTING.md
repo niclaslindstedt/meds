@@ -74,7 +74,7 @@ Store builds run on EAS by manual dispatch; see
 
 ## Tests
 
-Tests live in `tests/` with a `_test` suffix (OSS_SPEC §20.2) and cover the
+Tests live in `tests/` with a `_test` suffix and cover the
 pure domain modules — the schedule derivation, the adherence stats, the
 catalog search, the document merge, and the storage migrations. Run one file
 with `npx vitest run tests/schedule_test.ts`. UI changes should keep the boot

@@ -5,7 +5,7 @@ description: "Use when the project's public surface has changed — commands, co
 
 # Update README
 
-Keeps `README.md` true to the current public surface (OSS_SPEC §3). The README is the only document most people read, and its Quick start is the one thing that must work from a clean checkout — a stale command there costs a contributor before they have written a line.
+Keeps `README.md` true to the current public surface. The README is the only document most people read, and its Quick start is the one thing that must work from a clean checkout — a stale command there costs a contributor before they have written a line.
 
 ## When to run
 
@@ -26,7 +26,7 @@ git diff --name-only "${BASELINE:-$(git rev-list --max-parents=0 HEAD)}"..HEAD
 ## Discovery process
 
 1. Diff from the baseline and pick out changes to `Makefile`, `package.json`, `src/vite-env.d.ts`, `.github/workflows/`, `docs/`, and `src/app/*Screen.tsx`.
-2. Read the README end to end. The twelve §3 sections must all still be present and in order: What / Why / Prerequisites / Install / Quick start / Usage / Configuration / Examples / Troubleshooting / Documentation / Contributing / License.
+2. Read the README end to end. The twelve sections must all still be present and in order: What / Why / Prerequisites / Install / Quick start / Usage / Configuration / Examples / Troubleshooting / Documentation / Contributing / License.
 3. Run the Quick start commands as written, from the repo root, and confirm they do what the README says they do.
 4. Check the Examples block still type-checks against the current API — it is real code, and the app's exported shapes move.
 
@@ -44,7 +44,7 @@ git diff --name-only "${BASELINE:-$(git rev-list --max-parents=0 HEAD)}"..HEAD
 
 ## Update checklist
 
-- [ ] Rewrite the affected sections; keep the §3 section order intact
+- [ ] Rewrite the affected sections; keep the section order intact
 - [ ] Verify every badge URL points at a workflow file that exists
 - [ ] Verify every relative link resolves
 - [ ] Run the Quick start from a clean checkout
@@ -57,7 +57,7 @@ git diff --name-only "${BASELINE:-$(git rev-list --max-parents=0 HEAD)}"..HEAD
 
 ## Verification
 
-1. All twelve §3 sections present, in order, with no placeholder text.
+1. All twelve sections present, in order, with no placeholder text.
 2. Every command in the README runs successfully from a clean checkout.
 3. Every link and badge resolves.
 4. `make fmt-check` passes.

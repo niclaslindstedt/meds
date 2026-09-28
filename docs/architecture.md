@@ -80,7 +80,7 @@ Two invariants shape everything else:
 ```
 src/
 ├── main.tsx                 boot: fonts, styles, Preact render
-├── output.ts                §19.4 semantic log helpers → the in-app log store
+├── output.ts                the semantic log helpers → the in-app log store
 ├── styles.css               Tailwind + framework tokens + the app shell rules
 └── app/
     ├── types.ts             Medication / DayLog / AppData, doseKey, sorting
@@ -153,12 +153,11 @@ schedule and not the history. And the medication form's suggestions are
 names and strengths from Läkemedelsverket's product records — or, on a US
 device, from the National Library of Medicine's RxNorm. All are cited
 where the code makes them, with a `[ref:<id>]` tag into
-`docs/references.json` — the registry of every source (OSS_SPEC.md §24):
+`docs/references.json` — the registry of every source:
 authors or agency, title, DOI or URL, the kind of evidence, the verbatim
 quotes the definition or data was taken from, what the app uses each for, and
 which files cite it. `tests/references_test.ts` holds the tags and the
-registry to each other both ways, and `oss-spec validate` checks the same
-rules.
+registry to each other both ways.
 
 What the app decides for itself is said to be a decision, beside the code:
 today never counting against you, a day with nothing due saying nothing, and
