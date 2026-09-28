@@ -27,7 +27,12 @@ import { join, dirname, relative } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { ascCredentials, nativeEnv, reviewPhone } from "./lib/store-env.mjs";
+import {
+  ascCredentials,
+  bundleIdStatus,
+  nativeEnv,
+  reviewPhone,
+} from "./lib/store-env.mjs";
 import { RULES } from "../native/store/listing.mts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -294,35 +299,41 @@ if (/^[A-Z0-9]{10}$/i.test(String(iosSubmit.appleTeamId ?? ""))) {
   );
 }
 
-// THE BUNDLE ID IS DEFINED ONCE AND REPEATED ONCE. app.config.js owns it; the
-// fastlane Appfile restates it and cannot import a JavaScript module, so a
-// drift would upload this listing onto a different app. Checked rather than
-// derived, for exactly that reason.
+// THE BUNDLE ID IS A BUILD VARIABLE, NEVER A LITERAL. native/identifiers.js
+// reads APP_BUNDLE_ID (falling back to a development id no store knows), and
+// the fastlane Appfile reads the same variable, so the upload and the build
+// cannot name two different apps as long as the variable is set.
 const appConfig = readFileSync(at("native", "app.config.js"), "utf8");
-const configBundle = /const BUNDLE_ID = "([^"]+)"/.exec(appConfig)?.[1];
 const appfilePath = at("native", "fastlane", "Appfile");
-if (!configBundle) {
-  fail("could not read BUNDLE_ID from native/app.config.js");
-} else if (!existsSync(appfilePath)) {
+const bundle = bundleIdStatus(
+  existsSync(appfilePath) ? readFileSync(appfilePath, "utf8") : "",
+  env.value("APP_BUNDLE_ID"),
+);
+if (bundle.status === "no-appfile") {
   warn(
     `no ${rel(appfilePath)} — fastlane cannot upload without one`,
-    `it names the same bundle id app.config.js does (${configBundle}) plus the ` +
-      "Apple account. See native/store/README.md.",
+    "it reads the bundle id from APP_BUNDLE_ID, as native/identifiers.js " +
+      "does. See native/store/README.md.",
+    "apple",
+  );
+} else if (bundle.status === "drift") {
+  fail(
+    `bundle id drift: APP_BUNDLE_ID is ${bundle.bundleId || "unset"}, the Appfile says ${bundle.appfileBundle}`,
+    'the Appfile should read the variable — app_identifier(ENV.fetch("APP_BUNDLE_ID")) — ' +
+      "rather than spell an id out.",
+  );
+} else if (bundle.status === "unset") {
+  fail(
+    "APP_BUNDLE_ID is not set",
+    "the build (native/identifiers.js) and the upload (the Appfile) both read " +
+      "it; unset, a build takes a development id and fastlane stops. Put it " +
+      "in native/.env.",
     "apple",
   );
 } else {
-  const appfileBundle = /app_identifier\("([^"]+)"\)/.exec(
-    readFileSync(appfilePath, "utf8"),
-  )?.[1];
-  if (appfileBundle === configBundle)
-    ok(`bundle id ${configBundle}, agreed by fastlane`);
-  else {
-    fail(
-      `bundle id drift: app.config.js says ${configBundle}, the Appfile says ${appfileBundle}`,
-      "the Appfile is Ruby and cannot import app.config.js, so the two are kept in " +
-        "step by hand. app.config.js is the source of truth.",
-    );
-  }
+  ok(
+    `bundle id ${bundle.bundleId} (APP_BUNDLE_ID), read by the build and the Appfile`,
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -123,3 +123,28 @@ export function ascCredentials(root) {
 
   return { keyId, issuerId, keyFile, missing, envFile: env.file };
 }
+
+/**
+ * Where the bundle id stands, for the preflight: the id every build and the
+ * upload take, and whether fastlane's Appfile agrees with it.
+ *
+ * The id is never committed — `native/identifiers.js` reads `APP_BUNDLE_ID`
+ * and falls back to a development id, and the Appfile reads the same variable
+ * with `ENV.fetch`. So the question is whether the variable is set, not
+ * whether two literals match. An Appfile that spells a literal out again is
+ * still compared, because a literal there would upload onto whatever app it
+ * names.
+ *
+ * @param {string} appfile the Appfile's text ("" when there is none)
+ * @param {string} bundleId APP_BUNDLE_ID as `nativeEnv().value` reads it
+ * @returns {{ status: "ok" | "unset" | "no-appfile" | "drift",
+ *             bundleId: string, appfileBundle?: string }}
+ */
+export function bundleIdStatus(appfile, bundleId) {
+  if (!appfile) return { status: "no-appfile", bundleId };
+  const literal = /app_identifier\(\s*"([^"]+)"\s*\)/.exec(appfile)?.[1];
+  if (literal && literal !== bundleId)
+    return { status: "drift", bundleId, appfileBundle: literal };
+  if (!bundleId) return { status: "unset", bundleId };
+  return { status: "ok", bundleId };
+}
