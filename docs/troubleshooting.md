@@ -64,8 +64,7 @@ and today only joins once it is complete. See
 
 ### Cloud sync shows "Reconnect needed"
 
-The provider's session lapsed (Google's token grants are short-lived; Dropbox
-refreshes its own). Tap the sync glyph → **Reconnect**. Your log is safe
+The Dropbox session lapsed and could not be refreshed. Tap the sync glyph → **Reconnect**. Your log is safe
 locally the whole time — pushes are simply held until the session is back.
 
 ### An unticked dose (or a deleted medication) came back
