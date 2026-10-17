@@ -384,6 +384,9 @@ export const en = {
     saveNow: "Save now",
     reload: "Reload from cloud",
     data: "Your data",
+    // The phone app's only word on where the log is, in place of Sync.
+    phoneStorage:
+      "Your log is kept on this device only. It leaves only in a backup you export yourself.",
     export: "Export a backup",
     exportHint: "Saves your medications and log as a JSON file.",
     exportFailed: "The backup could not be saved.",
@@ -415,6 +418,9 @@ export const en = {
     build: "Build",
     privacy:
       "Everything stays on this device unless you connect a cloud account yourself, and a copy there is encrypted with your passphrase first. There is no server, no account, and no analytics.",
+    // The phone app offers no cloud copy (see `edition.ts`).
+    privacyPhone:
+      "Everything stays on this device: there is no cloud copy, and the log leaves only in a backup you export yourself. There is no server, no account, and no analytics.",
     // Said once, in the smallest print the screen has, because the app must
     // not pretend to be more than a notebook.
     disclaimer:

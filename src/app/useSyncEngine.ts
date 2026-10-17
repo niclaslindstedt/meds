@@ -32,6 +32,7 @@ import type {
   SyncLocation,
 } from "@niclaslindstedt/oss-framework/sync";
 
+import { PHONE_BUILD } from "./edition.ts";
 import { logStore } from "./log.ts";
 import { mergeDocs } from "./merge.ts";
 import { parseDoc, serializeDoc } from "./migrations.ts";
@@ -103,23 +104,32 @@ export const DROPBOX_APP_FOLDER: string =
   (import.meta.env.VITE_DROPBOX_APP_FOLDER as string | undefined)?.trim() ||
   "meds";
 
+/** Whether this build offers Dropbox at all: never in the phone app, and on
+ *  the website and the desktop app only once a key is configured. A
+ *  build-time constant, so the phone bundle drops every Dropbox branch. */
+export const DROPBOX_OFFERED: boolean = !PHONE_BUILD && DROPBOX_APP_KEY !== "";
+
 export const PROVIDER_NAMES: Record<SyncBackendId, string> = {
   local: "This device",
   dropbox: "Dropbox",
 };
 
 /** Which backends this build can offer — a cloud provider with no client id
- *  configured is hidden from the picker entirely. */
+ *  configured is hidden from the picker entirely, and the phone app has this
+ *  device alone. */
 export const AVAILABLE_BACKENDS: SyncBackendId[] = [
   "local",
-  ...(DROPBOX_APP_KEY ? (["dropbox"] as const) : []),
+  ...(DROPBOX_OFFERED ? (["dropbox"] as const) : []),
 ];
 
 type DropboxTokens = { accessToken: string; refreshToken: string | null };
 
 /** The stored backend choice. Anything but Dropbox reads as this device —
  *  including the retired iCloud choice, which is also rewritten so it is
- *  never read again. */
+ *  never read again. In the phone app Dropbox reads as this device too: a
+ *  pre-release build could have connected it, and the log it synced is the
+ *  working copy on the phone already, so nothing is stranded. The choice and
+ *  the cloud copy are left as they are. */
 export function readBackend(): SyncBackendId {
   try {
     const raw = localStorage.getItem(BACKEND_KEY);
@@ -128,7 +138,7 @@ export function readBackend(): SyncBackendId {
       localStorage.removeItem(localCacheKey(RETIRED_ICLOUD_BACKEND, "meds"));
       return "local";
     }
-    return raw === "dropbox" ? "dropbox" : "local";
+    return raw === "dropbox" && !PHONE_BUILD ? "dropbox" : "local";
   } catch {
     return "local";
   }
@@ -222,7 +232,7 @@ export function useSyncEngine(
   // copy stays readable offline (`withLocalCache`). The cache sits below the
   // encryption, so it holds exactly the ciphertext the cloud does.
   const inner: StorageAdapter | null = useMemo(() => {
-    if (backend === "dropbox" && dropboxTokens) {
+    if (!PHONE_BUILD && backend === "dropbox" && dropboxTokens) {
       const auth = {
         accessToken: dropboxTokens.accessToken,
         refreshToken: dropboxTokens.refreshToken,
@@ -380,7 +390,7 @@ export function useSyncEngine(
   // Complete a Dropbox OAuth redirect: trade the `?code=` for tokens, persist
   // them, and adopt the backend. Runs once on boot when a flow is mid-flight.
   useEffect(() => {
-    if (!DROPBOX_APP_KEY || !hasPendingDropboxAuth()) return;
+    if (!DROPBOX_OFFERED || !hasPendingDropboxAuth()) return;
     const code = new URLSearchParams(window.location.search).get("code");
     if (!code) return;
     void (async () => {
@@ -438,12 +448,12 @@ export function useSyncEngine(
         setBackendState("local");
         return;
       }
-      if (!DROPBOX_APP_KEY) throw new Error("Dropbox is not configured");
-      // In the phone app the redirect would land in the system browser, not
-      // in the app, so a host that offers an authentication session is asked
-      // for one: consent in a sheet over the app, the redirect handed back,
-      // and the connection made here, in place. Asked for as a capability,
-      // never as a platform. Closing the sheet is not an error.
+      if (!DROPBOX_OFFERED) throw new Error("Dropbox is not configured");
+      // Where the redirect would land in the system browser rather than in
+      // the app, a host that offers an authentication session is asked for
+      // one: consent in a sheet over the app, the redirect handed back, and
+      // the connection made here, in place. Asked for as a capability, never
+      // as a platform. Closing the sheet is not an error.
       const authSession = getAuthSessionHost();
       if (authSession) {
         try {

@@ -2,8 +2,9 @@
 
 A frontend-only, local-first PWA. There is no server: the app is static files
 on GitHub Pages, and every byte of user data lives in the browser (plus, if
-the user connects one, a single file in their own Dropbox — the same JSON
-document, encrypted on the device first; see [sync.md](sync.md#encryption)).
+the user connects one on the website or the desktop app, a single file in
+their own Dropbox — the same JSON document, encrypted on the device first;
+see [sync.md](sync.md#encryption). The phone app offers no cloud copy).
 
 ## The stack
 

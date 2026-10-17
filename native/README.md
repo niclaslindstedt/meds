@@ -2,8 +2,8 @@
 
 A **thin** Expo / React Native shell around the medication log, so it can ship to
 the App Store and Google Play — and so it can do the things a PWA cannot:
-run entirely from inside its own download, sign in to Dropbox through the
-system's own authentication sheet, and hand a backup to the share sheet.
+run entirely from inside its own download, and hand a backup to the share
+sheet.
 
 Thin is the design, not an aspiration. The wrapper:
 
@@ -17,29 +17,33 @@ Thin is the design, not an aspiration. The wrapper:
   reports (`src/injected.ts`), never from the phone's appearance; off-origin
   links go to the system browser, and Android's back button drives the
   WebView's history;
-- opens Dropbox's sign-in in an **authentication session** when the page asks
-  for one (`src/authSessionBridge.ts` → `src/authSession.ts` →
-  `expo-web-browser`) — see [Signing in to Dropbox](#signing-in-to-dropbox);
+- offers the page an **authentication session** should it ask for one
+  (`src/authSessionBridge.ts` → `src/authSession.ts` → `expo-web-browser`).
+  The phone edition of the page asks for none today — it offers no Dropbox —
+  see [Signing in to Dropbox](#signing-in-to-dropbox);
 - hands an export to the **share sheet** when the page sends one
   (`src/saveFileBridge.ts` → `src/saveFile.ts` → `expo-file-system` and
   `expo-sharing`) — see [Exports](#exports).
 
 That is the entire list, and it is deliberately not empty: **App Store
 guideline 4.2 rejects a build that is only a viewer for a website**, so the
-wrapper has to do things the browser cannot. The self-contained bundle, the
-in-app sign-in and the share sheet are those things. Adding another is allowed; adding one that
+wrapper has to do things the browser cannot. The self-contained bundle and
+the share sheet are those things. Adding another is allowed; adding one that
 makes `src/` aware of this wrapper is not.
 
 **The wrapper adds no storage of its own.** A medication log is personal
-health information: it stays on the device, or goes to the reader's own
-Dropbox when they connect it, and nowhere else. A storage backend offered by
+health information: in the phone app it stays on the device, and leaves only
+in a backup the reader exports. The page is built with `VITE_NATIVE_BUILD=on`
+(`scripts/bundle-web.mjs`), which leaves Dropbox out of it entirely, and no
+Dropbox key is passed to the phone bundle. A storage backend offered by
 the wrapper — a container of the app's own — is exactly what that rules out
 (see [`docs/features/native-app.md`](../docs/features/native-app.md)).
 
-**Nothing in the repo's `src/` knows this exists.** The in-app sign-in works
-without breaking that rule: the page looks for an authentication-session
-**capability** on `window` and this installs one, so a browser — which has
-none — keeps its redirect flow. The app never asks what it is running inside.
+**The page never asks what it is running inside at runtime.** The one thing
+the phone edition does differently — no cloud copy — is decided when it is
+built (`VITE_NATIVE_BUILD`). Everything else is a **capability** the page
+looks for on `window` and this installs, so a browser — which has none —
+keeps its own behaviour.
 
 The wrapper also decides nothing about the medication log. When a dose is
 due, what counts as taken and how two devices' edits reconcile are the web
@@ -93,6 +97,12 @@ EXPO_PUBLIC_MEDS_URL=https://meds.niclaslindstedt.se/preview/ npm run ios
 
 ## Signing in to Dropbox
 
+**The phone app offers no Dropbox**, so nothing below runs in a store build:
+the page is built with `VITE_NATIVE_BUILD=on`, its Dropbox code folds out, and
+the bridge waits for a request that never comes. It is kept because the
+bridge is the framework's contract, not this app's, and documented as it
+works should a backend ever ask for it.
+
 The page's own Dropbox sign-in is a redirect: consent at dropbox.com, then
 back to the page's origin with a code, which the page trades for tokens using
 the PKCE verifier it kept in `sessionStorage`. That cannot finish in here.
@@ -131,13 +141,11 @@ treats as "cancelled" rather than as an error.
 
 **The URL scheme is the bundle id** (`scheme: BUNDLE_ID` in `app.config.js`,
 from `identifiers.js`), reverse-DNS so no other app can claim it — and so
-**the redirect URI is `se.agilator.meds://oauth`** in a store build (`dev.local.meds://oauth`
-in a plain checkout). Dropbox requires the exact URI to be registered, so the
-Dropbox app behind `VITE_DROPBOX_APP_KEY` must list `se.agilator.meds://oauth` under
-**Settings → OAuth 2 → Redirect URIs** in the
-[App Console](https://www.dropbox.com/developers/apps), next to the website's
-and the desktop app's. Without it Dropbox shows "Invalid redirect_uri" in the
-sheet.
+**the redirect URI would be `se.agilator.meds://oauth`** in a store build
+(`dev.local.meds://oauth` in a plain checkout), registered under **Settings →
+OAuth 2 → Redirect URIs** in the
+[App Console](https://www.dropbox.com/developers/apps). With no Dropbox in the
+phone app, the Dropbox app needs only the website's and the desktop app's.
 
 Other off-origin links are unchanged: they still leave for the system browser.
 

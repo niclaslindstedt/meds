@@ -27,6 +27,7 @@ import { LogViewer } from "@niclaslindstedt/oss-framework/logging";
 import { logStore } from "./log.ts";
 import { readBackupFile, saveBackup } from "./backup.ts";
 import type { DemoDataToggle } from "./dev/useDemoData.ts";
+import { PHONE_BUILD } from "./edition.ts";
 import { useT } from "./i18n/index.ts";
 import { mergeDocs } from "./merge.ts";
 import { useEncryptionLabels, usePinControlLabels } from "./SyncEncryption.tsx";
@@ -163,75 +164,79 @@ export function SettingsScreen({
         <p className="text-xs text-muted">{t("settings.clockHint")}</p>
       </Section>
 
-      <Section
-        title={t("settings.sync")}
-        icon={<CloudIcon className="h-3.5 w-3.5" />}
-      >
-        <p className="text-xs text-muted">{t("settings.syncHint")}</p>
-        <SegmentedControl<SyncBackendId>
-          value={sync.backend}
-          // Demo data is showing: connecting or disconnecting would change the
-          // reader's real backend from a session that is not theirs, and the
-          // first save after a connect would copy the demo into their cloud.
-          options={sync.available.map((id) => ({
-            value: id,
-            label: PROVIDER_NAMES[id],
-            disabled: demoData.on && id !== sync.backend,
-          }))}
-          onChange={(next) => {
-            if (next === sync.backend || demoData.on) return;
-            if (next === "local") {
-              sync.disconnect();
-              return;
-            }
-            setBusy(true);
-            void sync
-              .connect(next)
-              .catch((err: unknown) =>
-                onNotice(err instanceof Error ? err.message : String(err)),
-              )
-              .finally(() => setBusy(false));
-          }}
-          ariaLabel={t("settings.backend")}
-          fullWidth
-        />
-        <p className="text-xs text-muted">
-          {sync.connected
-            ? t("settings.connected", { name: sync.providerName })
-            : t("settings.localOnly")}
-          {" · "}
-          {sync.location.path}
-        </p>
-        {sync.connected && (
-          <EncryptionSettings
-            encryption={sync.encryption}
-            location={sync.providerName}
-            labels={encryptionLabels}
-            disabled={demoData.on}
-            onChanged={() => {
-              onNotice(t("encryption.changed"));
-              void sync.reload();
+      {/* The phone app has no cloud copy to offer, so it has no Sync section:
+          the log stays on the device (see `edition.ts`). */}
+      {!PHONE_BUILD && (
+        <Section
+          title={t("settings.sync")}
+          icon={<CloudIcon className="h-3.5 w-3.5" />}
+        >
+          <p className="text-xs text-muted">{t("settings.syncHint")}</p>
+          <SegmentedControl<SyncBackendId>
+            value={sync.backend}
+            // Demo data is showing: connecting or disconnecting would change the
+            // reader's real backend from a session that is not theirs, and the
+            // first save after a connect would copy the demo into their cloud.
+            options={sync.available.map((id) => ({
+              value: id,
+              label: PROVIDER_NAMES[id],
+              disabled: demoData.on && id !== sync.backend,
+            }))}
+            onChange={(next) => {
+              if (next === sync.backend || demoData.on) return;
+              if (next === "local") {
+                sync.disconnect();
+                return;
+              }
+              setBusy(true);
+              void sync
+                .connect(next)
+                .catch((err: unknown) =>
+                  onNotice(err instanceof Error ? err.message : String(err)),
+                )
+                .finally(() => setBusy(false));
             }}
+            ariaLabel={t("settings.backend")}
+            fullWidth
           />
-        )}
-        {sync.connected && (
-          <div className="flex gap-2">
-            <Button onClick={sync.saveNow} disabled={busy || !sync.dirty}>
-              {t("settings.saveNow")}
-            </Button>
-            <Button onClick={() => void sync.reload()} disabled={busy}>
-              {t("settings.reload")}
-            </Button>
-            <Button
-              variant="danger"
-              onClick={sync.disconnect}
+          <p className="text-xs text-muted">
+            {sync.connected
+              ? t("settings.connected", { name: sync.providerName })
+              : t("settings.localOnly")}
+            {" · "}
+            {sync.location.path}
+          </p>
+          {sync.connected && (
+            <EncryptionSettings
+              encryption={sync.encryption}
+              location={sync.providerName}
+              labels={encryptionLabels}
               disabled={demoData.on}
-            >
-              {t("settings.disconnect")}
-            </Button>
-          </div>
-        )}
-      </Section>
+              onChanged={() => {
+                onNotice(t("encryption.changed"));
+                void sync.reload();
+              }}
+            />
+          )}
+          {sync.connected && (
+            <div className="flex gap-2">
+              <Button onClick={sync.saveNow} disabled={busy || !sync.dirty}>
+                {t("settings.saveNow")}
+              </Button>
+              <Button onClick={() => void sync.reload()} disabled={busy}>
+                {t("settings.reload")}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={sync.disconnect}
+                disabled={demoData.on}
+              >
+                {t("settings.disconnect")}
+              </Button>
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section
         title={t("pin.title")}
@@ -244,6 +249,9 @@ export function SettingsScreen({
         title={t("settings.data")}
         icon={<DatabaseIcon className="h-3.5 w-3.5" />}
       >
+        {PHONE_BUILD && (
+          <p className="text-xs text-muted">{t("settings.phoneStorage")}</p>
+        )}
         <div className="flex flex-col gap-1">
           <Button onClick={() => void exportBackup()}>
             {t("settings.export")}
@@ -346,7 +354,7 @@ export function SettingsScreen({
           <dd className="text-fg">{__BUILD_LABEL__}</dd>
         </dl>
         <p className="text-xs leading-snug text-muted">
-          {t("settings.privacy")}
+          {t(PHONE_BUILD ? "settings.privacyPhone" : "settings.privacy")}
         </p>
         <p className="text-xs leading-snug text-muted">
           {t("settings.disclaimer")}

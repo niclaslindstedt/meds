@@ -12,14 +12,13 @@
 // The wrapper has to add something the browser cannot do: App Store guideline
 // 4.2 rejects a build that is only a viewer for a website. What it adds is that
 // it serves the medication log FROM INSIDE THE DOWNLOAD — no network at all,
-// ever, for the app itself — that Dropbox signs in through the system's
-// authentication sheet, and that a backup leaves through the share sheet. All
-// are offered from the OUTSIDE — the page is served unchanged and looks for a
-// capability rather than for this wrapper.
+// ever, for the app itself — and that a backup leaves through the share
+// sheet. Both are offered from the OUTSIDE — the page looks for a capability
+// rather than for this wrapper.
 //
 // It adds no storage of its own, deliberately: a medication log is personal
-// health information, and it stays on the device or goes to the reader's own
-// Dropbox. See `native/README.md`.
+// health information, and in the phone app it stays on the device — the page
+// is built without Dropbox (VITE_NATIVE_BUILD). See `native/README.md`.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {

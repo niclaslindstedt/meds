@@ -21,7 +21,8 @@ declare const __BUILD_NUMBER__: string;
 // app builds and runs with none of them set. See `docs/configuration.md`.
 interface ImportMetaEnv {
   // Dropbox app key (PKCE public client). Unset hides the Dropbox backend in
-  // Settings → Sync. See `src/app/useSyncEngine.ts`.
+  // Settings → Sync; the phone build never offers it, set or not. See
+  // `src/app/useSyncEngine.ts`.
   readonly VITE_DROPBOX_APP_KEY?: string;
   // App-folder names the synced document is filed under, per provider.
   readonly VITE_DROPBOX_APP_FOLDER?: string;
@@ -31,6 +32,10 @@ interface ImportMetaEnv {
   // The name the app calls itself (`app.name`). Set only by the phone build,
   // from APP_DISPLAY_NAME (native/scripts/bundle-web.mjs); unset, "Meds".
   readonly VITE_APP_NAME?: string;
+  // "on" in the phone build only (native/scripts/bundle-web.mjs): the App
+  // Store app offers no Dropbox, so the log stays on the phone. See
+  // `src/app/edition.ts`.
+  readonly VITE_NATIVE_BUILD?: string;
 }
 
 interface ImportMeta {

@@ -6,8 +6,9 @@ locally, **encrypted on this device with a passphrase you choose** before it
 leaves. Dropbox holds ciphertext it cannot read; see
 [`encryption.md`](encryption.md).
 
-The phone app offers the same two places and no others: the device, and your
-own Dropbox. Your log is health information, so it never goes to iCloud. See
+This is the website and the desktop app. The phone app offers no cloud copy:
+the log stays on the phone, and leaves it only in a backup you export. Your
+log is health information, so it never goes to iCloud either. See
 [`native-app.md`](native-app.md).
 
 The local copy is always the working copy, so losing the network never costs

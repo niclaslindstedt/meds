@@ -47,16 +47,13 @@ For submission, fill in the placeholders in `eas.json` →
 | `appleTeamId`               | developer.apple.com → Membership details → **Team ID** (10 characters). Added beside `ascAppId`.                                                                                                                                                           |
 | `play-service-account.json` | Play Console → Setup → API access → a service account key. Gitignored; upload it to EAS with `eas credentials` rather than committing it.                                                                                                                  |
 
-### 4. Dropbox
+### 4. No Dropbox
 
-The phone app signs in to Dropbox through an in-app authentication session
-that returns on **`se.agilator.meds://oauth`** — the bundle id is the URL scheme (see
-[README → Signing in to Dropbox](README.md#signing-in-to-dropbox)). In the
-[Dropbox App Console](https://www.dropbox.com/developers/apps), open the app
-whose key is the `VITE_DROPBOX_APP_KEY` secret and add `se.agilator.meds://oauth` under
-**Settings → OAuth 2 → Redirect URIs**, exactly as written. The same secret
-(and `VITE_DROPBOX_APP_FOLDER`) is what the build job passes to the web
-bundle; without it the app offers no Dropbox at all.
+The phone app offers no Dropbox: the log stays on the device and leaves it
+only in a backup exported through the share sheet. The build job passes no
+Dropbox key to the web bundle, and `scripts/bundle-web.mjs` builds it with
+`VITE_NATIVE_BUILD=on`, which leaves Dropbox out whatever the environment
+holds. Nothing to set up in the Dropbox App Console for the phone.
 
 ## Cutting a build
 
@@ -98,8 +95,7 @@ build without it launches to a blank screen.
 - [ ] `EXPO_PUBLIC_MEDS_URL` is **unset** — a build that streams the website
       is the exact shape App Store guideline 4.2 rejects.
 - [ ] The version in the root `package.json` is the one you mean to ship.
-- [ ] **Settings → Sync** offers exactly two places: this device and Dropbox.
-      The log is health information and has no other destination.
-- [ ] Settings → Sync → Dropbox opens Dropbox in a sheet over the app (not in
-      Safari), and approving closes the sheet and connects. Closing the sheet
-      instead leaves nothing connected and shows no error.
+- [ ] **Settings** has no Sync section, and Settings → Your data says the log
+      is kept on this device only. The log is health information and has no
+      cloud destination in the phone app.
+- [ ] **Export a backup** opens the share sheet on the file.

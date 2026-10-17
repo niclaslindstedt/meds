@@ -51,8 +51,8 @@ module.exports = () => ({
       supportsTablet: true,
       bundleIdentifier: BUNDLE_ID,
       // No entitlements. The log is health information, and it stays on the
-      // device or goes to the reader's own Dropbox — never to a container of
-      // the app's own (see docs/features/native-app.md).
+      // device — never in a container of the app's own, never in iCloud (see
+      // docs/features/native-app.md).
       infoPlist: {
         // The bundled build is served over plain HTTP on the loopback
         // interface. ATS is left ON — only localhost is excepted, so nothing

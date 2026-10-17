@@ -3,8 +3,9 @@
 ## Encryption
 
 Your log is health information, so a copy that leaves this device is always
-encrypted first. Connect Dropbox and the app asks you to **choose a
-passphrase**; everything it sends from then on is an AES-256-GCM envelope
+encrypted first. Connect Dropbox (on the website or the desktop app — the
+phone app has no cloud copy, so it never asks for a passphrase) and the app
+asks you to **choose a passphrase**; everything it sends from then on is an AES-256-GCM envelope
 sealed with a key derived from that passphrase (PBKDF2-SHA256, 600,000
 iterations). Dropbox stores ciphertext it cannot read, and so would anyone who
 got into the account.

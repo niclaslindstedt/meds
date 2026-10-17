@@ -67,9 +67,11 @@ wrapped around a server you cannot inspect.
 
 This one has no account and no server. Your medications and your log live in
 your browser's localStorage. If you want them on more than one device, you
-connect **your own** Dropbox and the app keeps a copy there — encrypted on
-the device with a passphrase only you know, so Dropbox holds ciphertext. Nothing else leaves the
-device: no analytics, no telemetry, no third-party requests at runtime. Even
+connect **your own** Dropbox on the website or the desktop app and it keeps a
+copy there — encrypted on the device with a passphrase only you know, so
+Dropbox holds ciphertext. The phone app offers no cloud copy at all: the log
+stays on the phone, and leaves it only in a backup you export. Nothing else
+leaves the device: no analytics, no telemetry, no third-party requests at runtime. Even
 the medication autocomplete is a bundled list searched locally, never a lookup
 service — what you type into a medication field is exactly the byte that must
 not reach a server.
@@ -150,6 +152,7 @@ is no secret to protect), and leaving either unset simply hides that provider:
 | `VITE_DROPBOX_APP_FOLDER` | Folder name the document is filed under (default `meds`).                                                    |
 | `VITE_BASE`               | Deploy base path (default `/`).                                                                              |
 | `VITE_APP_NAME`           | The name in the top bar (default `Meds`); the phone build sets the listing name.                             |
+| `VITE_NATIVE_BUILD`       | `on` in the phone build only: no cloud copy, no Dropbox, whatever key is set.                                |
 | `VITE_SEED`               | `demo` boots onto the in-memory demo document (`make demo`, the store screenshots). Never set for a release. |
 
 The workflows read them from repository secrets of the same names. See

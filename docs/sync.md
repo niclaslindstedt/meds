@@ -3,9 +3,10 @@
 The app is local-first: your medications and your log live in this browser,
 and that copy is always the working copy. Sync adds a second copy in **your
 own** cloud account so another device can read it. There is no server in
-between — the app talks to Dropbox directly from the page. The phone app is
-the same: the device, or your own Dropbox, and never iCloud — the log is
-health information (see [`features/native-app.md`](features/native-app.md)).
+between — the app talks to Dropbox directly from the page. This is the
+website and the desktop app: the phone app has no sync at all — the log stays
+on the phone, and never goes to iCloud or any other cloud, since it is health
+information (see [`features/native-app.md`](features/native-app.md)).
 
 ## What gets stored, and where
 
@@ -31,13 +32,15 @@ browser's localStorage and are used for nothing but that one file.
 A provider whose client id wasn't configured at build time doesn't appear in
 the picker at all — see [configuration.md](configuration.md).
 
-In the phone app the Dropbox consent screen opens in a sheet over the app
-instead of a redirect; see [`features/native-app.md`](features/native-app.md).
+The phone app offers no provider (`DROPBOX_OFFERED` in
+`src/app/useSyncEngine.ts`); see [`features/native-app.md`](features/native-app.md).
 
 A stored choice the app no longer offers — the iCloud Drive option a
 pre-release phone build had — reads as **this device**, and is forgotten
-(`readBackend` in `src/app/useSyncEngine.ts`). The log was always on the
-device, so nothing is lost and nothing needs moving.
+(`readBackend` in `src/app/useSyncEngine.ts`). A Dropbox choice a pre-release
+phone build stored reads as this device in the phone app too, and is left as
+it is. The log was always on the device, so nothing is lost and nothing needs
+moving.
 
 **Disconnecting** removes the tokens and the remembered passphrase from this
 device. Your log stays here,

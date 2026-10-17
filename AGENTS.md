@@ -4,13 +4,14 @@ This file is the canonical source of truth for AI coding agents working in this
 repo. `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `GEMINI.md`, and
 `.github/copilot-instructions.md` are symlinks to this file.
 
-Fleet guidelines: APP_GUIDELINES 1.2.0
+Fleet guidelines: APP_GUIDELINES 2.0.0
 
 ## What this app is, and the two rules that follow from it
 
 A medication log holds health data about a named person's body. The whole
 design premise is that the data never leaves the device unless its owner
-explicitly connects their own cloud account.
+explicitly connects their own cloud account — and in the phone app, which
+offers none, only in a backup its owner exports.
 
 **Rule one: never add a network call that isn't the user's own cloud
 backend.** No analytics, no error reporting service, no font CDN, no
@@ -56,17 +57,23 @@ make native-prebuild   # inspect what expo prebuild generates
 ```
 
 It is a thin Expo / React Native shell for the App Store and Google Play: the
-same built site in a `WebView`, served from a loopback origin. **Nothing in
-`src/` knows it exists**: the wrapper offers Dropbox's sign-in an in-app
-authentication session at `window.__ossAuthSession`, which the framework's
-`getAuthSessionHost` looks for; a browser has none and keeps its redirect.
-An export works the same way: it goes through the framework's `saveFile`, and
-the wrapper advertises the `save-file` capability on `window.__ossShell`
+same built site in a `WebView`, served from a loopback origin. **The page
+never asks at runtime whether it is inside it.** One thing differs, and it is
+decided at build time: `native/scripts/bundle-web.mjs` sets
+`VITE_NATIVE_BUILD=on`, and the phone edition offers **no cloud copy at all**
+(`src/app/edition.ts`) — no Sync section, no Dropbox, no passphrase; the log
+stays on the device. Every Dropbox branch is gated on that constant
+(`DROPBOX_OFFERED` in `useSyncEngine.ts`) so it folds out of the phone
+bundle, and `native.yml` passes no Dropbox key. The website and the desktop
+app keep Dropbox unchanged. Everything else is a capability on `window`: an
+export goes through the framework's `saveFile`, and the wrapper advertises
+the `save-file` capability on `window.__ossShell`
 (`native/src/saveFileBridge.ts`), so the backup reaches the share sheet
-there and downloads everywhere else.
+there and downloads everywhere else. (The wrapper still installs the
+framework's authentication-session host at `window.__ossAuthSession`; the
+phone edition never asks for it.)
 **It adds no storage of its own** — the log is health information, and App
-Store guideline 5.1.3(ii) rules out iCloud for it, so the phone app offers the
-device and the user's own Dropbox, exactly as the website does. The wrapper
+Store guideline 5.1.3(ii) rules out iCloud for it. The wrapper
 decides nothing about medications. Its store identity comes from
 `APP_DISPLAY_NAME`, `APP_BUNDLE_ID` and `EAS_PROJECT_ID` (`native/identifiers.js`);
 a `production` build refuses to run without them. The listing name reaches the
@@ -391,24 +398,24 @@ taxonomy's.
 
 ## Where new code goes
 
-| Change                            | Goes in                                                                                                                                                                          |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A new fact about a medication     | Probably nowhere — see above. If it survives that: `src/app/types.ts` (model) + `schedule.ts` (if it changes what a day owes) + `MedForm.tsx` (control) + a `migrations.ts` step |
-| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts` — and a `[ref:<id>]` tag beside it if it is a published measure                                                          |
-| A new source                      | An entry in `docs/references.json` (with `summary` and `topics`) and its `[ref:<id>]` tag beside the code — About lists it by itself                                             |
-| A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                                                    |
-| A change to the Medication shape  | `types.ts` + `migrations.ts` (bump `DOC_VERSION`, append a step — never edit one) + every `Medication` literal in `tests/` and `dev/`                                            |
-| A change to the DayLog shape      | The same, plus `merge.ts` (a new mark map merges too) and every `DayLog` literal in `tests/` and `dev/`                                                                          |
-| A catalog entry or ranking change | `src/app/data/medications.ts` (data) or `src/app/catalog.ts` (ranking), with tests in `tests/catalog_test.ts`                                                                    |
-| A new screen                      | `src/app/<Name>Screen.tsx` + a tab in `src/app/BottomNav.tsx`, or a button in `src/app/TopBar.tsx` if it is an action rather than a place                                        |
-| A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                        |
-| A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                                                            |
-| A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                     |
-| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demo_test.ts`                                                                            |
-| A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                  |
-| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `getAuthSessionHost`), never a check for "native"                |
-| Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                |
-| A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                                                                |
+| Change                            | Goes in                                                                                                                                                                                                          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A new fact about a medication     | Probably nowhere — see above. If it survives that: `src/app/types.ts` (model) + `schedule.ts` (if it changes what a day owes) + `MedForm.tsx` (control) + a `migrations.ts` step                                 |
+| A new derived number or stat      | `src/app/stats.ts`, with tests in `tests/stats_test.ts` — and a `[ref:<id>]` tag beside it if it is a published measure                                                                                          |
+| A new source                      | An entry in `docs/references.json` (with `summary` and `topics`) and its `[ref:<id>]` tag beside the code — About lists it by itself                                                                             |
+| A change to what a day owes       | `src/app/schedule.ts`, with tests in `tests/schedule_test.ts`                                                                                                                                                    |
+| A change to the Medication shape  | `types.ts` + `migrations.ts` (bump `DOC_VERSION`, append a step — never edit one) + every `Medication` literal in `tests/` and `dev/`                                                                            |
+| A change to the DayLog shape      | The same, plus `merge.ts` (a new mark map merges too) and every `DayLog` literal in `tests/` and `dev/`                                                                                                          |
+| A catalog entry or ranking change | `src/app/data/medications.ts` (data) or `src/app/catalog.ts` (ranking), with tests in `tests/catalog_test.ts`                                                                                                    |
+| A new screen                      | `src/app/<Name>Screen.tsx` + a tab in `src/app/BottomNav.tsx`, or a button in `src/app/TopBar.tsx` if it is an action rather than a place                                                                        |
+| A new way to arrange doses        | A component over `DoseRow.tsx` + an ordering in `schedule.ts` — never a second write path                                                                                                                        |
+| A new setting                     | `src/app/useAppSettings.ts` (shape + fallbacks) + a `Section` in `SettingsScreen.tsx`                                                                                                                            |
+| A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                                                     |
+| A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demo_test.ts`                                                                                                            |
+| A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                                                  |
+| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `saveFile`), never a runtime check for "native" — the one build-time difference is `PHONE_BUILD` |
+| Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                                                |
+| A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                                                                                                |
 
 ## Test conventions
 
@@ -505,10 +512,13 @@ with `[Learn more](feature:<slug>)`.
 - **The auth-session bridge's names are the framework's**
   (`AUTH_SESSION_HOST_PROPERTY`, `AUTH_SESSION_HOST_EVENT`), spelled again in
   `native/src/authSessionBridge.ts`; `tests/native_auth_session_test.ts` pins
-  them. The phone app's Dropbox sign-in returns on `<scheme>://oauth` —
-  `se.agilator.meds://oauth` in a store build — and the Dropbox app must list that exact
-  URI, so changing the bundle id breaks phone sign-in until the App Console
-  follows.
+  them. The phone app offers no Dropbox, so no sign-in returns on
+  `<scheme>://oauth` today.
+- **The phone app has no cloud copy.** Anything new that would send the log
+  off the device — a backend, a sync verb, a passphrase screen — is gated on
+  `PHONE_BUILD` (`src/app/edition.ts`) so it folds out of the phone bundle;
+  `tests/phoneEdition_test.ts` pins that the phone build offers this device
+  alone.
 
 ## Website staleness
 

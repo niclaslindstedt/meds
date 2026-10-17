@@ -6,9 +6,9 @@
 // and changes only when a new build ships to the store.
 //
 // The web build is a plain `npm run build` at the repo root — base `/`, which
-// is exactly what a localhost origin wants — and NOTHING in `src/` is changed
-// for the app. If the wrapper ever needs the web app to behave differently,
-// that is a sign it has stopped being thin. It sets three variables:
+// is exactly what a localhost origin wants. If the wrapper ever needs the web
+// app to behave differently beyond the flags below, that is a sign it has
+// stopped being thin. It sets four variables:
 //
 //   - VITE_EMBEDDED_BUILD, about the channel: it leaves the web edition's
 //     link-preview tags and its GitHub Pages `CNAME` out of the build (see
@@ -18,6 +18,11 @@
 //     through the App Store, so there is no service worker (`sw.js`; it would
 //     only stand a staler cache in front of files on local disk) and no update
 //     prompt nobody can act on.
+//   - VITE_NATIVE_BUILD, about the edition: the App Store app offers no
+//     Dropbox at all, so the log stays on the phone and leaves it only in a
+//     backup exported through the share sheet (`src/app/edition.ts`). This is
+//     the one place the page behaves differently inside the wrapper, and it is
+//     decided at build time, never by a check for "native" at runtime.
 //   - VITE_APP_NAME, the name the app calls itself inside — the listing name
 //     from APP_DISPLAY_NAME, resolved by `../identifiers.js` exactly as
 //     `expo.name` is, so the wordmark and the name under the icon cannot
@@ -89,6 +94,7 @@ if (!skipBuild) {
       ...process.env,
       VITE_EMBEDDED_BUILD: "on",
       VITE_SHELL_BUILD: "on",
+      VITE_NATIVE_BUILD: "on",
       VITE_APP_NAME: DISPLAY_NAME,
     },
   });

@@ -46,6 +46,7 @@ import {
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
 import { useT } from "./app/i18n/index.ts";
+import { PHONE_BUILD } from "./app/edition.ts";
 import { clockSlot, setClock } from "./app/format.ts";
 import { appearanceFor } from "./app/look.ts";
 import { logStore } from "./app/log.ts";
@@ -64,7 +65,8 @@ import { status } from "./output.ts";
 //
 // Everything hangs off one document in localStorage. There is no server:
 // cloud sync, when connected, is a copy of that same document in the user's
-// own Dropbox.
+// own Dropbox — on the website and the desktop app. The phone app offers no
+// cloud copy at all (see `app/edition.ts`).
 
 // Module-scoped so the identity stays stable across renders (the framework's
 // `useToasts` keys its subscription on the store object).
@@ -480,29 +482,36 @@ export function App() {
 
       {/* Asks for the passphrase whenever sync is waiting on one. A dialog,
           not a gate: the working copy on this device works behind it. */}
-      <EncryptionGate
-        encryption={sync.encryption}
-        location={sync.providerName}
-        labels={encryptionLabels}
-        paused={demo.on}
-      />
+      {!PHONE_BUILD && (
+        <EncryptionGate
+          encryption={sync.encryption}
+          location={sync.providerName}
+          labels={encryptionLabels}
+          paused={demo.on}
+        />
+      )}
 
-      <SyncDetailsModal
-        open={syncDetailsOpen}
-        providerName={sync.providerName}
-        backendKind="cloud"
-        location={sync.location}
-        status={sync.status}
-        statusDetail={sync.statusDetail}
-        dirty={sync.dirty}
-        offline={sync.offline}
-        onSaveNow={sync.saveNow}
-        onReload={() => void sync.reload()}
-        onReconnect={sync.reconnect}
-        onCheckConnection={sync.checkConnection}
-        logPanel={settings.devMode ? <LogViewer store={logStore} /> : undefined}
-        onClose={() => setSyncDetailsOpen(false)}
-      />
+      {/* Unreachable in the phone app, which has no backend to detail. */}
+      {!PHONE_BUILD && (
+        <SyncDetailsModal
+          open={syncDetailsOpen}
+          providerName={sync.providerName}
+          backendKind="cloud"
+          location={sync.location}
+          status={sync.status}
+          statusDetail={sync.statusDetail}
+          dirty={sync.dirty}
+          offline={sync.offline}
+          onSaveNow={sync.saveNow}
+          onReload={() => void sync.reload()}
+          onReconnect={sync.reconnect}
+          onCheckConnection={sync.checkConnection}
+          logPanel={
+            settings.devMode ? <LogViewer store={logStore} /> : undefined
+          }
+          onClose={() => setSyncDetailsOpen(false)}
+        />
+      )}
 
       {/* Top, not the framework's default bottom. Every toast this app raises
           answers a tap in the lower half of the screen, and at the bottom the

@@ -4,7 +4,8 @@ Meds is a PWA first: open it in a browser, add it to the home screen, and it
 is an app. `native/` is the other way in — the same web app, wrapped thinly
 enough to ship through the **App Store** and **Google Play**. In exchange for
 that wrapper it gains what the browser cannot give it: it runs entirely from
-inside its own download, and Dropbox signs in without leaving the app.
+inside its own download, and a backup leaves through the phone's share
+sheet.
 
 ## What the wrapper is
 
@@ -27,36 +28,35 @@ There is **no native UI**. Everything you see is the web app, unchanged.
 
 ## Where your log is kept
 
-On the phone, exactly where it is kept on the website: **on the device**, and
-— only if you connect it — in **your own Dropbox**. Nowhere else.
+On the phone, **on the device, and nowhere else.** The phone app has no
+cloud copy: Settings has no Sync section, and the log leaves the phone only
+in a backup you export yourself through the share sheet. The website and the
+desktop app keep their optional Dropbox copy; the phone app offers none.
 
-There is **no iCloud**, and that is a decision rather than a gap. A medication
-log is personal health information, and App Store guideline 5.1.3(ii) says an
-app may not store personal health information in iCloud. So the phone app
-offers the same two places the website does, and the wrapper adds no storage
-of its own.
+There is **no iCloud** either, and that is a decision rather than a gap. A
+medication log is personal health information, and App Store guideline
+5.1.3(ii) says an app may not store personal health information in iCloud.
+The wrapper adds no storage of its own.
 
-No App Store release ever offered iCloud, so there is nothing to move. A
-pre-release build that had it selected simply reads as **this device** — the
-copy on the phone was always the working copy — and the choice is forgotten.
+No App Store release ever offered iCloud or Dropbox, so there is nothing to
+move. A pre-release build that had either selected simply reads as **this
+device** — the copy on the phone was always the working copy. A copy already
+in Dropbox is left where it is, and the website or the desktop app still
+reads it.
 
-## Dropbox
-
-Connecting Dropbox opens Dropbox's own sign-in in a sheet over the app. You
-approve there, the sheet closes, and the app is connected — the sign-in never
-leaves for Safari. Closing the sheet simply leaves Dropbox unconnected. The
-app never sees your Dropbox password; the sheet is Dropbox's page, and what
-comes back is a one-time code the app trades for access to its own folder.
+It is a build-time switch: `native/scripts/bundle-web.mjs` builds the page
+with `VITE_NATIVE_BUILD=on` (`src/app/edition.ts`), and every Dropbox branch
+folds out of the phone bundle rather than being hidden at runtime.
 
 ## What the wrapper is not allowed to do
 
 Two rules, and they are what keep the app and the website the same product:
 
-- **Nothing in `src/` knows the wrapper exists.** The web app does not check
-  whether it is native. It looks for an authentication-session _capability_
-  on `window` (the framework's `getAuthSessionHost`) and signs in through it
-  when one is there. Exports work the same way: the framework's `saveFile`
-  downloads, unless the wrapper has said on `window` that it takes files.
+- **The page never asks whether it is native at runtime.** The one thing
+  the phone edition does differently — no cloud copy — is decided when the
+  page is built (`VITE_NATIVE_BUILD`). Everything else is a _capability_ on
+  `window`: the framework's `saveFile` downloads, unless the wrapper has said
+  on `window` that it takes files.
 - **The wrapper decides nothing about medications.** When a
   dose is due, what counts as taken, and how two copies reconcile are the web
   app's, in `schedule.ts`, `stats.ts` and `merge.ts`.

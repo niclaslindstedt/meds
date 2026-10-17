@@ -118,6 +118,28 @@ function embedded(): Plugin {
   };
 }
 
+// The PHONE build — set by `native/scripts/bundle-web.mjs` alone. The App
+// Store app offers no Dropbox (see `src/app/edition.ts`), so the page's own
+// description, which promises a Dropbox copy, says what the phone app does
+// instead.
+const nativeBuild = process.env.VITE_NATIVE_BUILD === "on";
+
+function phoneEdition(): Plugin {
+  return {
+    name: "phone-edition",
+    apply: "build",
+    transformIndexHtml(html) {
+      return html.replace(
+        /(<meta\s+name="description"\s+content=")[^"]*(")/,
+        "$1Meds is a medication log built for speed: add your medications and " +
+          "when to take them, then log each dose with one tap. A calendar and " +
+          "history show your adherence and the gaps. Your log stays on this " +
+          "device.$2",
+      );
+    },
+  };
+}
+
 export default defineConfig({
   base,
   define: {
@@ -144,5 +166,6 @@ export default defineConfig({
     tailwindcss(),
     appPwa({ base, version, ignorePaths, serviceWorker: !shellBuild }),
     ...(embeddedBuild ? [embedded()] : []),
+    ...(nativeBuild ? [phoneEdition()] : []),
   ],
 });
