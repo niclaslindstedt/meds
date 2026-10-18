@@ -20,7 +20,7 @@
 //     prompt nobody can act on.
 //   - VITE_NATIVE_BUILD, about the edition: the App Store app offers no
 //     Dropbox at all, so the log stays on the phone and leaves it only in a
-//     backup exported through the share sheet (`src/app/edition.ts`). This is
+//     backup exported through the share sheet (`src/vite-env.d.ts`). This is
 //     the one place the page behaves differently inside the wrapper, and it is
 //     decided at build time, never by a check for "native" at runtime.
 //   - VITE_APP_NAME, the name the app calls itself inside — the listing name

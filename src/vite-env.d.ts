@@ -32,9 +32,16 @@ interface ImportMetaEnv {
   // The name the app calls itself (`app.name`). Set only by the phone build,
   // from APP_DISPLAY_NAME (native/scripts/bundle-web.mjs); unset, "Meds".
   readonly VITE_APP_NAME?: string;
-  // "on" in the phone build only (native/scripts/bundle-web.mjs): the App
-  // Store app offers no Dropbox, so the log stays on the phone. See
-  // `src/app/edition.ts`.
+  // "on" in the phone build only (native/scripts/bundle-web.mjs), and the one
+  // fact that differs there: the App Store app offers no cloud copy at all.
+  // The log stays on the device and leaves it only in a backup the reader
+  // exports through the share sheet; the website and the desktop app keep
+  // Dropbox. Read at build time, and tested as
+  // `import.meta.env.VITE_NATIVE_BUILD === "on"` at every use site — Vite
+  // folds that comparison where it stands, but not a constant derived from it
+  // in another module, so each branch behind it leaves the phone bundle only
+  // when it tests the variable itself. Never VITE_EMBEDDED_BUILD, which the
+  // desktop build sets too.
   readonly VITE_NATIVE_BUILD?: string;
 }
 

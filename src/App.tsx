@@ -46,7 +46,6 @@ import {
 import { TodayScreen } from "./app/TodayScreen.tsx";
 import { TopBar } from "./app/TopBar.tsx";
 import { useT } from "./app/i18n/index.ts";
-import { PHONE_BUILD } from "./app/edition.ts";
 import { clockSlot, setClock } from "./app/format.ts";
 import { appearanceFor } from "./app/look.ts";
 import { logStore } from "./app/log.ts";
@@ -66,7 +65,7 @@ import { status } from "./output.ts";
 // Everything hangs off one document in localStorage. There is no server:
 // cloud sync, when connected, is a copy of that same document in the user's
 // own Dropbox — on the website and the desktop app. The phone app offers no
-// cloud copy at all (see `app/edition.ts`).
+// cloud copy at all (`VITE_NATIVE_BUILD`, see `vite-env.d.ts`).
 
 // Module-scoped so the identity stays stable across renders (the framework's
 // `useToasts` keys its subscription on the store object).
@@ -482,7 +481,7 @@ export function App() {
 
       {/* Asks for the passphrase whenever sync is waiting on one. A dialog,
           not a gate: the working copy on this device works behind it. */}
-      {!PHONE_BUILD && (
+      {import.meta.env.VITE_NATIVE_BUILD !== "on" && (
         <EncryptionGate
           encryption={sync.encryption}
           location={sync.providerName}
@@ -492,7 +491,7 @@ export function App() {
       )}
 
       {/* Unreachable in the phone app, which has no backend to detail. */}
-      {!PHONE_BUILD && (
+      {import.meta.env.VITE_NATIVE_BUILD !== "on" && (
         <SyncDetailsModal
           open={syncDetailsOpen}
           providerName={sync.providerName}

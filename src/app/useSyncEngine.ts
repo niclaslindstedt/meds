@@ -32,7 +32,6 @@ import type {
   SyncLocation,
 } from "@niclaslindstedt/oss-framework/sync";
 
-import { PHONE_BUILD } from "./edition.ts";
 import { logStore } from "./log.ts";
 import { mergeDocs } from "./merge.ts";
 import { parseDoc, serializeDoc } from "./migrations.ts";
@@ -105,9 +104,12 @@ export const DROPBOX_APP_FOLDER: string =
   "meds";
 
 /** Whether this build offers Dropbox at all: never in the phone app, and on
- *  the website and the desktop app only once a key is configured. A
- *  build-time constant, so the phone bundle drops every Dropbox branch. */
-export const DROPBOX_OFFERED: boolean = !PHONE_BUILD && DROPBOX_APP_KEY !== "";
+ *  the website and the desktop app only once a key is configured. For the
+ *  tests and the picker's list; a branch that must leave the phone bundle
+ *  tests `VITE_NATIVE_BUILD` itself as well, because Vite folds the raw
+ *  comparison where it stands but not a constant derived from it. */
+export const DROPBOX_OFFERED: boolean =
+  import.meta.env.VITE_NATIVE_BUILD !== "on" && DROPBOX_APP_KEY !== "";
 
 export const PROVIDER_NAMES: Record<SyncBackendId, string> = {
   local: "This device",
@@ -119,7 +121,9 @@ export const PROVIDER_NAMES: Record<SyncBackendId, string> = {
  *  device alone. */
 export const AVAILABLE_BACKENDS: SyncBackendId[] = [
   "local",
-  ...(DROPBOX_OFFERED ? (["dropbox"] as const) : []),
+  ...(import.meta.env.VITE_NATIVE_BUILD !== "on" && DROPBOX_OFFERED
+    ? (["dropbox"] as const)
+    : []),
 ];
 
 type DropboxTokens = { accessToken: string; refreshToken: string | null };
@@ -138,13 +142,16 @@ export function readBackend(): SyncBackendId {
       localStorage.removeItem(localCacheKey(RETIRED_ICLOUD_BACKEND, "meds"));
       return "local";
     }
-    return raw === "dropbox" && !PHONE_BUILD ? "dropbox" : "local";
+    return raw === "dropbox" && import.meta.env.VITE_NATIVE_BUILD !== "on"
+      ? "dropbox"
+      : "local";
   } catch {
     return "local";
   }
 }
 
 function readDropboxTokens(): DropboxTokens | null {
+  if (import.meta.env.VITE_NATIVE_BUILD === "on") return null;
   try {
     const raw = localStorage.getItem(DROPBOX_TOKENS_KEY);
     if (!raw) return null;
@@ -162,7 +169,7 @@ function writeDropboxTokens(tokens: DropboxTokens | null): void {
 
 /** The document's human-readable location on the active backend. */
 function backendPath(backend: SyncBackendId): string {
-  if (backend === "dropbox") {
+  if (import.meta.env.VITE_NATIVE_BUILD !== "on" && backend === "dropbox") {
     return `Apps/${DROPBOX_APP_FOLDER}/${CLOUD_FILE_NAME}`;
   }
   return "On this device only";
@@ -232,7 +239,11 @@ export function useSyncEngine(
   // copy stays readable offline (`withLocalCache`). The cache sits below the
   // encryption, so it holds exactly the ciphertext the cloud does.
   const inner: StorageAdapter | null = useMemo(() => {
-    if (!PHONE_BUILD && backend === "dropbox" && dropboxTokens) {
+    if (
+      import.meta.env.VITE_NATIVE_BUILD !== "on" &&
+      backend === "dropbox" &&
+      dropboxTokens
+    ) {
       const auth = {
         accessToken: dropboxTokens.accessToken,
         refreshToken: dropboxTokens.refreshToken,
@@ -390,7 +401,13 @@ export function useSyncEngine(
   // Complete a Dropbox OAuth redirect: trade the `?code=` for tokens, persist
   // them, and adopt the backend. Runs once on boot when a flow is mid-flight.
   useEffect(() => {
-    if (!DROPBOX_OFFERED || !hasPendingDropboxAuth()) return;
+    if (
+      import.meta.env.VITE_NATIVE_BUILD === "on" ||
+      !DROPBOX_OFFERED ||
+      !hasPendingDropboxAuth()
+    ) {
+      return;
+    }
     const code = new URLSearchParams(window.location.search).get("code");
     if (!code) return;
     void (async () => {
@@ -448,7 +465,9 @@ export function useSyncEngine(
         setBackendState("local");
         return;
       }
-      if (!DROPBOX_OFFERED) throw new Error("Dropbox is not configured");
+      if (import.meta.env.VITE_NATIVE_BUILD === "on" || !DROPBOX_OFFERED) {
+        throw new Error("Dropbox is not configured");
+      }
       // Where the redirect would land in the system browser rather than in
       // the app, a host that offers an authentication session is asked for
       // one: consent in a sheet over the app, the redirect handed back, and

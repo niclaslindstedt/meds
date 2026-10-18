@@ -15,6 +15,7 @@ import {
 } from "@niclaslindstedt/oss-framework/references";
 
 import { useT } from "./i18n/index.ts";
+import { PrivacyNote } from "./PrivacyNote.tsx";
 import { TOPICS, useReferences } from "./references.ts";
 
 // About, behind Settings: what the app is, and every published source its
@@ -70,9 +71,7 @@ export function AboutScreen({ onBack }: Props) {
         <p className="text-sm leading-snug text-fg">
           {t("settings.disclaimer")}
         </p>
-        <p className="text-xs leading-snug text-muted">
-          {t("settings.privacy")}
-        </p>
+        <PrivacyNote />
       </Section>
 
       <Section

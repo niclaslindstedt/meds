@@ -61,11 +61,10 @@ same built site in a `WebView`, served from a loopback origin. **The page
 never asks at runtime whether it is inside it.** One thing differs, and it is
 decided at build time: `native/scripts/bundle-web.mjs` sets
 `VITE_NATIVE_BUILD=on`, and the phone edition offers **no cloud copy at all**
-(`src/app/edition.ts`) — no Sync section, no Dropbox, no passphrase; the log
-stays on the device. Every Dropbox branch is gated on that constant
-(`DROPBOX_OFFERED` in `useSyncEngine.ts`) so it folds out of the phone
-bundle, and `native.yml` passes no Dropbox key. The website and the desktop
-app keep Dropbox unchanged. Everything else is a capability on `window`: an
+(`src/vite-env.d.ts`) — no Sync section, no Dropbox, no passphrase; the log
+stays on the device. Every Dropbox branch tests the variable itself, at the
+use site, so it folds out of the phone bundle, and `native.yml` passes no
+Dropbox key. The website and the desktop app keep Dropbox unchanged. Everything else is a capability on `window`: an
 export goes through the framework's `saveFile`, and the wrapper advertises
 the `save-file` capability on `window.__ossShell`
 (`native/src/saveFileBridge.ts`), so the backup reaches the share sheet
@@ -284,6 +283,9 @@ like SVG's `focusable` as `"false"` rather than a JSX boolean.
 - `src/app/AboutScreen.tsx` — behind Settings → About and sources: the
   disclaimer, and every entry of the registry on the framework's
   `ReferenceCard`, grouped by tab. Read-only.
+- `src/app/PrivacyNote.tsx` — where the log goes, in the small print of
+  Settings → About and the About screen; in the phone app, a link to the
+  privacy policy the store listing points at.
 - `src/app/i18n/en.ts` — every user-facing string.
 - `src/output.ts` — the central output module (semantic log helpers
   over the in-app log store).
@@ -413,7 +415,7 @@ taxonomy's.
 | A new developer-only affordance   | `src/app/dev/`, revealed behind `settings.devMode` in `SettingsScreen.tsx` — never in the persisted settings if it must not survive a reload                                                                     |
 | A change to what the demo shows   | `src/app/dev/demoData.ts` (offsets from `now`, never fixed dates), with tests in `tests/demo_test.ts`                                                                                                            |
 | A new storage backend             | The framework, not here — this app only wires adapters up in `useSyncEngine.ts`                                                                                                                                  |
-| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `saveFile`), never a runtime check for "native" — the one build-time difference is `PHONE_BUILD` |
+| The native wrapper                | `native/...` — a separate npm project; anything the page needs from it arrives as a capability on `window` (see `saveFile`), never a runtime check for "native" — the one build-time flag is `VITE_NATIVE_BUILD` |
 | Any user-facing string            | `src/app/i18n/en.ts`, never inline in a component                                                                                                                                                                |
 | A shared UI primitive             | The framework, if it is domain-free; `src/app/` only if it is medication-specific                                                                                                                                |
 
@@ -516,9 +518,14 @@ with `[Learn more](feature:<slug>)`.
   `<scheme>://oauth` today.
 - **The phone app has no cloud copy.** Anything new that would send the log
   off the device — a backend, a sync verb, a passphrase screen — is gated on
-  `PHONE_BUILD` (`src/app/edition.ts`) so it folds out of the phone bundle;
+  `import.meta.env.VITE_NATIVE_BUILD === "on"`, tested at the use site itself
+  — Vite 8 folds that comparison where it stands but not a constant derived
+  from it or imported from another module, so a shared `PHONE_BUILD` would
+  leave the other builds' branches riding along in the phone bundle. Never
+  `VITE_EMBEDDED_BUILD`: the desktop build sets it too.
   `tests/phoneEdition_test.ts` pins that the phone build offers this device
-  alone.
+  alone, and builds the phone app for real to check its pages and bundle
+  name no other edition.
 
 ## Website staleness
 

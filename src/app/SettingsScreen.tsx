@@ -27,9 +27,9 @@ import { LogViewer } from "@niclaslindstedt/oss-framework/logging";
 import { logStore } from "./log.ts";
 import { readBackupFile, saveBackup } from "./backup.ts";
 import type { DemoDataToggle } from "./dev/useDemoData.ts";
-import { PHONE_BUILD } from "./edition.ts";
 import { useT } from "./i18n/index.ts";
 import { mergeDocs } from "./merge.ts";
+import { PrivacyNote } from "./PrivacyNote.tsx";
 import { useEncryptionLabels, usePinControlLabels } from "./SyncEncryption.tsx";
 import { serializeDoc } from "./migrations.ts";
 import { emptyDoc } from "./types.ts";
@@ -165,8 +165,8 @@ export function SettingsScreen({
       </Section>
 
       {/* The phone app has no cloud copy to offer, so it has no Sync section:
-          the log stays on the device (see `edition.ts`). */}
-      {!PHONE_BUILD && (
+          the log stays on the device (`VITE_NATIVE_BUILD`). */}
+      {import.meta.env.VITE_NATIVE_BUILD !== "on" && (
         <Section
           title={t("settings.sync")}
           icon={<CloudIcon className="h-3.5 w-3.5" />}
@@ -249,7 +249,7 @@ export function SettingsScreen({
         title={t("settings.data")}
         icon={<DatabaseIcon className="h-3.5 w-3.5" />}
       >
-        {PHONE_BUILD && (
+        {import.meta.env.VITE_NATIVE_BUILD === "on" && (
           <p className="text-xs text-muted">{t("settings.phoneStorage")}</p>
         )}
         <div className="flex flex-col gap-1">
@@ -353,9 +353,7 @@ export function SettingsScreen({
           <dt className="text-muted">{t("settings.build")}</dt>
           <dd className="text-fg">{__BUILD_LABEL__}</dd>
         </dl>
-        <p className="text-xs leading-snug text-muted">
-          {t(PHONE_BUILD ? "settings.privacyPhone" : "settings.privacy")}
-        </p>
+        <PrivacyNote />
         <p className="text-xs leading-snug text-muted">
           {t("settings.disclaimer")}
         </p>

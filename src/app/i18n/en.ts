@@ -64,8 +64,13 @@ export const en = {
     // The one thing about a tap that does need a toast — the write was
     // refused (no room, or storage switched off), and nothing on the screen
     // would show it otherwise.
+    // The phone app has no browser to send anyone to, and a full device is
+    // what refuses the write there. Tested at this use site, so the other
+    // builds' sentence leaves the phone bundle.
     saveFailed:
-      "Couldn't save to this device — check the browser's storage settings.",
+      import.meta.env.VITE_NATIVE_BUILD === "on"
+        ? "Couldn't save to this device — check that it has storage space left."
+        : "Couldn't save to this device — check the browser's storage settings.",
     markNotTaken: "Mark {name} not taken",
     takenAt: "Taken {time}",
     // Setting a dose aside: the evening you decided against, which the log
@@ -416,11 +421,17 @@ export const en = {
     about: "About",
     version: "Version",
     build: "Build",
+    // Where the log goes. The phone app offers no cloud copy, not even
+    // iCloud — the log is health information — so its sentence says the log
+    // leaves the device only in a backup. Tested at this use site, so each
+    // build carries only its own words.
     privacy:
-      "Everything stays on this device unless you connect a cloud account yourself, and a copy there is encrypted with your passphrase first. There is no server, nothing to sign up for, and no analytics.",
-    // The phone app offers no cloud copy (see `edition.ts`).
-    privacyPhone:
-      "Everything stays on this device: there is no cloud copy, and the log leaves only in a backup you export yourself. There is no server, nothing to sign up for, and no analytics.",
+      import.meta.env.VITE_NATIVE_BUILD === "on"
+        ? "Everything stays on this device. The app sends nothing when it opens, and there is no cloud copy — not iCloud, not anywhere else: your log leaves the device only in a backup you export yourself. There is no server of ours, so nothing about you is logged, there is nothing to sign up for, and there are no analytics."
+        : "Everything stays on this device unless you connect a cloud account yourself, and a copy there is encrypted with your passphrase first. There is no server, nothing to sign up for, and no analytics.",
+    // The phone app's link under it, to the policy its store listing points
+    // at.
+    privacyPolicy: "Read the full privacy policy",
     // Said once, in the smallest print the screen has, because the app must
     // not pretend to be more than a notebook.
     disclaimer:

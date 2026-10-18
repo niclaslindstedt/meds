@@ -45,8 +45,10 @@ in Dropbox is left where it is, and the website or the desktop app still
 reads it.
 
 It is a build-time switch: `native/scripts/bundle-web.mjs` builds the page
-with `VITE_NATIVE_BUILD=on` (`src/app/edition.ts`), and every Dropbox branch
-folds out of the phone bundle rather than being hidden at runtime.
+with `VITE_NATIVE_BUILD=on`, and every Dropbox branch tests that variable
+itself (`import.meta.env.VITE_NATIVE_BUILD === "on"`, never a constant
+carried from another module), so it folds out of the phone bundle rather than
+being hidden at runtime.
 
 ## What the wrapper is not allowed to do
 

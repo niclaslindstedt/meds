@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-// The phone app offers no Dropbox (`src/app/edition.ts`): built with
+// The phone app offers no Dropbox (`VITE_NATIVE_BUILD`): built with
 // VITE_NATIVE_BUILD=on, the backends are this device alone, whatever key the
 // environment holds, and a Dropbox choice a pre-release build stored reads as
 // this device. The website and the desktop app keep Dropbox exactly as before.
+
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -77,4 +82,70 @@ describe("the website and the desktop build", () => {
     globals.localStorage = fakeStorage({ [engine.BACKEND_KEY]: "dropbox" });
     expect(engine.readBackend()).toBe("dropbox");
   });
+});
+
+/** Every file under `dir`, recursively. */
+function* files(dir: string): Generator<string> {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) yield* files(path);
+    else yield path;
+  }
+}
+
+describe("the real phone build", () => {
+  it("names no other edition, and links to the privacy policy", () => {
+    const out = mkdtempSync(join(tmpdir(), "meds-phone-"));
+    try {
+      const env = Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([key]) =>
+            key !== "NODE_ENV" &&
+            !key.startsWith("VITEST") &&
+            !key.startsWith("VITE_"),
+        ),
+      );
+      execFileSync(
+        process.execPath,
+        [
+          join("node_modules", "vite", "bin", "vite.js"),
+          "build",
+          "--outDir",
+          out,
+          "--emptyOutDir",
+          "--logLevel",
+          "error",
+        ],
+        {
+          env: {
+            ...env,
+            VITE_EMBEDDED_BUILD: "on",
+            VITE_SHELL_BUILD: "on",
+            VITE_NATIVE_BUILD: "on",
+            VITE_DROPBOX_APP_KEY: "a-key",
+          },
+          stdio: "pipe",
+        },
+      );
+      const texts = [...files(out)]
+        .filter((path) => /\.(?:html|js)$/.test(path))
+        .map((path) => readFileSync(path, "utf8"));
+      const bundle = texts.join("\n");
+      // The website's and the desktop app's words stay out of the bundle:
+      // their privacy line, the browser hint, the Dropbox file's path.
+      expect(bundle).toContain("there is no cloud copy");
+      expect(bundle).not.toMatch(/connect a cloud account yourself/);
+      expect(bundle).not.toMatch(/the browser's storage settings/);
+      expect(bundle).not.toContain("Apps/meds/");
+      expect(bundle).not.toMatch(
+        /github pages|static site|the website|no account/i,
+      );
+      expect(bundle).toContain("https://apps.agilator.se/meds/privacy/");
+
+      const html = readFileSync(join(out, "index.html"), "utf8");
+      expect(html).not.toMatch(/<!--|og:|twitter:|\bPWA\b|browser|Dropbox/i);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

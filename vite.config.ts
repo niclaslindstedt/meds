@@ -119,9 +119,10 @@ function embedded(): Plugin {
 }
 
 // The PHONE build — set by `native/scripts/bundle-web.mjs` alone. The App
-// Store app offers no Dropbox (see `src/app/edition.ts`), so the page's own
+// Store app offers no Dropbox (see `src/vite-env.d.ts`), so the page's own
 // description, which promises a Dropbox copy, says what the phone app does
-// instead.
+// instead. Its HTML comments go too: they talk about an installed PWA and the
+// web edition's indexing, which the phone app is neither.
 const nativeBuild = process.env.VITE_NATIVE_BUILD === "on";
 
 function phoneEdition(): Plugin {
@@ -129,13 +130,15 @@ function phoneEdition(): Plugin {
     name: "phone-edition",
     apply: "build",
     transformIndexHtml(html) {
-      return html.replace(
-        /(<meta\s+name="description"\s+content=")[^"]*(")/,
-        "$1Meds is a medication log built for speed: add your medications and " +
-          "when to take them, then log each dose with one tap. A calendar and " +
-          "history show your adherence and the gaps. Your log stays on this " +
-          "device.$2",
-      );
+      return html
+        .replace(/\n?[ \t]*<!--[\s\S]*?-->/g, "")
+        .replace(
+          /(<meta\s+name="description"\s+content=")[^"]*(")/,
+          "$1Meds is a medication log built for speed: add your medications and " +
+            "when to take them, then log each dose with one tap. A calendar and " +
+            "history show your adherence and the gaps. Your log stays on this " +
+            "device.$2",
+        );
     },
   };
 }

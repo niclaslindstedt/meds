@@ -15,7 +15,7 @@ All optional. The app builds and runs with none of them set.
 | `VITE_DROPBOX_APP_KEY`    | —       | Dropbox OAuth app key (PKCE public client). Unset ⇒ the Dropbox backend is hidden from Settings → Sync rather than offered and then failing. The website and the desktop app read it; the phone build is never given one and offers no Dropbox regardless (`VITE_NATIVE_BUILD`).                                                                                |
 | `VITE_DROPBOX_APP_FOLDER` | `meds`  | The app-folder name shown as the file's location. Dropbox fixes this from the OAuth app's own configuration, so it has to be told what the folder is actually called.                                                                                                                                                                                           |
 | `VITE_APP_NAME`           | `Meds`  | The name the app calls itself in its top bar. Only the phone build sets it — `native/scripts/bundle-web.mjs` passes the listing name from `APP_DISPLAY_NAME`, so the name inside the app is the one under its icon. The website and the desktop app keep the project's name.                                                                                    |
-| `VITE_NATIVE_BUILD`       | —       | `on` only in the phone build, which `native/scripts/bundle-web.mjs` sets. The App Store app offers no cloud copy: no Sync section, no Dropbox, no passphrase — the log stays on the device and leaves only in an exported backup. Decided at build time (`src/app/edition.ts`), so the Dropbox code folds out of the phone bundle.                              |
+| `VITE_NATIVE_BUILD`       | —       | `on` only in the phone build, which `native/scripts/bundle-web.mjs` sets. The App Store app offers no cloud copy: no Sync section, no Dropbox, no passphrase — the log stays on the device and leaves only in an exported backup. Decided at build time and tested raw at every use site, so the Dropbox code folds out of the phone bundle.                    |
 | `VITE_SEED`               | —       | `demo` boots the app onto the demo document — one person's medicines and three months of doses, built for the moment it opens and held in memory — before the first render, with sync paused and backend changes refused (see `src/app/dev/`). `make demo` and the store screenshots set it; a release never does, and the check folds away in any other build. |
 
 Both OAuth identifiers are **public**: the flows are PKCE with no client
@@ -26,8 +26,8 @@ build setting as a secret and has no repository variables; they are injected at
 build time, and the built site carries them in plain sight.
 
 The declarations live in `src/vite-env.d.ts`; the consumers are
-`vite.config.ts`, `src/app/useSyncEngine.ts`, `src/app/edition.ts` and (for
-the name) `src/app/i18n/en.ts`.
+`vite.config.ts`, `src/app/useSyncEngine.ts`, the screens and strings that
+test `VITE_NATIVE_BUILD`, and (for the name) `src/app/i18n/en.ts`.
 
 ### Setting them up
 
