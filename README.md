@@ -1,6 +1,6 @@
 # Meds
 
-> A local-first medication tracking PWA — enter your meds and when to take them, then log each dose with one tap. No account, no server.
+> A local-first medication tracking PWA — enter your meds and when to take them, then log each dose with one tap. Nothing to sign up for, no server.
 
 [![ci](https://github.com/niclaslindstedt/meds/actions/workflows/ci.yml/badge.svg)](https://github.com/niclaslindstedt/meds/actions/workflows/ci.yml)
 [![pages](https://github.com/niclaslindstedt/meds/actions/workflows/pages.yml/badge.svg)](https://github.com/niclaslindstedt/meds/actions/workflows/pages.yml)
@@ -65,7 +65,7 @@ adapters, same theme engine, same PWA update lifecycle.
 What you take is health data, and most apps in this category are an account
 wrapped around a server you cannot inspect.
 
-This one has no account and no server. Your medications and your log live in
+This one has nothing to sign up for and no server. Your medications and your log live in
 your browser's localStorage. If you want them on more than one device, you
 connect **your own** Dropbox on the website or the desktop app and it keeps a
 copy there — encrypted on the device with a passphrase only you know, so

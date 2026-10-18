@@ -417,10 +417,10 @@ export const en = {
     version: "Version",
     build: "Build",
     privacy:
-      "Everything stays on this device unless you connect a cloud account yourself, and a copy there is encrypted with your passphrase first. There is no server, no account, and no analytics.",
+      "Everything stays on this device unless you connect a cloud account yourself, and a copy there is encrypted with your passphrase first. There is no server, nothing to sign up for, and no analytics.",
     // The phone app offers no cloud copy (see `edition.ts`).
     privacyPhone:
-      "Everything stays on this device: there is no cloud copy, and the log leaves only in a backup you export yourself. There is no server, no account, and no analytics.",
+      "Everything stays on this device: there is no cloud copy, and the log leaves only in a backup you export yourself. There is no server, nothing to sign up for, and no analytics.",
     // Said once, in the smallest print the screen has, because the app must
     // not pretend to be more than a notebook.
     disclaimer:
